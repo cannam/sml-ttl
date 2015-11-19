@@ -1,0 +1,38 @@
+#!/bin/bash
+set -e
+
+mlb="$1"
+
+if [ -z "$mlb" ]; then
+    echo "Usage: $0 file.mlb" 1>&2
+    exit 1
+fi
+if [ ! -f "$mlb" ]; then
+    echo "Error: File not found: $mlb" 1>&2
+    exit 1
+fi
+
+set -u
+shift
+
+out=$(basename "$mlb" .mlb)
+if [ "$out" = "$(basename $mlb)" ]; then
+    echo "Error: Argument must be a .mlb file" 1>&2
+    exit 1
+fi
+
+tmpobj="/tmp/obj.$$.o"
+tmpout="/tmp/out.$out.$$"
+trap "rm -f ${tmpobj} ${tmpout}" 0
+
+libdir=${SML_LIB:-/usr/lib/mlton/sml}
+
+( grep -v mlb "$mlb" | \
+	grep -v main | \
+	sed 's#$(SML_LIB)#'"${libdir}"'#g' | \
+	sed 's/^\(.*\)$/use "\1";/' ;
+  echo 'PolyML.export("'"$tmpobj"'", main);' ) | \
+    poly -q --error-exit &&
+    polyc -o "$tmpout" "$tmpobj" &&
+    "$tmpout" "$@"
+

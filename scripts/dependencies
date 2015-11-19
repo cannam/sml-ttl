@@ -1,0 +1,27 @@
+#!/bin/bash
+set -e
+
+mlb="$1"
+
+if [ -z "$mlb" ]; then
+    echo "Usage: $0 file.mlb" 1>&2
+    exit 1
+fi
+if [ ! -f "$mlb" ]; then
+    echo "Error: File not found: $mlb" 1>&2
+    exit 1
+fi
+
+set -u
+
+mlb="$1"
+base=$(basename "$mlb" .mlb)
+if [ "$base" = "$mlb" ]; then
+    echo "Argument must be a .mlb file" 1>&2
+    exit 1
+fi
+
+deps="$base".deps
+
+fgrep -v "$" "$mlb" | fmt -60 | sed 's/^/'"$base"': /' > "$deps"
+

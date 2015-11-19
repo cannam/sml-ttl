@@ -1,0 +1,40 @@
+#!/bin/bash
+set -e
+
+mlb="$1"
+
+if [ -z "$mlb" ]; then
+    echo "Usage: $0 file.mlb" 1>&2
+    exit 1
+fi
+if [ ! -f "$mlb" ]; then
+    echo "Error: File not found: $mlb" 1>&2
+    exit 1
+fi
+
+set -u
+
+out=$(basename "$mlb" .mlb)
+if [ "$out" = "$mlb" ]; then
+    echo "Argument must be a .mlb file" 1>&2
+    exit 1
+fi
+
+obj="/tmp/obj.$$.o"
+trap "rm -f ${obj}" 0
+
+libdir=${SML_LIB:-/usr/lib/mlton/sml}
+
+( cat "$mlb" |                                 # redundant cat to annoy pedants
+	fgrep -v basis.mlb |                   # remove incompatible Basis lib
+	fgrep -v main.sml |                    # remove unneeded call to main
+	sed 's/(\*[^\*]*\*)//g' |              # remove ML-style comments
+	sed 's#$(SML_LIB)#'"${libdir}"'#g' |   # expand library path
+	sed 's/^ *//' |                        # remove leading whitespace
+	sed 's/ *$//' |                        # remove trailing whitespace
+	grep -v '^$' |                         # remove empty lines
+	sed 's/^\(.*\)$/use "\1";/' ;          # wrap filenames in REPL use calls
+  echo 'PolyML.export("'"$obj"'", main);' ) |  # ask poly to export object file
+    poly -q --error-exit &&
+    polyc -o "$out" "$obj"                     # compile object to executable
+

@@ -1,0 +1,22 @@
+#!/bin/bash
+set -eu
+
+mlb="$1"; shift
+out=$(basename "$mlb" .mlb)
+if [ "$out" = "$mlb" ]; then
+    echo "Argument must be a .mlb file" 1>&2
+    exit 1
+fi
+
+libdir=${SML_LIB:-/usr/lib/mlton/sml}
+
+rlwrap poly $(cat "$mlb" | \
+	     fgrep -v basis.mlb |                   # remove incompatible Basis lib
+	     fgrep -v main.sml |                    # remove unneeded call to main
+	     sed 's/(\*[^\*]*\*)//g' |              # remove ML-style comments
+	     sed 's#$(SML_LIB)#'"${libdir}"'#g' |   # expand library path
+	     sed 's/^ *//' |                        # remove leading whitespace
+	     sed 's/ *$//' |                        # remove trailing whitespace
+	     grep -v '^$' |                         # remove empty lines
+	     sed 's/^\(.*\)$/--use \1/')
+
