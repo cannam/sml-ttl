@@ -1,54 +1,69 @@
 
-signature CODEPOINTS = sig
-    type t
+val alpha_lower_codepoints =
+    CodepointSet.from_ascii_range #"a" #"z"
 
-    val from_string : string -> t
-    val from_range : word -> word -> t
-    val from_ascii_range : char -> char -> t
-    val from_word : word -> t
-    val union : t list -> t
-
-    val contains : t -> word -> bool
-
-    val to_string : t -> string  (* for debugging *)
-end
-			   
-structure Codepoints :> CODEPOINTS = struct
-
-structure CP = SplaySetFn (struct
-			    type ord_key = Word.word
-			    val compare = Word.compare
-			    end)
-
-type t = CP.set
-	  
-fun ascii c =
-    Word.fromInt (Char.ord c)
-	      
-fun from_string str =
-    foldl CP.add' CP.empty (Utf8.explode (Utf8.fromString str))
-
-fun from_word w =
-    CP.add (CP.empty, w)
-	  
-fun from_range a b =
-    let fun range_aux a b cp =
-	    if a > b then cp
-	    else range_aux (a + 0w1) b (CP.add (cp, a))
-    in
-	range_aux a b CP.empty
+val alpha_codepoints =
+    let open CodepointSet in
+	union [
+	    from_ascii_range #"A" #"Z",
+	    alpha_lower_codepoints
+	]
     end
 
-fun from_ascii_range start finish =
-    from_range (ascii start) (ascii finish)
+val hex_codepoints =
+    let open CodepointSet in
+	union [
+	    from_ascii_range #"0" #"9",
+	    from_ascii_range #"A" #"F",
+	    from_ascii_range #"a" #"f" 
+	]
+    end
 
-fun union cps =
-    foldl CP.union CP.empty cps
+val base_pname_char_codepoints =
+    let open CodepointSet in
+	union [
+	    alpha_codepoints,
+	    from_range 0wx00C0 0wx00D6,
+	    from_range 0wx00D8 0wx00F6,
+	    from_range 0wx00F8 0wx02FF,
+	    from_range 0wx0370 0wx037D,
+	    from_range 0wx037F 0wx1FFF,
+	    from_range 0wx200C 0wx200D,
+	    from_range 0wx2070 0wx218F,
+	    from_range 0wx2C00 0wx2FEF,
+	    from_range 0wx3001 0wxD7FF,
+	    from_range 0wxF900 0wxFDCF,
+	    from_range 0wxFDF0 0wxFFFD
+	]
+    end
 
-fun contains cp w =
-    CP.member (cp, w)
+val base_pname_char_uscore_codepoints =
+    let open CodepointSet in
+	union [
+	    base_pname_char_codepoints,
+	    from_string "_"
+	]
+    end
 
-fun to_string cp =
-    Utf8Encode.encode_string (CP.listItems cp)
-	      
-end
+val pname_char_codepoints =
+    let open CodepointSet in
+	union [
+	    base_pname_char_uscore_codepoints,
+	    from_ascii_range #"0" #"9",
+	    from_word 0wx00B7,
+	    from_range 0wx0300 0wx036F,
+	    from_range 0wx203F 0wx2040,
+	    from_string "-"
+	]
+    end
+
+val iri_escaped_codepoints =
+    let open CodepointSet in
+	union [
+	    from_range 0wx0000 0wx0020,
+	    from_string "<>\"{}|^`\\%"
+	]
+    end
+	
+val pname_local_escapable_codepoints =
+    CodepointSet.from_string "_~.!$&'()*+,;=/?#@%-"
