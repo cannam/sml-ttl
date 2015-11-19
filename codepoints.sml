@@ -6,10 +6,11 @@ signature CODEPOINTS = sig
     val from_range : word -> word -> t
     val from_ascii_range : char -> char -> t
     val from_word : word -> t
-
     val union : t list -> t
 
     val contains : t -> word -> bool
+
+    val to_string : t -> string  (* for debugging *)
 end
 			   
 structure Codepoints :> CODEPOINTS = struct
@@ -47,4 +48,7 @@ fun union cps =
 fun contains cp w =
     CP.member (cp, w)
 
+fun to_string cp =
+    Utf8Encode.encode_string (CP.listItems cp)
+	      
 end

@@ -8,6 +8,7 @@ $(SML_LIB)/smlnj-lib/Util/splaytree.sml
 $(SML_LIB)/smlnj-lib/Util/splay-set-fn.sml
 unicode/UTF8.sig
 unicode/Utf8.sml
+utf8encode.sml
 codepoints.sml
 chars.sml
 test.sml
