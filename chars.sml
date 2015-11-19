@@ -1,9 +1,28 @@
 
-val base_pname_char_codepoints =
+val alpha_lower_codepoints =
+    Codepoints.from_ascii_range #"a" #"z"
+
+val alpha_codepoints =
     let open Codepoints in
 	union [
 	    from_ascii_range #"A" #"Z",
-	    from_ascii_range #"a" #"z",
+	    alpha_lower_codepoints
+	]
+    end
+
+val hex_codepoints =
+    let open Codepoints in
+	union [
+	    from_ascii_range #"0" #"9",
+	    from_ascii_range #"A" #"F",
+	    from_ascii_range #"a" #"f" 
+	]
+    end
+
+val base_pname_char_codepoints =
+    let open Codepoints in
+	union [
+	    alpha_codepoints,
 	    from_range 0wx00C0 0wx00D6,
 	    from_range 0wx00D8 0wx00F6,
 	    from_range 0wx00F8 0wx02FF,
@@ -18,7 +37,7 @@ val base_pname_char_codepoints =
 	]
     end
 
-val base_pname_char_u_codepoints =
+val base_pname_char_uscore_codepoints =
     let open Codepoints in
 	union [
 	    base_pname_char_codepoints,
@@ -29,7 +48,7 @@ val base_pname_char_u_codepoints =
 val pname_char_codepoints =
     let open Codepoints in
 	union [
-	    base_pname_char_u_codepoints,
+	    base_pname_char_uscore_codepoints,
 	    from_ascii_range #"0" #"9",
 	    from_word 0wx00B7,
 	    from_range 0wx0300 0wx036F,
@@ -38,5 +57,13 @@ val pname_char_codepoints =
 	]
     end
 
-val pname_local_escapable =
+val iri_escaped_codepoints =
+    let open Codepoints in
+	union [
+	    from_range 0wx0000 0wx0020,
+	    from_string "<>\"{}|^`\\%"
+	]
+    end
+	
+val pname_local_escapable_codepoints =
     Codepoints.from_string "_~.!$&'()*+,;=/?#@%-"

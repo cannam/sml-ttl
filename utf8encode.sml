@@ -7,19 +7,20 @@ structure Utf8Encode :> UTF8_ENCODE = struct
 
 fun encode_codepoint cp =
     let open Word
-	fun char_of w = Char.chr (Word.toInt w)
+	infix orb andb >>
+	val char_of = Char.chr o toInt
     in
 	if cp < 0wx80 then
 	    String.str (char_of cp)
 	else if cp < 0wx800 then
 	    String.implode [
-		char_of (orb (0wxc0, >> (cp, 0w6))),
-		char_of (orb (0wx80, andb (cp, 0wx3f)))
+		char_of (0wxc0 orb (cp >> 0w6)),
+		char_of (0wx80 orb (cp andb 0wx3f))
 	    ]
 	else String.implode [
-		char_of (orb (0wxe0, >> (cp, 0w12))),
-		char_of (orb (0wx80, andb (>> (cp, 0w6), 0wx3f))),
-		char_of (orb (0wx80, andb (cp, 0wx3f)))
+		char_of (0wxe0 orb (cp >> 0w12)),
+		char_of (0wx80 orb ((cp >> 0w6) andb 0wx3f)),
+		char_of (0wx80 orb (cp andb 0wx3f))
 	    ]
     end
 
