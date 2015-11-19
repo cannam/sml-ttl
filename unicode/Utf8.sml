@@ -4,6 +4,9 @@ structure Utf8 :> UTF8 = struct
 
   fun toW w8 = Word.fromLargeWord (Word8.toLargeWord w8)
 
+  fun fail w =
+      raise Fail ("Unexpected byte: " ^ (Word8.toString w))
+				  
   fun foldl f a v =
       let val v = Byte.stringToBytes v
           val (c,a) =
@@ -12,7 +15,7 @@ structure Utf8 :> UTF8 = struct
                       if w < 0wx80 then        (* 0xxxxxxx *) 
                         (NONE,f(toW w,a))
                       else if w < 0wxC0 then   (* 10xxxxxx *)
-                        raise Chr
+                        fail w
                       else if w < 0wxE0 then   (* 110xxxxx *)
                         let val w = Word8.andb(0wx1F,w)        (* 1f=00011111 *)
                         in (SOME(toW w), a)
@@ -21,7 +24,7 @@ structure Utf8 :> UTF8 = struct
                         let val w = Word8.andb(0wx0F,w)        (* 0f=00001111 *)
                         in (SOME(toW w), a)
                         end
-                      else raise Chr
+                      else fail w
                     | (w,(SOME c,a)) =>
                       if w < 0wx80 then        (* 0xxxxxxx *) 
                         (NONE,f(toW w,f(c,a)))
@@ -38,11 +41,11 @@ structure Utf8 :> UTF8 = struct
                         let val w = Word8.andb(0wx0F,w)
                         in (SOME(toW w), f(c,a))
                         end
-                      else raise Chr) 
+                      else fail w) 
                   (NONE,a) v
       in case c of
            NONE => a
-         | SOME _ => raise Chr
+         | SOME r => raise Fail ("Leftover input: " ^ (Word.toString r))
       end
                                  
   val concat     : t list -> t = String.concat

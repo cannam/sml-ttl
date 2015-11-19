@@ -19,6 +19,12 @@ val hex_codepoints =
 	]
     end
 
+val whitespace_codepoints =
+    CodepointSet.from_string "\n\r\t "
+
+val eol_codepoints =
+    CodepointSet.from_string "\n\r"
+	
 val base_pname_char_codepoints =
     let open CodepointSet in
 	union [

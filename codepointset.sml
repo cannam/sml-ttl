@@ -7,6 +7,8 @@ signature CODEPOINT_SET = sig
     val from_ascii_range : char -> char -> t
     val from_word : word -> t
     val union : t list -> t
+    val difference : t * t -> t
+    val equal : t * t -> bool
 
     val contains : t -> word -> bool
 
@@ -45,6 +47,12 @@ fun from_ascii_range start finish =
 fun union cps =
     foldl CP.union CP.empty cps
 
+fun difference (cp1, cp2) =
+    CP.difference (cp1, cp2)
+
+fun equal (cp1, cp2) =
+    CP.equal (cp1, cp2)
+		  
 fun contains cp w =
     CP.member (cp, w)
 
