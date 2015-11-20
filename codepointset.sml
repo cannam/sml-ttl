@@ -12,7 +12,8 @@ signature CODEPOINT_SET = sig
 
     val contains : t -> word -> bool
 
-    val to_string : t -> string  (* for debugging *)
+    val to_string : t -> string
+    val to_text : t -> string
 end
 			   
 structure CodepointSet :> CODEPOINT_SET = struct
@@ -58,5 +59,8 @@ fun contains cp w =
 
 fun to_string cp =
     Utf8Encode.encode_string (CP.listItems cp)
-	      
+
+fun to_text cp =
+    String.concatWith "," (map Word.toString (CP.listItems cp))
+                             
 end

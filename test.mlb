@@ -11,5 +11,6 @@ unicode/Utf8.sml
 utf8encode.sml
 codepointset.sml
 codepoints.sml
+parse.sml
 test.sml
 main.sml
