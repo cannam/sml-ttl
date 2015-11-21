@@ -26,6 +26,80 @@ signature TURTLE_PARSER = sig
 
 end
 
+signature SOURCE = sig
+
+    type t
+
+    val open_file : string -> t
+    val take_stream : TextIO.instream -> t
+    val close : t -> unit
+    val peek : t -> word
+    val read : t -> word
+    val discard : t -> t
+    val location : t -> int * int
+    val location_string : t -> string
+    val eof : t -> bool
+
+end
+                         
+structure Source :> SOURCE = struct
+
+    val nl = Word.fromInt (Char.ord #"\n")
+
+    type t = {
+        stream : TextIO.instream,
+        line : word list ref,
+        lineno : int ref,
+        colno : int ref
+    }
+
+    fun load_line r =
+        (case TextIO.inputLine (#stream r) of
+             NONE =>
+             (#line r) := []
+           | SOME str =>
+             ((#line r) := Utf8.explode (Utf8.fromString str);
+              (#lineno r) := !(#lineno r) + 1;
+              (#colno r) := 1);
+         r)
+
+    fun take_stream str =
+        load_line { stream = str, line = ref [], lineno = ref 0, colno = ref 0 }
+                 
+    fun open_file filename =
+        take_stream (TextIO.openIn filename)
+
+    fun close r =
+        TextIO.closeIn (#stream r)
+
+    fun peek r =
+        case !(#line r) of
+            first::rest => first
+          | [] => nl
+
+    fun read r =
+        case !(#line r) of
+            first::next::rest =>
+            ((#line r) := next::rest;
+             (#colno r) := !(#colno r) + 1;
+             first)
+          | first::[] => (load_line r; first)
+          | [] => nl
+
+    fun discard r =
+        let val _ = read r in r end
+                      
+    fun location r =
+        (!(#lineno r), !(#colno r))
+
+    fun location_string r =
+        "line " ^ (Int.toString (!(#lineno r))) ^
+        ", column " ^ (Int.toString (!(#colno r)))
+
+    fun eof r =
+        (!(#line r) = [])
+end
+
 structure TurtleParser :> TURTLE_PARSER = struct
 
     datatype result =
@@ -48,11 +122,11 @@ structure TurtleParser :> TURTLE_PARSER = struct
         bnodes : int StringMap.map       (* string -> blank node id *)
     }
                      
-    type text = word list
-
-    type error_state = string * text
+    type source = Source.t
                      
-    type read_state = parse_data * text
+    type error_state = string * source
+                     
+    type read_state = parse_data * source
                      
     datatype partial_result =
              ERROR of error_state |
@@ -86,68 +160,55 @@ structure TurtleParser :> TURTLE_PARSER = struct
 
     infix 0 ~>
 
-    fun looking_at cp [] = false
-      | looking_at cp (c::cs) = CodepointSet.contains cp c
+    open Source
 
-    fun expected_error cp found =
+    val contains = CodepointSet.contains
+            
+    fun looking_at cp s =
+        not (eof s) andalso contains cp (peek s)
+
+    fun mismatch_message cp found s =
         "expected " ^ (CodepointSet.name cp) ^ ", found '" ^
-        (Utf8Encode.encode_codepoint found) ^ "'"
+        (Utf8Encode.encode_codepoint found) ^ "' at " ^
+        (Source.location_string s)
                                                       
-    fun consume_char cp (data, []) = ERROR ("unexpected end of input", [])
-      | consume_char cp (data, c::cs) = if CodepointSet.contains cp c
-                                        then OK (data, cs)
-                                        else ERROR (expected_error cp c, c::cs)
+    fun consume_char cp (data, s) =
+        if eof s then ERROR ("unexpected end of input", s)
+        else let val c = read s in
+                 if contains cp c then OK (data, s)
+                 else ERROR (mismatch_message cp c s, s)
+             end
 
-    fun discard_greedy cp (data, []) = OK (data, [])
-      | discard_greedy cp (data, c::cs) = if CodepointSet.contains cp c
-                                          then discard_greedy cp (data, cs)
-                                          else OK (data, c::cs)
-                                                   
-    fun consume_to_eol (data, []) = OK (data, [])
-      | consume_to_eol (data, c::cs) = 
-        if CodepointSet.contains Codepoints.eol c
-        then discard_greedy Codepoints.eol (data, cs)
-        else consume_to_eol (data, cs)
-                        
-    fun consume_whitespace (data, []) = OK (data, [])
-      | consume_whitespace (data, c::cs) =
-        if CodepointSet.contains Codepoints.comment c
-        then case consume_to_eol (data, cs) of OK r => consume_whitespace r
-        else
-            if CodepointSet.contains Codepoints.whitespace c
-            then consume_whitespace (data, cs)
-            else OK (data, c::cs)
+    fun discard_greedy cp (data, s) =
+        if eof s then OK (data, s)
+        else if contains cp (peek s)
+        then discard_greedy cp (data, discard s)
+        else OK (data, s)
+
+    fun consume_to_eol (data, s) =
+        if eof s then OK (data, s)
+        else if contains Codepoints.eol (read s)
+        then discard_greedy Codepoints.eol (data, s)
+        else consume_to_eol (data, s)
+
+    fun consume_whitespace (data, s) =
+        if eof s then OK (data, s)
+        else let val c = peek s in
+                 if contains Codepoints.comment c then
+                     case consume_to_eol (data, discard s) of
+                         OK r => consume_whitespace r
+                 else if contains Codepoints.whitespace c then
+                     consume_whitespace (data, discard s)
+                 else OK (data, s)
+             end
 
     fun discard_whitespace p =
         case consume_whitespace p of OK r => r
-                             
-    fun fold_line f acc line =
-        case line of
-            [] => SOME acc
-          | codepoint::rest =>
-            case f (codepoint, acc) of
-                NONE => NONE
-              | SOME acc' => fold_line f acc' rest
 
-    fun fold_stream f acc stream =
-        case TextIO.inputLine stream of
-            NONE => SOME acc
-          | SOME line =>
-            case f (line, acc) of
-                NONE => NONE
-              | SOME acc' => fold_stream f acc' stream
-                                                    
-    fun parse_stream stream =
-        PARSE_ERROR "not implemented yet"
+    fun parse_stream str = PARSE_ERROR "blah"
 
-    fun parse_file filename =
-        let val stream = TextIO.openIn filename in
-            let val result = parse_stream stream in
-                TextIO.closeIn stream;
-                result
-            end
-        end
-            
+    fun parse_file filename = PARSE_ERROR "blah"
+                                                 
 end
                                               
                 
