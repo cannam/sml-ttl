@@ -1,4 +1,6 @@
 
+open Codepoints
+
 fun check () =
     let val str1 = CodepointSet.to_string pname_char_codepoints
 	val cp2  = CodepointSet.from_string str1
