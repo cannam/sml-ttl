@@ -16,6 +16,13 @@ fun check () =
 	else ()
     end
 
+fun parse () =
+    let open TurtleParser in
+        case parse_string "file:///blah" ":a :b :c" of
+            PARSE_ERROR e => print ("error: " ^ e ^ "\n")
+          | PARSED p => print "parsed something\n"
+    end
+        
 fun main () =
     (print "pname_local_escapable = \n";
      print (CodepointSet.to_string Codepoints.pname_local_escapable);
@@ -23,6 +30,7 @@ fun main () =
      print "iri_escaped = \n";
      print (CodepointSet.to_string Codepoints.iri_escaped);
      print "\n";
+     parse ();
      check ());
 
 

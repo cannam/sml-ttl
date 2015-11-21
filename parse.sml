@@ -20,7 +20,8 @@ signature TURTLE_PARSER = sig
                  prefixes : prefix list,
                  triples : triple list
              }
-    
+
+    val parse_string : string -> string -> result
     val parse_stream : string -> TextIO.instream -> result
     val parse_file : string -> string -> result
 
@@ -53,33 +54,31 @@ structure TurtleParser :> TURTLE_PARSER = struct
     type error_state = string * source
                      
     type read_state = parse_data * source
-                     
-    datatype partial_result =
-             ERROR of error_state |
-             OK of read_state
+
+    datatype 'a parse = ERROR of error_state | OK of 'a
 
     fun from_ascii a = Word.fromInt (Char.ord a)
                        
-    fun add_triple (s : parse_data) (t : triple) =
-        { file_iri = #file_iri s,
-          base_iri = #base_iri s,
-          triples = t :: #triples s,
-          prefixes = #prefixes s,
-          bnodes = #bnodes s }
+    fun add_triple (d : parse_data) (t : triple) =
+        { file_iri = #file_iri d,
+          base_iri = #base_iri d,
+          triples = t :: #triples d,
+          prefixes = #prefixes d,
+          bnodes = #bnodes d }
                      
-    fun add_prefix (s : parse_data) ((p, e) : prefix) =
-        { file_iri = #file_iri s,
-          base_iri = #base_iri s,
-          triples = #triples s,
-          prefixes = StringMap.insert (#prefixes s, p, e),
-          bnodes = #bnodes s }
+    fun add_prefix (d : parse_data) ((p, e) : prefix) =
+        { file_iri = #file_iri d,
+          base_iri = #base_iri d,
+          triples = #triples d,
+          prefixes = StringMap.insert (#prefixes d, p, e),
+          bnodes = #bnodes d }
                      
-    fun add_bnode (s : parse_data) (b, id) =
-        { file_iri = #file_iri s,
-          base_iri = #base_iri s,
-          triples = #triples s,
-          prefixes = #prefixes s,
-          bnodes = StringMap.insert (#bnodes s, b, id) }
+    fun add_bnode (d : parse_data) (b, id) =
+        { file_iri = #file_iri d,
+          base_iri = #base_iri d,
+          triples = #triples d,
+          prefixes = #prefixes d,
+          bnodes = StringMap.insert (#bnodes d, b, id) }
                     
     fun ~> (a, b) =
         case a of
@@ -138,31 +137,70 @@ structure TurtleParser :> TURTLE_PARSER = struct
                  if contains Codepoints.comment c then
                      case consume_to_eol (data, discard s) of
                          OK r => consume_whitespace r
+                       | e => e
                  else if contains Codepoints.whitespace c then
                      consume_whitespace (data, discard s)
                  else OK (data, s)
              end
 
     fun discard_whitespace (data, s) =
-        case consume_whitespace (data, s) of OK r => r
+        case consume_whitespace (data, s) of
+            OK r => r 
+          | _ => (data, s)
 
     fun consume_punctuation punct (data, s) =
         let val _ = discard_whitespace (data, s)
         in consume_ascii punct (data, s)
         end
 
-    fun parse_directive (data, s) = ERROR ("not implemented yet", s)
-    fun parse_triples (data, s) = ERROR ("not implemented yet", s)
+    fun parse_iriref (data, s) = ERROR ("parse_iriref not implemented yet", s)
+    fun parse_prefixed_name (data, s) = ERROR ("parse_prefixed_name not implemented yet", s)
             
+    fun parse_iri_node (data, s) = 
+        if looking_at_ascii #"<" s then
+            parse_iriref (data, s) ~> (fn (d, s, i) => OK (d, s, IRI i))
+        else
+            parse_prefixed_name (data, s)
+            
+    fun parse_directive (data, s) = ERROR ("parse_directive not implemented yet", s)
+    fun parse_blank_node (data, s) = ERROR ("parse_blank_node not implemented yet", s)
+    fun parse_collection (data, s) = ERROR ("parse_collection not implemented yet", s)
+    fun parse_bnode_triples (data, s) = ERROR ("parse_bnode_triples not implemented yet", s)
+    fun parse_predicate_object_list (data, s) = ERROR ("parse_predicate_object_list not implemented yet", s)
+
+    (* [10] subject ::= iri | blank *)
+    fun parse_subject_node (data, s) =
+        if looking_at_ascii #"_" s then parse_blank_node (data, s)
+        else if looking_at_ascii #"(" s then parse_collection (data, s)
+        else parse_iri_node (data, s)
+
+    fun emit_with_subject (data, s, subject, polist) =
+        OK (foldl (fn ((predicate, object), data) =>
+                      add_triple data (subject, predicate, object))
+                  data polist,
+            s)
+        
+    fun parse_subject_triples r =
+        case parse_subject_node r of
+            ERROR e => ERROR e
+          | OK (d, s, LITERAL _) => ERROR ("subject may not be literal", s)
+          | OK (d, s, subject_node) =>
+            case parse_predicate_object_list (d, s) of
+                ERROR e => ERROR e
+              | OK (d, s, []) => ERROR ("predicate missing", s)
+              | OK (d, s, p) => emit_with_subject (d, s, subject_node, p)
+                                        
+    fun parse_triples (data, s) =
+        if looking_at_ascii #"[" s then parse_bnode_triples (data, s)
+        else parse_subject_triples (data, s)
+                                        
     (* [2] statement ::= directive | triples '.' *)
     fun parse_statement (data, s) =
         let val _ = discard_whitespace (data, s)
         in
             if eof s then OK (data, s)
-            else if looking_at_ascii #"@" s then
-                parse_directive (data, s)
-            else
-                parse_triples (data, s) ~> consume_punctuation #"."
+            else if looking_at_ascii #"@" s then parse_directive (data, s)
+            else parse_triples (data, s) ~> consume_punctuation #"."
         end
                                                  
     fun parse_document (data, s) =
@@ -176,17 +214,31 @@ structure TurtleParser :> TURTLE_PARSER = struct
         case String.fields (fn x => x = #"/") iri of
             [] => ""
           | bits => String.concatWith "/" (rev (tl (rev bits)))
-                    
+
+    fun arrange_result (ERROR (e, s)) = PARSE_ERROR (e ^ " at " ^ (location s))
+      | arrange_result (OK (data, s)) = PARSED {
+            prefixes = StringMap.listItemsi (#prefixes data),
+            triples = #triples data
+        }
+                                      
     fun parse_stream iri stream =
         let val source = Source.from_stream stream
         in
-            parse_document ({
-                               file_iri = iri,
-                               base_iri = without_file iri,
-                               triples = [],
-                               prefixes = StringMap.empty,
-                               bnodes = StringMap.empty
-                           }, source)
+            arrange_result
+                (parse_document ({ file_iri = iri,
+                                   base_iri = without_file iri,
+                                   triples = [],
+                                   prefixes = StringMap.empty,
+                                   bnodes = StringMap.empty
+                                }, source))
+        end
+
+    fun parse_string iri string =
+        let val stream = TextIO.openString string
+            val result = parse_stream iri stream
+        in
+            TextIO.closeIn stream;
+            result
         end
 
     fun parse_file iri filename =

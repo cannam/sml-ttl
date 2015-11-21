@@ -7,8 +7,7 @@ signature SOURCE = sig
     val peek : t -> word
     val read : t -> word
     val discard : t -> t
-    val location : t -> int * int
-    val location_string : t -> string
+    val location : t -> string
     val eof : t -> bool
 
 end
@@ -55,9 +54,6 @@ structure Source :> SOURCE = struct
         let val _ = read r in r end
                       
     fun location r =
-        (!(#lineno r), !(#colno r))
-
-    fun location_string r =
         "line " ^ (Int.toString (!(#lineno r))) ^
         ", column " ^ (Int.toString (!(#colno r)))
 
