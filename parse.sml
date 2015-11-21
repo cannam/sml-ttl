@@ -21,83 +21,9 @@ signature TURTLE_PARSER = sig
                  triples : triple list
              }
     
-    val parse_stream : TextIO.instream -> result
-    val parse_file : string -> result
+    val parse_stream : string -> TextIO.instream -> result
+    val parse_file : string -> string -> result
 
-end
-
-signature SOURCE = sig
-
-    type t
-
-    val open_file : string -> t
-    val take_stream : TextIO.instream -> t
-    val close : t -> unit
-    val peek : t -> word
-    val read : t -> word
-    val discard : t -> t
-    val location : t -> int * int
-    val location_string : t -> string
-    val eof : t -> bool
-
-end
-                         
-structure Source :> SOURCE = struct
-
-    val nl = Word.fromInt (Char.ord #"\n")
-
-    type t = {
-        stream : TextIO.instream,
-        line : word list ref,
-        lineno : int ref,
-        colno : int ref
-    }
-
-    fun load_line r =
-        (case TextIO.inputLine (#stream r) of
-             NONE =>
-             (#line r) := []
-           | SOME str =>
-             ((#line r) := Utf8.explode (Utf8.fromString str);
-              (#lineno r) := !(#lineno r) + 1;
-              (#colno r) := 1);
-         r)
-
-    fun take_stream str =
-        load_line { stream = str, line = ref [], lineno = ref 0, colno = ref 0 }
-                 
-    fun open_file filename =
-        take_stream (TextIO.openIn filename)
-
-    fun close r =
-        TextIO.closeIn (#stream r)
-
-    fun peek r =
-        case !(#line r) of
-            first::rest => first
-          | [] => nl
-
-    fun read r =
-        case !(#line r) of
-            first::next::rest =>
-            ((#line r) := next::rest;
-             (#colno r) := !(#colno r) + 1;
-             first)
-          | first::[] => (load_line r; first)
-          | [] => nl
-
-    fun discard r =
-        let val _ = read r in r end
-                      
-    fun location r =
-        (!(#lineno r), !(#colno r))
-
-    fun location_string r =
-        "line " ^ (Int.toString (!(#lineno r))) ^
-        ", column " ^ (Int.toString (!(#colno r)))
-
-    fun eof r =
-        (!(#line r) = [])
 end
 
 structure TurtleParser :> TURTLE_PARSER = struct
@@ -131,7 +57,9 @@ structure TurtleParser :> TURTLE_PARSER = struct
     datatype partial_result =
              ERROR of error_state |
              OK of read_state
-	         
+
+    fun from_ascii a = Word.fromInt (Char.ord a)
+                       
     fun add_triple (s : parse_data) (t : triple) =
         { file_iri = #file_iri s,
           base_iri = #base_iri s,
@@ -153,7 +81,7 @@ structure TurtleParser :> TURTLE_PARSER = struct
           prefixes = #prefixes s,
           bnodes = StringMap.insert (#bnodes s, b, id) }
                     
-    fun ~> a b =
+    fun ~> (a, b) =
         case a of
             OK result => b result
           | ERROR e => ERROR e
@@ -167,16 +95,29 @@ structure TurtleParser :> TURTLE_PARSER = struct
     fun looking_at cp s =
         not (eof s) andalso contains cp (peek s)
 
+    fun looking_at_ascii a s =
+        not (eof s) andalso (peek s) = from_ascii a
+
     fun mismatch_message cp found s =
         "expected " ^ (CodepointSet.name cp) ^ ", found '" ^
-        (Utf8Encode.encode_codepoint found) ^ "' at " ^
-        (Source.location_string s)
+        (Utf8Encode.encode_codepoint found) ^ "'"
+
+    fun mismatch_message_ascii a found s =
+        "expected '" ^ (Char.toString a) ^ "', found '" ^
+        (Utf8Encode.encode_codepoint found) ^ "'"
                                                       
     fun consume_char cp (data, s) =
         if eof s then ERROR ("unexpected end of input", s)
         else let val c = read s in
                  if contains cp c then OK (data, s)
                  else ERROR (mismatch_message cp c s, s)
+             end
+                                                      
+    fun consume_ascii a (data, s) =
+        if eof s then ERROR ("unexpected end of input", s)
+        else let val c = read s in
+                 if c = from_ascii a then OK (data, s)
+                 else ERROR (mismatch_message_ascii a c s, s)
              end
 
     fun discard_greedy cp (data, s) =
@@ -202,12 +143,59 @@ structure TurtleParser :> TURTLE_PARSER = struct
                  else OK (data, s)
              end
 
-    fun discard_whitespace p =
-        case consume_whitespace p of OK r => r
+    fun discard_whitespace (data, s) =
+        case consume_whitespace (data, s) of OK r => r
 
-    fun parse_stream str = PARSE_ERROR "blah"
+    fun consume_punctuation punct (data, s) =
+        let val _ = discard_whitespace (data, s)
+        in consume_ascii punct (data, s)
+        end
 
-    fun parse_file filename = PARSE_ERROR "blah"
+    fun parse_directive (data, s) = ERROR ("not implemented yet", s)
+    fun parse_triples (data, s) = ERROR ("not implemented yet", s)
+            
+    (* [2] statement ::= directive | triples '.' *)
+    fun parse_statement (data, s) =
+        let val _ = discard_whitespace (data, s)
+        in
+            if eof s then OK (data, s)
+            else if looking_at_ascii #"@" s then
+                parse_directive (data, s)
+            else
+                parse_triples (data, s) ~> consume_punctuation #"."
+        end
+                                                 
+    fun parse_document (data, s) =
+        if eof s then OK (data, s)
+        else
+            case parse_statement (data, s) of
+                OK r => parse_document r
+              | e => e
+
+    fun without_file iri =
+        case String.fields (fn x => x = #"/") iri of
+            [] => ""
+          | bits => String.concatWith "/" (rev (tl (rev bits)))
+                    
+    fun parse_stream iri stream =
+        let val source = Source.from_stream stream
+        in
+            parse_document ({
+                               file_iri = iri,
+                               base_iri = without_file iri,
+                               triples = [],
+                               prefixes = StringMap.empty,
+                               bnodes = StringMap.empty
+                           }, source)
+        end
+
+    fun parse_file iri filename =
+        let val stream = TextIO.openIn filename
+            val result = parse_stream iri stream
+        in
+            TextIO.closeIn stream;
+            result
+        end
                                                  
 end
                                               
