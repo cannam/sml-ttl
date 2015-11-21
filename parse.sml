@@ -40,7 +40,7 @@ structure TurtleParser :> TURTLE_PARSER = struct
                                        val compare = String.compare
                                        end)
 
-    type accumulation = {
+    type parse_data = {
         file_iri : string,
         base_iri : string,
         triples : triple list,
@@ -52,45 +52,75 @@ structure TurtleParser :> TURTLE_PARSER = struct
 
     type error_state = string * text
                      
-    type read_state = accumulation * text
+    type read_state = parse_data * text
                      
     datatype partial_result =
              ERROR of error_state |
              OK of read_state
-                     
-    fun add_triple (s : accumulation) (t : triple) =
+	         
+    fun add_triple (s : parse_data) (t : triple) =
         { file_iri = #file_iri s,
           base_iri = #base_iri s,
           triples = t :: #triples s,
           prefixes = #prefixes s,
           bnodes = #bnodes s }
                      
-    fun add_prefix (s : accumulation) ((p, e) : prefix) =
+    fun add_prefix (s : parse_data) ((p, e) : prefix) =
         { file_iri = #file_iri s,
           base_iri = #base_iri s,
           triples = #triples s,
           prefixes = StringMap.insert (#prefixes s, p, e),
           bnodes = #bnodes s }
                      
-    fun add_bnode (s : accumulation) (b, id) =
+    fun add_bnode (s : parse_data) (b, id) =
         { file_iri = #file_iri s,
           base_iri = #base_iri s,
           triples = #triples s,
           prefixes = #prefixes s,
           bnodes = StringMap.insert (#bnodes s, b, id) }
+                    
+    fun ~> a b =
+        case a of
+            OK result => b result
+          | ERROR e => ERROR e
+
+    infix 0 ~>
 
     fun looking_at cp [] = false
       | looking_at cp (c::cs) = CodepointSet.contains cp c
 
-    fun expected_error_text cp found =
+    fun expected_error cp found =
         "expected " ^ (CodepointSet.name cp) ^ ", found '" ^
         (Utf8Encode.encode_codepoint found) ^ "'"
                                                       
-    fun consume cp (data, []) = ERROR ("unexpected end of input", [])
-      | consume cp (data, c::cs) = if CodepointSet.contains cp c
-                                   then OK (data, cs)
-                                   else ERROR (expected_error_text cp c, c::cs)
-                   
+    fun consume_char cp (data, []) = ERROR ("unexpected end of input", [])
+      | consume_char cp (data, c::cs) = if CodepointSet.contains cp c
+                                        then OK (data, cs)
+                                        else ERROR (expected_error cp c, c::cs)
+
+    fun discard_greedy cp (data, []) = OK (data, [])
+      | discard_greedy cp (data, c::cs) = if CodepointSet.contains cp c
+                                          then discard_greedy cp (data, cs)
+                                          else OK (data, c::cs)
+                                                   
+    fun consume_to_eol (data, []) = OK (data, [])
+      | consume_to_eol (data, c::cs) = 
+        if CodepointSet.contains Codepoints.eol c
+        then discard_greedy Codepoints.eol (data, cs)
+        else consume_to_eol (data, cs)
+                        
+    fun consume_whitespace (data, []) = OK (data, [])
+      | consume_whitespace (data, c::cs) =
+        if CodepointSet.contains Codepoints.comment c
+        then case consume_to_eol (data, cs) of OK r => consume_whitespace r
+        else
+            if CodepointSet.contains Codepoints.whitespace c
+            then consume_whitespace (data, cs)
+            else OK (data, c::cs)
+
+    fun discard_whitespace p =
+        case consume_whitespace p of OK r => r
+                             
     fun fold_line f acc line =
         case line of
             [] => SOME acc
