@@ -48,7 +48,7 @@ structure CodepointSet :> CODEPOINT_SET = struct
     fun from_ascii_range start finish =
         from_range (ascii start) (ascii finish)
 
-    fun union cps =
+    fun union (cps : t list) =
         (foldl CP.union CP.empty (map #1 cps), "")
 
     fun difference ((cp1, _), (cp2, _)) =

@@ -26,26 +26,31 @@ structure Source :> SOURCE = struct
     fun load_line r =
         (case TextIO.inputLine (#stream r) of
              NONE =>
-             (#line r) := []
+             (print "loaded nothing\n";
+              (#line r) := [])
            | SOME str =>
-             ((#line r) := Utf8.explode (Utf8.fromString str);
-              (#lineno r) := !(#lineno r) + 1;
-              (#colno r) := 1);
+             (print ("loaded: \"" ^ str ^ "\"\n");
+              ((#line r) := Utf8.explode (Utf8.fromString str);
+               (#lineno r) := !(#lineno r) + 1;
+               (#colno r) := 1));
          r)
 
     fun from_stream str =
         load_line { stream = str, line = ref [], lineno = ref 0, colno = ref 0 }
 
-    fun peek r =
+    fun peek (r : t) =
         case !(#line r) of
-            first::rest => first
+            first::rest =>
+            (print ("peeking: '" ^ (Utf8Encode.encode_codepoint first) ^ "'\n");
+             first)
           | [] => nl
 
-    fun read r =
+    fun read (r : t) =
         case !(#line r) of
             first::next::rest =>
             ((#line r) := next::rest;
              (#colno r) := !(#colno r) + 1;
+             print ("reading: '" ^ (Utf8Encode.encode_codepoint first) ^ "'\n");
              first)
           | first::[] => (load_line r; first)
           | [] => nl
@@ -53,10 +58,10 @@ structure Source :> SOURCE = struct
     fun discard r =
         let val _ = read r in r end
                       
-    fun location r =
+    fun location (r : t) =
         "line " ^ (Int.toString (!(#lineno r))) ^
         ", column " ^ (Int.toString (!(#colno r)))
 
-    fun eof r =
+    fun eof (r : t) =
         (!(#line r) = [])
 end

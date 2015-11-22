@@ -125,6 +125,24 @@ structure TurtleParser :> TURTLE_PARSER = struct
         then discard_greedy cp (data, discard s)
         else OK (data, s)
 
+    fun match_greedy cp (data, s) =
+        let fun match_greedy' (s, acc) =
+                if eof s then (data, s, rev acc)
+                else if contains cp (peek s)
+                then let val c = read s in match_greedy' (s, c :: acc) end
+                else (data, s, rev acc)
+        in
+            OK (match_greedy' (s, []))
+        end
+
+    fun notmatch_greedy cp (data, s) =
+        let fun notmatch_greedy' (s, acc) =
+                if eof s orelse contains cp (peek s) then (data, s, rev acc)
+                else let val c = read s in notmatch_greedy' (s, c :: acc) end
+        in
+            OK (notmatch_greedy' (s, []))
+        end
+            
     fun consume_to_eol (data, s) =
         if eof s then OK (data, s)
         else if contains Codepoints.eol (read s)
@@ -153,7 +171,14 @@ structure TurtleParser :> TURTLE_PARSER = struct
         in consume_ascii punct (data, s)
         end
 
-    fun parse_iriref (data, s) = ERROR ("parse_iriref not implemented yet", s)
+    fun parse_iriref (data, s) =
+        consume_ascii #"<" (data, s) ~>
+                      notmatch_greedy Codepoints.iri_escaped ~>
+                      (fn (data, s, i) =>
+                          consume_ascii #">" (data, s) ~>
+                                        (fn (data, s) =>
+                                            OK (data, s, Utf8Encode.encode_string i)))
+        
     fun parse_prefixed_name (data, s) = ERROR ("parse_prefixed_name not implemented yet", s)
             
     fun parse_iri_node (data, s) = 
