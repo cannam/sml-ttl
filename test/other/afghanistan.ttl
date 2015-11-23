@@ -1,0 +1,7 @@
+
+# Yertle regression test: An example that has been incorrectly
+# abbreviated on serialise (ending up with \-escaped percents)
+
+@prefix dbresource: <http://dbpedia.org/resource/> .
+
+<http://dbpedia.org/resource/101st_Airborne_Division> <http://dbpedia.org/ontology/battle> <http://dbpedia.org/resource/War_in_Afghanistan_%282001%E2%80%93present%29> .

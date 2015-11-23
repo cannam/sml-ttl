@@ -1,0 +1,6 @@
+@prefix : <http://example.org/stats> .
+<http://somecountry.example/census2007>
+    :censusYear 2007 ;              # xsd:integer
+    :birthsPerPerson .0135 ;        # xsd:decimal
+    :gdpDollars 14074.2E9 ;         # xsd:double
+.

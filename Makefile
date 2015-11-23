@@ -1,16 +1,16 @@
 
-all:	test
+all:	tests
 
-test:	test.deps test.mlb
-	./scripts/polybuild test.mlb
-# mlton test.mlb
-	./test
+tests:	tests.deps tests.mlb
+	./scripts/polybuild tests.mlb
+# mlton tests.mlb
+	./tests
 
-test.deps:	test.mlb
+tests.deps:	tests.mlb
 	./scripts/dependencies $<
 
 clean:
-	rm -f test
+	rm -f tests
 
 -include *.deps
 
