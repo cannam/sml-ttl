@@ -28,7 +28,7 @@ fun check () =
 
 fun parse () =
     let open TurtleParser
-        val instr = "    <a> <b> <c>"
+        val instr = "    <a> <b> :c"
     in
         case parse_string "file:///blah" instr of
             PARSE_ERROR e => print ("error: " ^ e ^ "\n")

@@ -117,7 +117,7 @@ structure TurtleParser :> TURTLE_PARSER = struct
         "expected '" ^ (Char.toString a) ^ "', found '" ^
         (Utf8Encode.encode_codepoint found) ^ "'"
 
-    fun prefix_expand (data, token) = ERROR "prefix_expand not implemented yet"
+    fun prefix_expand (data, s, token) = ERROR "prefix_expand not implemented yet"
 						  
     (* The consume_* functions require a match from the following
        input: if it matches, advance the source and return OK and the
@@ -217,7 +217,7 @@ structure TurtleParser :> TURTLE_PARSER = struct
                         case peek_n s 2 of
                             dot::next::[] =>
                             if contains Codepoints.pname_after_dot next
-                            then let val c = read s in
+                            then let val c = read s (* the dot *) in
                                      match_prefixed_name_candidate'
                                          s (acc @ token @ [c])
                                  end
@@ -231,26 +231,44 @@ structure TurtleParser :> TURTLE_PARSER = struct
     (* The parse_* functions take parser data as well as source, and 
        return both, as well as the parsed node or whatever (or error) *)
         
-    fun parse_prefixed_name (data, s) = ERROR "parse_prefixed_name not implemented yet"
-
     and parse_directive (data, s) = ERROR "parse_directive not implemented yet"
     and parse_blank_node (data, s) = ERROR "parse_blank_node not implemented yet"
     and parse_collection (data, s) = ERROR "parse_collection not implemented yet"
     and parse_bnode_triples (data, s) = ERROR "parse_bnode_triples not implemented yet"
     and parse_literal (data, s) = ERROR "parse_literal not implemented yet"
+
+    and parse_prefixed_name (data, s) =
+        let fun boolean v =
+                LITERAL {
+                    value = v,
+                    lang = "",
+                    dtype = RdfTypes.iri_type_boolean
+                }
+            val t = Utf8.explode (Utf8.fromString "true")
+            val f = Utf8.explode (Utf8.fromString "false")
+        in
+	    case match_prefixed_name_candidate s of
+	        ERROR e => ERROR e
+	      | OK token =>
+                (* We can't tell the difference, until we get here,
+                   between a prefixed name and the bare literals true
+                   or false *)
+                if token = t then OK (data, s,  boolean "true")
+                else if token = f then OK (data, s, boolean "false")
+                else prefix_expand (data, s, token)
+        end
   
     and parse_iriref (data, s) =
         consume_ascii #"<" s ~>
         notmatch_greedy Codepoints.iri_escaped ~>
         (fn (s, i) =>
             consume_ascii #">" s ~>
-            (fn _ => OK (data, s, Utf8Encode.encode_string i)))
+            (fn _ => OK (data, s, IRI (Utf8Encode.encode_string i))))
             
     and parse_iri (data, s) = 
-        if looking_at_ascii #"<" s then
-            parse_iriref (data, s) ~> (fn (d, s, i) => OK (d, s, IRI i))
-        else
-            parse_prefixed_name (data, s)
+        if looking_at_ascii #"<" s
+        then parse_iriref (data, s)
+        else parse_prefixed_name (data, s)
 
     and parse_a_or_prefixed_name (data, s) =
 	case match_prefixed_name_candidate s of
@@ -258,7 +276,7 @@ structure TurtleParser :> TURTLE_PARSER = struct
 	  | OK token =>
 	    if token = [ from_ascii #"a" ]
 	    then OK (data, s, IRI RdfTypes.iri_rdf_type)
-	    else prefix_expand (data, token)
+	    else prefix_expand (data, s, token)
 
     and parse_blank_node_property_list (data, s) = ERROR "parse_blank_node_property_list not implemented yet"
                                
