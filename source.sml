@@ -26,13 +26,11 @@ structure Source :> SOURCE = struct
     fun load_line r =
         (case TextIO.inputLine (#stream r) of
              NONE =>
-             (print "loaded nothing\n";
-              (#line r) := [])
+             (#line r) := []
            | SOME str =>
-             (print ("loaded: \"" ^ str ^ "\"\n");
-              ((#line r) := Utf8.explode (Utf8.fromString str);
-               (#lineno r) := !(#lineno r) + 1;
-               (#colno r) := 1));
+             ((#line r) := Utf8.explode (Utf8.fromString str);
+              (#lineno r) := !(#lineno r) + 1;
+              (#colno r) := 1);
          r)
 
     fun from_stream str =
@@ -40,9 +38,7 @@ structure Source :> SOURCE = struct
 
     fun peek (r : t) =
         case !(#line r) of
-            first::rest =>
-            (print ("peeking: '" ^ (Utf8Encode.encode_codepoint first) ^ "'\n");
-             first)
+            first::rest => first
           | [] => nl
 
     fun read (r : t) =
@@ -50,7 +46,6 @@ structure Source :> SOURCE = struct
             first::next::rest =>
             ((#line r) := next::rest;
              (#colno r) := !(#colno r) + 1;
-             print ("reading: '" ^ (Utf8Encode.encode_codepoint first) ^ "'\n");
              first)
           | first::[] => (load_line r; first)
           | [] => nl
