@@ -117,7 +117,25 @@ structure TurtleParser :> TURTLE_PARSER = struct
         "expected '" ^ (Char.toString a) ^ "', found '" ^
         (Utf8Encode.encode_codepoint found) ^ "'"
 
-    fun prefix_expand (data, s, token) = ERROR "prefix_expand not implemented yet"
+    fun split_at (lst, elt) =
+        let fun split' ([], acc) = NONE
+              | split' (x::xs, acc) = if x = elt then SOME (rev acc, xs)
+                                      else split' (xs, x::acc)
+        in
+            split' (lst, [])
+        end
+                                                  
+    fun prefix_expand (data, s, token) = 
+        case split_at (token, from_ascii #":") of
+            NONE => OK (data, s, IRI (Utf8Encode.encode_string token))
+          | SOME (pre, post) =>
+            (* first check post matches rePNLocal:
+               one char that is either rePNCharsU, 0-9, :, or rePlx
+               zero+ chars that are rePNChars, ., :, rePlx
+               maybe one char that is rePNChars, :, rePlx
+               where rePlx is rePercent (i.e. % + 2 hex chars) or
+                   rePNLocalEsc (which is backslash + pname_local_escapable) *)
+            ERROR "difficult bit not yet done"
 						  
     (* The consume_* functions require a match from the following
        input: if it matches, advance the source and return OK and the
