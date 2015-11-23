@@ -1,4 +1,14 @@
 
+fun string_of_node (IRI iri) = "<" ^ iri ^ ">"
+  | string_of_node (BLANK n) = "_" ^ (Int.toString n)
+  | string_of_node (LITERAL lit) = "\"" ^ (#value lit) ^ "\""
+
+fun string_of_triple (a,b,c) =
+    "(" ^ (string_of_node a) ^
+    "," ^ (string_of_node b) ^
+    "," ^ (string_of_node c) ^
+    ")"
+
 fun check () =
     let open Codepoints
         val str1 = CodepointSet.to_string pname_char
@@ -22,7 +32,9 @@ fun parse () =
     in
         case parse_string "file:///blah" instr of
             PARSE_ERROR e => print ("error: " ^ e ^ "\n")
-          | PARSED p => print "parsed something\n"
+          | PARSED p =>
+            (print "parsed the following triple(s):\n";
+             app (fn t => print ((string_of_triple t) ^ "\n")) (#triples p))
     end
         
 fun main () =
