@@ -14,6 +14,7 @@ src/utf8encode.sml
 src/codepointset.sml
 src/codepoints.sml
 src/source.sml
+src/rdftypes.sml
 src/parse.sml
 src/test.sml
 src/main.sml

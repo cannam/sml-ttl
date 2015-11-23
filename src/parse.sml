@@ -55,6 +55,10 @@ structure TurtleParser :> TURTLE_PARSER = struct
                       
     datatype 'a parse = ERROR of string | OK of 'a
 
+    (* individual tokens are read as codepoint sequences, but they're
+       encoded back to utf8 strings when constructing nodes or iris *)
+    type token = word list
+
     fun from_ascii a = Word.fromInt (Char.ord a)
                        
     fun add_triple (d : parse_data) (t : triple) =
@@ -77,7 +81,11 @@ structure TurtleParser :> TURTLE_PARSER = struct
           triples = #triples d,
           prefixes = #prefixes d,
           bnodes = StringMap.insert (#bnodes d, b, id) }
-                    
+
+    (* !!! this is basically the same as Option.composePartial --
+    can't just use option here because I want to carry error info, but
+    probably would be good to switch to the same terminology *)
+	    
     fun ~> (a, b) =
         case a of
             OK result => b result
@@ -103,6 +111,8 @@ structure TurtleParser :> TURTLE_PARSER = struct
         "expected '" ^ (Char.toString a) ^ "', found '" ^
         (Utf8Encode.encode_codepoint found) ^ "'"
 
+    fun prefix_expand (data, token) = ERROR "prefix_expand not implemented yet"
+						  
     (* The consume_* functions require a match from the following
        input: if it matches, advance the source and return OK and the
        source (so the functions can be chained with ~> operator);
@@ -130,6 +140,13 @@ structure TurtleParser :> TURTLE_PARSER = struct
             if contains cp (peek s)
             then consume_greedy cp (discard s)
             else OK s
+
+    fun consume_greedy_ascii a s =
+        if eof s then OK s
+        else
+            if peek s = from_ascii a
+            then consume_greedy_ascii a (discard s)
+            else OK s
             
     fun consume_to_eol s =
         if eof s then OK s
@@ -154,9 +171,10 @@ structure TurtleParser :> TURTLE_PARSER = struct
     fun consume_punctuation punct s =
         consume_whitespace s ~> consume_ascii punct
 
+    fun have_punctuation punct s =
+	(ignore (consume_whitespace s); looking_at_ascii punct s)
+			   
     (* The match_* functions consume and return a token, or error *)
-
-    type token = word list
 
     (* what about non-empty matches? *)
                       
@@ -180,16 +198,44 @@ structure TurtleParser :> TURTLE_PARSER = struct
             OK (s, rev (notmatch_greedy' []))
         end
 
+    (* Read something structured like a prefixed name. The caller is
+       expected to test whether the result is properly formed depending
+       on context. *)
+    fun match_prefixed_name_candidate s =
+	let fun match_prefixed_name_candidate' s acc =
+		case notmatch_greedy Codepoints.pname_excluded s of
+		    ERROR e => ERROR e
+		  | OK (s, token) =>
+		    if looking_at_ascii #"." s
+		    then (* need lookahead here, to see if we match the quite strange dot-in-pn pattern *)
+			ERROR "this bit not yet implemented"
+		    else
+			if looking_at_ascii #"\\" s then
+			    (* we need to preserve the '\' here,
+                               instead of unescaping, because only
+                               certain characters may be unescaped,
+                               and the caller tests that *)
+			    let val (c1, c2) = (read s, read s)
+			    in
+				match_prefixed_name_candidate'
+				    s (acc @ token @ [c1, c2])
+			    end
+			else
+			    OK (acc @ token)
+	in
+	    match_prefixed_name_candidate' s []
+	end
+	    
     (* The parse_* functions take parser data as well as source, and 
-       return both (or error) *)
+       return both, as well as the parsed node or whatever (or error) *)
         
     fun parse_prefixed_name (data, s) = ERROR "parse_prefixed_name not implemented yet"
     fun parse_directive (data, s) = ERROR "parse_directive not implemented yet"
     fun parse_blank_node (data, s) = ERROR "parse_blank_node not implemented yet"
     fun parse_collection (data, s) = ERROR "parse_collection not implemented yet"
     fun parse_bnode_triples (data, s) = ERROR "parse_bnode_triples not implemented yet"
-    fun parse_predicate_object_list (data, s) = ERROR "parse_predicate_object_list not implemented yet"
-            
+    fun parse_object (data, s) = ERROR "parse_object not implemented yet"
+  
     fun parse_iriref (data, s) =
         consume_ascii #"<" s ~>
         notmatch_greedy Codepoints.iri_escaped ~>
@@ -197,17 +243,70 @@ structure TurtleParser :> TURTLE_PARSER = struct
             consume_ascii #">" s ~>
             (fn _ => OK (data, s, Utf8Encode.encode_string i)))
             
-    fun parse_iri_node (data, s) = 
+    fun parse_iri (data, s) = 
         if looking_at_ascii #"<" s then
             parse_iriref (data, s) ~> (fn (d, s, i) => OK (d, s, IRI i))
         else
             parse_prefixed_name (data, s)
 
+    fun parse_a_or_prefixed_name (data, s) =
+	case match_prefixed_name_candidate s of
+	    ERROR e => ERROR e
+	  | OK token =>
+	    if token = [ from_ascii #"a" ]
+	    then OK (data, s, IRI RdfTypes.iri_rdf_type)
+	    else prefix_expand (data, token)
+				
+    fun parse_verb (data, s) =
+	if looking_at_ascii #"<" s then parse_iri (data, s)
+	else parse_a_or_prefixed_name (data, s)
+					    
+    (* [7] predicateObjectList ::= verb objectList (';' (verb objectList)?)*
+       NB we permit an empty list here; caller must reject if its rule
+       demands predicateObjectList rather than predicateObjectList? *)
+
+    fun parse_predicate_object_list (data, s) =
+	let
+	    fun parse_object_list s =
+		case (ignore (consume_whitespace s); parse_object (data, s)) of
+		    ERROR e => ERROR e
+		  | OK (data, s, node) =>
+		    if have_punctuation #"," s
+		    then (ignore (consume_ascii #"," s);
+			  case parse_object_list s of
+			      ERROR e => ERROR e
+			    | OK nodes => OK (node::nodes))
+		    else OK [node]
+
+	    fun parse_verb_object_list s =
+		case parse_verb (data, s) of
+		    ERROR e => ERROR ("verb IRI not found: " ^ e)
+		  | OK (data, s, IRI iri) =>
+		    (case parse_object_list s of
+			 ERROR e => ERROR e
+		       | OK nodes => OK (map (fn n => (IRI iri, n)) nodes))
+		  | OK other => ERROR "IRI expected for verb"
+
+	    and parse_predicate_object_list' s acc =
+		if have_punctuation #"." s orelse have_punctuation #"]" s
+		then OK (data, s, acc) (* empty list, or list ending with ";" *)
+		else
+		    case parse_verb_object_list s of
+			ERROR e => ERROR e
+		      | OK vol =>
+			if have_punctuation #";" s
+			then (ignore (consume_greedy_ascii #";" s);
+			      parse_predicate_object_list' s (acc @ vol))
+			else OK (data, s, acc)
+	in
+	    parse_predicate_object_list' s []
+	end
+          
     (* [10] subject ::= iri | blank *)
     fun parse_subject_node (data, s) =
         if looking_at_ascii #"_" s then parse_blank_node (data, s)
         else if looking_at_ascii #"(" s then parse_collection (data, s)
-        else parse_iri_node (data, s)
+        else parse_iri (data, s)
 
     fun emit_with_subject (data, s, subject, polist) =
         OK (foldl (fn ((predicate, object), data) =>

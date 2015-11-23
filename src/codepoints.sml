@@ -105,5 +105,9 @@ structure Codepoints = struct
         with_name "local part escaped character"
                   (from_string "_~.!$&'()*+,;=/?#@%-")
 
+    val pname_excluded =
+	with_name "prefixed-name excluded character"
+		  (from_string "#;,)].\\\n\t\r ")
+		  
 end
                            
