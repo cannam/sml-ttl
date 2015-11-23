@@ -5,6 +5,7 @@ signature SOURCE = sig
 
     val from_stream : TextIO.instream -> t
     val peek : t -> word
+    val peek_n : t -> int -> word list
     val read : t -> word
     val discard : t -> t
     val location : t -> string
@@ -40,6 +41,10 @@ structure Source :> SOURCE = struct
         case !(#line r) of
             first::rest => first
           | [] => nl
+
+    fun peek_n (r : t) n =
+        List.take (!(#line r), n)
+        handle Subscript => []
 
     fun read (r : t) =
         case !(#line r) of

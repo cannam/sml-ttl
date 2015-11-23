@@ -82,6 +82,12 @@ structure TurtleParser :> TURTLE_PARSER = struct
           prefixes = #prefixes d,
           bnodes = StringMap.insert (#bnodes d, b, id) }
 
+    fun emit_with_subject (d : parse_data, s, subject, polist) =
+        OK (foldl (fn ((predicate, object), data) =>
+                      add_triple data (subject, predicate, object))
+                  d polist,
+            s)
+
     (* !!! this is basically the same as Option.composePartial --
     can't just use option here because I want to carry error info, but
     probably would be good to switch to the same terminology *)
@@ -203,25 +209,21 @@ structure TurtleParser :> TURTLE_PARSER = struct
        on context. *)
     fun match_prefixed_name_candidate s =
 	let fun match_prefixed_name_candidate' s acc =
-		case notmatch_greedy Codepoints.pname_excluded s of
+		case notmatch_greedy Codepoints.pname_definitely_excluded s of
 		    ERROR e => ERROR e
 		  | OK (s, token) =>
 		    if looking_at_ascii #"." s
-		    then (* need lookahead here, to see if we match the quite strange dot-in-pn pattern *)
-			ERROR "this bit not yet implemented"
-		    else
-			if looking_at_ascii #"\\" s then
-			    (* we need to preserve the '\' here,
-                               instead of unescaping, because only
-                               certain characters may be unescaped,
-                               and the caller tests that *)
-			    let val (c1, c2) = (read s, read s)
-			    in
-				match_prefixed_name_candidate'
-				    s (acc @ token @ [c1, c2])
-			    end
-			else
-			    OK (acc @ token)
+		    then
+                        case peek_n s 2 of
+                            dot::next::[] =>
+                            if contains Codepoints.pname_after_dot next
+                            then let val c = read s in
+                                     match_prefixed_name_candidate'
+                                         s (acc @ token @ [c])
+                                 end
+                            else OK (acc @ token)
+                          | anything_else => OK (acc @ token)
+		    else OK (acc @ token)
 	in
 	    match_prefixed_name_candidate' s []
 	end
@@ -230,34 +232,51 @@ structure TurtleParser :> TURTLE_PARSER = struct
        return both, as well as the parsed node or whatever (or error) *)
         
     fun parse_prefixed_name (data, s) = ERROR "parse_prefixed_name not implemented yet"
-    fun parse_directive (data, s) = ERROR "parse_directive not implemented yet"
-    fun parse_blank_node (data, s) = ERROR "parse_blank_node not implemented yet"
-    fun parse_collection (data, s) = ERROR "parse_collection not implemented yet"
-    fun parse_bnode_triples (data, s) = ERROR "parse_bnode_triples not implemented yet"
-    fun parse_object (data, s) = ERROR "parse_object not implemented yet"
+
+    and parse_directive (data, s) = ERROR "parse_directive not implemented yet"
+    and parse_blank_node (data, s) = ERROR "parse_blank_node not implemented yet"
+    and parse_collection (data, s) = ERROR "parse_collection not implemented yet"
+    and parse_bnode_triples (data, s) = ERROR "parse_bnode_triples not implemented yet"
+    and parse_literal (data, s) = ERROR "parse_literal not implemented yet"
   
-    fun parse_iriref (data, s) =
+    and parse_iriref (data, s) =
         consume_ascii #"<" s ~>
         notmatch_greedy Codepoints.iri_escaped ~>
         (fn (s, i) =>
             consume_ascii #">" s ~>
             (fn _ => OK (data, s, Utf8Encode.encode_string i)))
             
-    fun parse_iri (data, s) = 
+    and parse_iri (data, s) = 
         if looking_at_ascii #"<" s then
             parse_iriref (data, s) ~> (fn (d, s, i) => OK (d, s, IRI i))
         else
             parse_prefixed_name (data, s)
 
-    fun parse_a_or_prefixed_name (data, s) =
+    and parse_a_or_prefixed_name (data, s) =
 	case match_prefixed_name_candidate s of
 	    ERROR e => ERROR e
 	  | OK token =>
 	    if token = [ from_ascii #"a" ]
 	    then OK (data, s, IRI RdfTypes.iri_rdf_type)
 	    else prefix_expand (data, token)
-				
-    fun parse_verb (data, s) =
+
+    and parse_blank_node_property_list (data, s) = ERROR "parse_blank_node_property_list not implemented yet"
+                               
+    and parse_non_literal_object (data, s) =
+        if looking_at_ascii #"_" s
+        then parse_blank_node (data, s)
+        else if looking_at_ascii #"(" s
+        then parse_collection (data, s)
+        else if looking_at_ascii #"[" s
+        then parse_blank_node_property_list (data, s)
+        else parse_iri (data, s)
+                               
+    and parse_object (data, s) =
+        if looking_at Codepoints.not_a_literal s
+        then parse_non_literal_object (data, s)
+        else parse_literal (data, s)
+                               
+    and parse_verb (data, s) =
 	if looking_at_ascii #"<" s then parse_iri (data, s)
 	else parse_a_or_prefixed_name (data, s)
 					    
@@ -265,7 +284,7 @@ structure TurtleParser :> TURTLE_PARSER = struct
        NB we permit an empty list here; caller must reject if its rule
        demands predicateObjectList rather than predicateObjectList? *)
 
-    fun parse_predicate_object_list (data, s) =
+    and parse_predicate_object_list (data, s) =
 	let
 	    fun parse_object_list s =
 		case (ignore (consume_whitespace s); parse_object (data, s)) of
@@ -297,24 +316,18 @@ structure TurtleParser :> TURTLE_PARSER = struct
 			if have_punctuation #";" s
 			then (ignore (consume_greedy_ascii #";" s);
 			      parse_predicate_object_list' s (acc @ vol))
-			else OK (data, s, acc)
+			else OK (data, s, acc @ vol)
 	in
 	    parse_predicate_object_list' s []
 	end
           
     (* [10] subject ::= iri | blank *)
-    fun parse_subject_node (data, s) =
+    and parse_subject_node (data, s) =
         if looking_at_ascii #"_" s then parse_blank_node (data, s)
         else if looking_at_ascii #"(" s then parse_collection (data, s)
         else parse_iri (data, s)
-
-    fun emit_with_subject (data, s, subject, polist) =
-        OK (foldl (fn ((predicate, object), data) =>
-                      add_triple data (subject, predicate, object))
-                  data polist,
-            s)
         
-    fun parse_subject_triples (data, s) =
+    and parse_subject_triples (data, s) =
         case parse_subject_node (data, s) of
             ERROR e => ERROR e
           | OK (d, s, LITERAL _) => ERROR "subject may not be literal"
@@ -324,12 +337,12 @@ structure TurtleParser :> TURTLE_PARSER = struct
               | OK (d, s, []) => ERROR "predicate missing"
               | OK (d, s, p) => emit_with_subject (d, s, subject_node, p)
                                         
-    fun parse_triples (data, s) =
+    and parse_triples (data, s) =
         if looking_at_ascii #"[" s then parse_bnode_triples (data, s)
         else parse_subject_triples (data, s)
                                         
     (* [2] statement ::= directive | triples '.' *)
-    fun parse_statement (data, s) =
+    and parse_statement (data, s) =
         consume_whitespace s ~>
         (fn s =>
             if eof s then OK (data, s)
