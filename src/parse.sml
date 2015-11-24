@@ -457,7 +457,7 @@ structure TurtleParser :> TURTLE_PARSER = struct
     and parse_blank_node_property_list (data, s) = ERROR "parse_blank_node_property_list not implemented yet"
 
     (* [133s] BooleanLiteral ::= 'true' | 'false' *)
-    and parse_boolean_literal (data, s, true) =
+    and parse_boolean_literal (data, s) =
 	if looking_at_ascii_string "true" s
 	then OK (data, s, new_boolean_literal true)
 	else if looking_at_ascii_string "false" s
@@ -482,8 +482,8 @@ structure TurtleParser :> TURTLE_PARSER = struct
 	case peek_ascii s of
 	    SOME #"'"  => parse_rdf_literal (data, s)
 	  | SOME #"\"" => parse_rdf_literal (data, s)
-	  | SOME #"t"  => parse_boolean_literal (data, s, true)
-	  | SOME #"f"  => parse_boolean_literal (data, s, false)
+	  | SOME #"t"  => parse_boolean_literal (data, s)
+	  | SOME #"f"  => parse_boolean_literal (data, s)
 	  | other => parse_numeric_literal (data, s)
 					
     and parse_non_literal_object (data, s) =
