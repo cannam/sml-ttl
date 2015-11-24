@@ -35,18 +35,22 @@ structure TurtleParser :> TURTLE_PARSER = struct
                  prefixes : prefix list,
                  triples : triple list
              }
-                             
-    structure StringMap = SplayMapFn (struct
-                                       type ord_key = string
-                                       val compare = String.compare
-                                       end)
+
+    (* individual tokens are read as codepoint sequences, but they're
+       encoded back to utf8 strings when constructing nodes or iris *)
+    type token = word list
+
+    structure TokenMap = SplayMapFn (struct
+                                      type ord_key = token
+                                      val compare = List.collate Word.compare
+                                      end)
 
     type parse_data = {
-        file_iri : string,
-        base_iri : string,
+        file_iri : token,
+        base_iri : token,
         triples : triple list,
-        prefixes : string StringMap.map, (* prefix -> expansion *)
-        bnodes : int StringMap.map       (* string -> blank node id *)
+        prefixes : token TokenMap.map, (* prefix -> expansion *)
+        bnodes : int TokenMap.map      (* token -> blank node id *)
     }
                      
     type source = Source.t
@@ -54,10 +58,6 @@ structure TurtleParser :> TURTLE_PARSER = struct
     type parser_state = parse_data * source
                       
     datatype 'a parse = ERROR of string | OK of 'a
-
-    (* individual tokens are read as codepoint sequences, but they're
-       encoded back to utf8 strings when constructing nodes or iris *)
-    type token = word list
 
     fun from_ascii a = Word.fromInt (Char.ord a)
                        
@@ -68,11 +68,11 @@ structure TurtleParser :> TURTLE_PARSER = struct
           prefixes = #prefixes d,
           bnodes = #bnodes d }
                      
-    fun add_prefix (d : parse_data) ((p, e) : prefix) =
+    fun add_prefix (d : parse_data) (p, e) =
         { file_iri = #file_iri d,
           base_iri = #base_iri d,
           triples = #triples d,
-          prefixes = StringMap.insert (#prefixes d, p, e),
+          prefixes = TokenMap.insert (#prefixes d, p, e),
           bnodes = #bnodes d }
                      
     fun add_bnode (d : parse_data) (b, id) =
@@ -80,7 +80,7 @@ structure TurtleParser :> TURTLE_PARSER = struct
           base_iri = #base_iri d,
           triples = #triples d,
           prefixes = #prefixes d,
-          bnodes = StringMap.insert (#bnodes d, b, id) }
+          bnodes = TokenMap.insert (#bnodes d, b, id) }
 
     fun emit_with_subject (d : parse_data, s, subject, polist) =
         OK (foldl (fn ((predicate, object), data) =>
@@ -124,18 +124,64 @@ structure TurtleParser :> TURTLE_PARSER = struct
         in
             split' (lst, [])
         end
-                                                  
-    fun prefix_expand (data, s, token) = 
-        case split_at (token, from_ascii #":") of
-            NONE => OK (data, s, IRI (Utf8Encode.encode_string token))
-          | SOME (pre, post) =>
-            (* first check post matches rePNLocal:
+
+    fun resolve_iri (data, token) =
+        let val bi = #base_iri data
+            val fi = #file_iri data
+            fun like_absolute_iri [] = false
+              | like_absolute_iri (first::rest) = 
+                if CodepointSet.contains Codepoints.alpha first
+                then like_absolute_iri rest
+                else if first = from_ascii #":"
+                then case rest of
+                         s1::s2::_ => s1 = s2 andalso s1 = from_ascii #"/"
+                       | _ => false
+                else false
+        in
+            Utf8Encode.encode_string
+                (case token of
+                     [] => bi
+                   | first::rest =>
+                     if first = from_ascii #"#"
+                     then fi @ token
+                     else if first = from_ascii #"/" then bi @ rest
+                     else if like_absolute_iri token then token
+                     else bi @ token)
+        end
+
+    fun unescape_local token = token (*!!!*)
+            
+    fun prefix_expand (data, s, token) =
+        let fun like_pname_local_part token =
+                true (*!!! todo! *)
+                (* first check post matches rePNLocal:
                one char that is either rePNCharsU, 0-9, :, or rePlx
                zero+ chars that are rePNChars, ., :, rePlx
                maybe one char that is rePNChars, :, rePlx
                where rePlx is rePercent (i.e. % + 2 hex chars) or
                    rePNLocalEsc (which is backslash + pname_local_escapable) *)
-            ERROR "difficult bit not yet done"
+
+            fun prefix_expand' (pre, post) =
+                (* We don't check the prefix for well-formedness,
+                   because if it isn't well-formed, it won't match
+                   anything in our namespace map -- because we did
+                   check for well-formedness when making the map *)
+                case TokenMap.find (#prefixes data, pre) of
+                    SOME ex => OK (data, s,
+                                   IRI (resolve_iri
+                                            (data, ex @ unescape_local post)))
+                  | NONE => ERROR ("unknown namespace prefix \"" ^
+                                   (Utf8Encode.encode_string pre) ^ "\"")
+                
+        in
+            case split_at (token, from_ascii #":") of
+                NONE => OK (data, s, IRI (Utf8Encode.encode_string token))
+              | SOME (pre, post) =>
+                if like_pname_local_part post
+                then prefix_expand' (pre, post)
+                else ERROR ("malformed prefixed name \"" ^
+                            (Utf8Encode.encode_string token) ^ "\"")
+        end
 						  
     (* The consume_* functions require a match from the following
        input: if it matches, advance the source and return OK and the
@@ -366,7 +412,7 @@ structure TurtleParser :> TURTLE_PARSER = struct
     and parse_subject_triples (data, s) =
         case parse_subject_node (data, s) of
             ERROR e => ERROR e
-          | OK (d, s, LITERAL _) => ERROR "subject may not be literal"
+          | OK (d, s, LITERAL _) => ERROR "subject may not be a literal"
           | OK (d, s, subject_node) =>
             case parse_predicate_object_list (d, s) of
                 ERROR e => ERROR e
@@ -402,20 +448,23 @@ structure TurtleParser :> TURTLE_PARSER = struct
 
     fun arrange_result s (ERROR e) = PARSE_ERROR (e ^ " at " ^ (location s))
       | arrange_result s (OK (data, _)) = PARSED {
-            prefixes = StringMap.listItemsi (#prefixes data),
+            prefixes = map (fn (a,b) => (Utf8Encode.encode_string a,
+                                         Utf8Encode.encode_string b))
+                           (TokenMap.listItemsi (#prefixes data)),
             triples = #triples data
         }
                                       
     fun parse_stream iri stream =
         let val source = Source.from_stream stream
+            val data = {
+                file_iri = Utf8.explode (Utf8.fromString iri),
+                base_iri = Utf8.explode (Utf8.fromString (without_file iri)),
+                triples = [],
+                prefixes = TokenMap.empty,
+                bnodes = TokenMap.empty
+            }
         in
-            arrange_result source
-                (parse_document ({ file_iri = iri,
-                                   base_iri = without_file iri,
-                                   triples = [],
-                                   prefixes = StringMap.empty,
-                                   bnodes = StringMap.empty
-                                }, source))
+            arrange_result source (parse_document (data, source))
         end
 
     fun parse_string iri string =
