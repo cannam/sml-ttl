@@ -102,6 +102,15 @@ structure TurtleParser :> TURTLE_PARSER = struct
 
     infix 0 ~>
 
+    fun new_boolean_literal b =
+        LITERAL {
+            value = if b then "true" else "false",
+            lang = "",
+            dtype = RdfTypes.iri_type_boolean
+        }
+    val true_token = token_of_string "true"
+    val false_token = token_of_string "false"
+				    
     open Source
 
     val contains = CodepointSet.contains
@@ -111,6 +120,9 @@ structure TurtleParser :> TURTLE_PARSER = struct
 
     fun looking_at_ascii a s =
         not (eof s) andalso (peek s) = from_ascii a
+
+    fun looking_at_ascii_string a s =
+	peek_n s (String.size a) = token_of_string a
 
     fun peek_ascii s =
 	let val w = peek s in
@@ -243,13 +255,13 @@ structure TurtleParser :> TURTLE_PARSER = struct
                     case consume_to_eol (discard s) of
                         OK s => consume_whitespace s
                       | ERROR e => ERROR e
-                else if contains Codepoints.whitespace c then
+                else if contains Codepoints.whitespace_eol c then
                     consume_whitespace (discard s)
                 else OK s
             end
 
     fun consume_required_whitespace s =
-	if looking_at Codepoints.whitespace s orelse
+	if looking_at Codepoints.whitespace_eol s orelse
 	   looking_at Codepoints.comment s
 	then consume_whitespace s
 	else ERROR "whitespace expected"
@@ -336,6 +348,42 @@ structure TurtleParser :> TURTLE_PARSER = struct
 		    else ERROR ("malformed prefix \"" ^ (string_of_token token) ^ "\"")
 		else ERROR "expected \":\" at end of prefix"
 	    end
+
+    datatype quote = NO_QUOTE | SHORT_STRING of char | LONG_STRING of char
+
+    fun match_quote s =
+	let fun short_or_long s q =
+		if case peek_n s 3 of [a,b,c] => a = b andalso b = c
+				    | anything_else => false
+		then LONG_STRING q
+		else SHORT_STRING q
+	in		
+	    case peek_ascii s of
+		SOME #"\"" => short_or_long s #"\""
+	      | SOME #"'"  => short_or_long s #"'"
+	      | other => NO_QUOTE
+	end
+
+    fun match_long_string_body s q = ERROR "match_long_string_body not implemented"
+
+    fun match_short_string_body s q =
+        (* it is known that the next char on s is the opening quote *)
+	let val _ = discard s
+	    val cp = if q = #"'"
+		     then Codepoints.string_single_excluded
+		     else Codepoints.string_double_excluded
+	in
+	    case notmatch_greedy cp s of
+		ERROR e => ERROR e
+	      | OK (s, body) => (* !!! handle escapes *)
+		(consume_ascii q s ~> (fn s => OK (s, string_of_token body)))
+	end			    
+		     
+    fun match_string_body s =
+	case match_quote s of
+	    NO_QUOTE => ERROR "expected quotation mark"
+	  | SHORT_STRING q => match_short_string_body s q
+	  | LONG_STRING q => match_long_string_body s q
 		
     (* The parse_* functions take parser data as well as source, and 
        return both, as well as the parsed node or whatever (or error) *)
@@ -378,28 +426,17 @@ structure TurtleParser :> TURTLE_PARSER = struct
     and parse_blank_node (data, s) = ERROR "parse_blank_node not implemented yet"
     and parse_collection (data, s) = ERROR "parse_collection not implemented yet"
     and parse_bnode_triples (data, s) = ERROR "parse_bnode_triples not implemented yet"
-    and parse_literal (data, s) = ERROR "parse_literal not implemented yet"
 
     and parse_prefixed_name (data, s) =
-        let fun boolean v =
-                LITERAL {
-                    value = v,
-                    lang = "",
-                    dtype = RdfTypes.iri_type_boolean
-                }
-            val t = token_of_string "true"
-            val f = token_of_string "false"
-        in
-	    case match_prefixed_name_candidate s of
-	        ERROR e => ERROR e
-	      | OK (s, token) =>
-                (* We can't tell the difference, until we get here,
-                   between a prefixed name and the bare literals true
-                   or false *)
-                if token = t then OK (data, s,  boolean "true")
-                else if token = f then OK (data, s, boolean "false")
-                else prefix_expand (data, s, token)
-        end
+	case match_prefixed_name_candidate s of
+	    ERROR e => ERROR e
+	  | OK (s, token) =>
+            (* We can't tell the difference, until we get here,
+               between a prefixed name and the bare literals true
+               or false *)
+            if token = true_token then OK (data, s,  new_boolean_literal true)
+            else if token = false_token then OK (data, s, new_boolean_literal false)
+            else prefix_expand (data, s, token)
   
     and parse_iriref (data, s) =
 	match_iriref s ~> (fn (s, iri) => OK (data, s, IRI (string_of_token iri)))
@@ -418,7 +455,37 @@ structure TurtleParser :> TURTLE_PARSER = struct
 	    else prefix_expand (data, s, token)
 
     and parse_blank_node_property_list (data, s) = ERROR "parse_blank_node_property_list not implemented yet"
-                               
+
+    (* [133s] BooleanLiteral ::= 'true' | 'false' *)
+    and parse_boolean_literal (data, s, true) =
+	if looking_at_ascii_string "true" s
+	then OK (data, s, new_boolean_literal true)
+	else if looking_at_ascii_string "false" s
+	then OK (data, s, new_boolean_literal false)
+	else ERROR "expected \"true\" or \"false\""
+	
+    and parse_rdf_literal (data, s) =
+	case match_string_body s of
+	    ERROR e => ERROR e
+	  | OK (s, body) =>
+            (* !!! todo: datatype, lang *)
+            OK (data, s, LITERAL {
+		     value = body,
+		     lang = "",
+		     dtype = ""
+		 })
+	
+    and parse_numeric_literal (data, s) = ERROR "parse_numeric_literal not implemented yet"
+                 
+    (* [13] literal ::= RDFLiteral | NumericLiteral | BooleanLiteral *)
+    and parse_literal (data, s) =
+	case peek_ascii s of
+	    SOME #"'"  => parse_rdf_literal (data, s)
+	  | SOME #"\"" => parse_rdf_literal (data, s)
+	  | SOME #"t"  => parse_boolean_literal (data, s, true)
+	  | SOME #"f"  => parse_boolean_literal (data, s, false)
+	  | other => parse_numeric_literal (data, s)
+					
     and parse_non_literal_object (data, s) =
 	case peek_ascii s of
 	    SOME #"_" => parse_blank_node (data, s)

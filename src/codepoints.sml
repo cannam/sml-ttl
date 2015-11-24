@@ -129,6 +129,18 @@ structure Codepoints = struct
                         base_pname_char,
                         from_string "_([<:"
                   ])
-		  
+
+    val string_single_excluded =
+	with_name "syntactic character in single-quoted string"
+		  (from_string "\\\n\r'")
+
+    val string_double_excluded =
+	with_name "syntactic character in double-quoted string"
+		  (from_string "\\\n\r\"")
+
+    val string_escape =
+	with_name "character that can be escaped in string"
+		  (from_string "tbnrf\\\"'")
+			
 end
                            

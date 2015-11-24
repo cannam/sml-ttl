@@ -57,7 +57,7 @@ structure Source :> SOURCE = struct
 
     fun discard r =
         let val _ = read r in r end
-                      
+
     fun location (r : t) =
         "line " ^ (Int.toString (!(#lineno r))) ^
         ", column " ^ (Int.toString (!(#colno r)))
