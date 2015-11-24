@@ -136,8 +136,8 @@ structure TurtleParser :> TURTLE_PARSER = struct
         (Utf8Encode.encode_codepoint found) ^ "'"
 
     fun mismatch_message_ascii a found =
-        "expected '" ^ (Char.toString a) ^ "', found '" ^
-        (Utf8Encode.encode_codepoint found) ^ "'"
+        "expected \"" ^ (Char.toString a) ^ "\", found \"" ^
+        (Utf8Encode.encode_codepoint found) ^ "\""
 
     fun split_at (lst, elt) =
         let fun split' ([], acc) = NONE
@@ -318,11 +318,42 @@ structure TurtleParser :> TURTLE_PARSER = struct
 	in
 	    match' s []
 	end
-  
+
+    fun match_percent_escape s =
+        consume_ascii #"%" s ~>
+                      (fn s =>
+                          (* eval order is defined for tuples in sml
+                             (but not ocaml) *)
+                          let val (a, b) = (read s, read s)
+                          in
+                              (* This is wrong! %-escapes should be
+                              converted to utf8 values and *then* to
+                              codepoints I think *)
+                              case Word.fromString
+                                       ("0wx" ^
+                                        (Utf8Encode.encode_string [a,b])) of
+                                  SOME w => OK (s, [w])
+                                | NONE => ERROR "expected two-digit hex value"
+                          end)
+            
     fun match_iriref s =
-        consume_ascii #"<" s ~>
-        notmatch_greedy Codepoints.iri_escaped ~>
-        (fn (s, token) => consume_ascii #">" s ~> (fn s => OK (s, token)))
+        let fun match' s acc =
+                notmatch_greedy Codepoints.iri_escaped s ~>
+                    (fn (s, token) =>
+                        case peek_ascii s of
+                            SOME #"%" =>
+                            (case match_percent_escape s of
+                                 ERROR e => ERROR e
+                               | OK (s, pe) => match' s (acc @ token @ pe))
+                                (*!!! todo : backslash unicode escapes *)
+                          | other => OK (s, acc @ token))
+        in
+            consume_ascii #"<" s ~>
+                          (fn s => match' s [] ~>
+                                          (fn (s, token) =>
+                                              consume_ascii #">" s ~>
+                                                            (fn s => OK (s, token))))
+        end
 
     fun match_prefixed_name_namespace s =
 	case match_prefixed_name_candidate s of
@@ -384,6 +415,21 @@ structure TurtleParser :> TURTLE_PARSER = struct
 	    NO_QUOTE => ERROR "expected quotation mark"
 	  | SHORT_STRING q => match_short_string_body s q
 	  | LONG_STRING q => match_long_string_body s q
+
+    fun match_language_tag s =
+        let fun parse' s =
+                case match_greedy Codepoints.alpha s of
+                    ERROR e => []
+                  | OK (s, token) =>
+                    case peek_ascii s of
+                        SOME #"-" => token @ [read s] @ (parse' s)
+                      | NONE => token
+        in
+            consume_ascii #"@" s ~>
+                (fn s => case parse' s of
+                             [] => ERROR "non-empty language tag expected"
+                           | tag => OK tag)
+        end
 		
     (* The parse_* functions take parser data as well as source, and 
        return both, as well as the parsed node or whatever (or error) *)
@@ -475,17 +521,27 @@ structure TurtleParser :> TURTLE_PARSER = struct
 	else if looking_at_ascii_string "false" s
 	then OK (data, s, new_boolean_literal false)
 	else ERROR "expected \"true\" or \"false\""
-	
+                   
     and parse_rdf_literal (data, s) =
 	case match_string_body s of
 	    ERROR e => ERROR e
 	  | OK (s, body) =>
-            (* !!! todo: datatype, lang *)
-            OK (data, s, LITERAL {
-		     value = body,
-		     lang = "",
-		     dtype = ""
-		 })
+            case peek_ascii s of
+                SOME #"@" => (case match_language_tag s of
+                                  ERROR e => ERROR e
+                                | OK tag =>
+                                  OK (data, s, LITERAL {
+                                          value = body,
+                                          lang = string_of_token tag,
+                                          dtype = ""
+                             }))
+              | other => 
+                (* !!! todo: lang *)
+                OK (data, s, LITERAL {
+		        value = body,
+		        lang = "",
+		        dtype = ""
+		   })
 	
     and parse_numeric_literal (data, s) =
         let val point = from_ascii #"."
