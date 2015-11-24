@@ -475,7 +475,28 @@ structure TurtleParser :> TURTLE_PARSER = struct
 		     dtype = ""
 		 })
 	
-    and parse_numeric_literal (data, s) = ERROR "parse_numeric_literal not implemented yet"
+    and parse_numeric_literal (data, s) =
+        let val point = from_ascii #"."
+            val candidate =
+                case match_greedy Codepoints.number s of
+                    ERROR e => ""
+                  | OK (s, n0) =>
+                    case peek_n s 2 of
+                        [a,b] => if a = point andalso
+                                    CodepointSet.contains
+                                        Codepoints.number_after_point b
+                                 then
+                                     case match_greedy Codepoints.number
+                                                       (discard s) of
+                                         OK (s, n1) =>
+                                         string_of_token (n0 @ [point] @ n1)
+                                       | ERROR e => ""
+                                 else string_of_token n0
+                      | _ => string_of_token n0
+        in
+            (* !!! convert number, complain if it can't be done *)
+            ERROR "tricky bit not here yet"
+        end
                  
     (* [13] literal ::= RDFLiteral | NumericLiteral | BooleanLiteral *)
     and parse_literal (data, s) =
