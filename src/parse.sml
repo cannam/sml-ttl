@@ -388,8 +388,20 @@ structure TurtleParser :> TURTLE_PARSER = struct
     (* The parse_* functions take parser data as well as source, and 
        return both, as well as the parsed node or whatever (or error) *)
 
-    fun parse_base (data, s) = ERROR "parse_base not implemented yet"
-
+    fun parse_base (data, s) = 
+	consume_required_whitespace s ~>
+        match_iriref ~>
+	(fn (s, token) =>
+            let val base = token_of_string (resolve_iri (data, token))
+            in
+                OK ({ file_iri = base,
+                      base_iri = base,
+                      triples = #triples data,
+                      prefixes = #prefixes data,
+                      bnodes = #bnodes data
+                    }, s)
+            end)
+                
     and parse_prefix (data, s) =
 	consume_required_whitespace s ~>
         match_prefixed_name_namespace ~>
