@@ -40,6 +40,9 @@ structure TurtleParser :> TURTLE_PARSER = struct
        encoded back to utf8 strings when constructing nodes or iris *)
     type token = word list
 
+    val token_of_string = Utf8.explode o Utf8.fromString
+    val string_of_token = Utf8Encode.encode_string
+
     structure TokenMap = SplayMapFn (struct
                                       type ord_key = token
                                       val compare = List.collate Word.compare
@@ -109,6 +112,13 @@ structure TurtleParser :> TURTLE_PARSER = struct
     fun looking_at_ascii a s =
         not (eof s) andalso (peek s) = from_ascii a
 
+    fun peek_ascii s =
+	let val w = peek s in
+	    if w <= 0wx7f
+	    then SOME (Char.chr (Word.toInt w))
+	    else NONE
+	end
+						  
     fun mismatch_message cp found =
         "expected " ^ (CodepointSet.name cp) ^ ", found '" ^
         (Utf8Encode.encode_codepoint found) ^ "'"
@@ -138,7 +148,7 @@ structure TurtleParser :> TURTLE_PARSER = struct
                        | _ => false
                 else false
         in
-            Utf8Encode.encode_string
+	    string_of_token
                 (case token of
                      [] => bi
                    | first::rest =>
@@ -171,16 +181,16 @@ structure TurtleParser :> TURTLE_PARSER = struct
                                    IRI (resolve_iri
                                             (data, ex @ unescape_local post)))
                   | NONE => ERROR ("unknown namespace prefix \"" ^
-                                   (Utf8Encode.encode_string pre) ^ "\"")
+                                   (string_of_token pre) ^ "\"")
                 
         in
             case split_at (token, from_ascii #":") of
-                NONE => OK (data, s, IRI (Utf8Encode.encode_string token))
+                NONE => OK (data, s, IRI (string_of_token token))
               | SOME (pre, post) =>
                 if like_pname_local_part post
                 then prefix_expand' (pre, post)
                 else ERROR ("malformed prefixed name \"" ^
-                            (Utf8Encode.encode_string token) ^ "\"")
+                            (string_of_token token) ^ "\"")
         end
 						  
     (* The consume_* functions require a match from the following
@@ -238,6 +248,12 @@ structure TurtleParser :> TURTLE_PARSER = struct
                 else OK s
             end
 
+    fun consume_required_whitespace s =
+	if looking_at Codepoints.whitespace s orelse
+	   looking_at Codepoints.comment s
+	then consume_whitespace s
+	else ERROR "whitespace expected"
+		
     fun consume_punctuation punct s =
         consume_whitespace s ~> consume_ascii punct
 
@@ -272,7 +288,7 @@ structure TurtleParser :> TURTLE_PARSER = struct
        expected to test whether the result is properly formed depending
        on context. *)
     fun match_prefixed_name_candidate s =
-	let fun match_prefixed_name_candidate' s acc =
+	let fun match' s acc =
 		case notmatch_greedy Codepoints.pname_definitely_excluded s of
 		    ERROR e => ERROR e
 		  | OK (s, token) =>
@@ -282,20 +298,60 @@ structure TurtleParser :> TURTLE_PARSER = struct
                             dot::next::[] =>
                             if contains Codepoints.pname_after_dot next
                             then let val c = read s (* the dot *) in
-                                     match_prefixed_name_candidate'
-                                         s (acc @ token @ [c])
+				     match' s (acc @ token @ [c])
                                  end
-                            else OK (acc @ token)
-                          | anything_else => OK (acc @ token)
-		    else OK (acc @ token)
+                            else OK (s, acc @ token)
+                          | anything_else => OK (s, acc @ token)
+		    else OK (s, acc @ token)
 	in
-	    match_prefixed_name_candidate' s []
+	    match' s []
 	end
-	    
+  
+    fun match_iriref s =
+        consume_ascii #"<" s ~>
+        notmatch_greedy Codepoints.iri_escaped ~>
+        (fn (s, token) => consume_ascii #">" s ~> (fn s => OK (s, token)))
+
+    fun match_prefixed_name_namespace s = ERROR "match_prefixed_name_namespace not implemented yet"
+	
     (* The parse_* functions take parser data as well as source, and 
        return both, as well as the parsed node or whatever (or error) *)
-        
-    and parse_directive (data, s) = ERROR "parse_directive not implemented yet"
+
+    fun parse_base (data, s) = ERROR "parse_base not implemented yet"
+
+    and parse_prefix (data, s) =
+	consume_required_whitespace s ~>
+        match_prefixed_name_namespace ~>
+	(fn (s, prefix) =>
+	    consume_required_whitespace s ~>
+                (fn s => case match_iriref s of
+			     ERROR e => ERROR e
+			   | OK (s, iri) => OK (add_prefix data (prefix, iri), s)))
+	
+    and parse_sparql_base (data, s) = ERROR "parse_sparql_base not implemented yet"
+    and parse_sparql_prefix (data, s) = ERROR "parse_sparql_prefix not implemented yet"
+		     
+    and parse_directive (data, s) =
+	case peek_ascii s of
+	    SOME #"@" =>
+	    (ignore (discard s) ;
+	     match_greedy Codepoints.alpha s ~>
+			  (fn (s, token) =>
+			      (* !!! v ugly *)
+			      case string_of_token token of
+				  "prefix" => (case parse_prefix (data, s) of
+						  ERROR e => ERROR e
+						| OK (data, s) => consume_punctuation #"." s ~> (fn s => OK (data, s)))
+				| "base" => (case parse_base (data, s) of
+						 ERROR e => ERROR e
+					       | OK (data, s) => consume_punctuation #"." s ~> (fn s => OK (data, s)))
+				| other => ERROR ("expected \"prefix\" or \"base\" after @, not \"" ^ other ^ "\"")))
+	  | SOME #"B" => parse_sparql_prefix (data, s)
+	  | SOME #"b" => parse_sparql_prefix (data, s)
+	  | SOME #"P" => parse_sparql_prefix (data, s)
+	  | SOME #"p" => parse_sparql_prefix (data, s)
+	  | other => ERROR "expected @prefix, @base, PREFIX, or BASE"
+	
     and parse_blank_node (data, s) = ERROR "parse_blank_node not implemented yet"
     and parse_collection (data, s) = ERROR "parse_collection not implemented yet"
     and parse_bnode_triples (data, s) = ERROR "parse_bnode_triples not implemented yet"
@@ -308,12 +364,12 @@ structure TurtleParser :> TURTLE_PARSER = struct
                     lang = "",
                     dtype = RdfTypes.iri_type_boolean
                 }
-            val t = Utf8.explode (Utf8.fromString "true")
-            val f = Utf8.explode (Utf8.fromString "false")
+            val t = token_of_string "true"
+            val f = token_of_string "false"
         in
 	    case match_prefixed_name_candidate s of
 	        ERROR e => ERROR e
-	      | OK token =>
+	      | OK (s, token) =>
                 (* We can't tell the difference, until we get here,
                    between a prefixed name and the bare literals true
                    or false *)
@@ -323,11 +379,7 @@ structure TurtleParser :> TURTLE_PARSER = struct
         end
   
     and parse_iriref (data, s) =
-        consume_ascii #"<" s ~>
-        notmatch_greedy Codepoints.iri_escaped ~>
-        (fn (s, i) =>
-            consume_ascii #">" s ~>
-            (fn _ => OK (data, s, IRI (Utf8Encode.encode_string i))))
+	match_iriref s ~> (fn (s, iri) => OK (data, s, IRI (string_of_token iri)))
             
     and parse_iri (data, s) = 
         if looking_at_ascii #"<" s
@@ -337,7 +389,7 @@ structure TurtleParser :> TURTLE_PARSER = struct
     and parse_a_or_prefixed_name (data, s) =
 	case match_prefixed_name_candidate s of
 	    ERROR e => ERROR e
-	  | OK token =>
+	  | OK (s, token) =>
 	    if token = [ from_ascii #"a" ]
 	    then OK (data, s, IRI RdfTypes.iri_rdf_type)
 	    else prefix_expand (data, s, token)
@@ -345,13 +397,11 @@ structure TurtleParser :> TURTLE_PARSER = struct
     and parse_blank_node_property_list (data, s) = ERROR "parse_blank_node_property_list not implemented yet"
                                
     and parse_non_literal_object (data, s) =
-        if looking_at_ascii #"_" s
-        then parse_blank_node (data, s)
-        else if looking_at_ascii #"(" s
-        then parse_collection (data, s)
-        else if looking_at_ascii #"[" s
-        then parse_blank_node_property_list (data, s)
-        else parse_iri (data, s)
+	case peek_ascii s of
+	    SOME #"_" => parse_blank_node (data, s)
+	  | SOME #"(" => parse_collection (data, s)
+	  | SOME #"[" => parse_blank_node_property_list (data, s)
+	  | other => parse_iri (data, s)
                                
     and parse_object (data, s) =
         if looking_at Codepoints.not_a_literal s
@@ -405,9 +455,10 @@ structure TurtleParser :> TURTLE_PARSER = struct
           
     (* [10] subject ::= iri | blank *)
     and parse_subject_node (data, s) =
-        if looking_at_ascii #"_" s then parse_blank_node (data, s)
-        else if looking_at_ascii #"(" s then parse_collection (data, s)
-        else parse_iri (data, s)
+	case peek_ascii s of
+	    SOME #"_" => parse_blank_node (data, s)
+	  | SOME #"(" => parse_collection (data, s)
+	  | other => parse_iri (data, s)
         
     and parse_subject_triples (data, s) =
         case parse_subject_node (data, s) of
@@ -448,8 +499,7 @@ structure TurtleParser :> TURTLE_PARSER = struct
 
     fun arrange_result s (ERROR e) = PARSE_ERROR (e ^ " at " ^ (location s))
       | arrange_result s (OK (data, _)) = PARSED {
-            prefixes = map (fn (a,b) => (Utf8Encode.encode_string a,
-                                         Utf8Encode.encode_string b))
+            prefixes = map (fn (a,b) => (string_of_token a, string_of_token b))
                            (TokenMap.listItemsi (#prefixes data)),
             triples = #triples data
         }
@@ -457,8 +507,8 @@ structure TurtleParser :> TURTLE_PARSER = struct
     fun parse_stream iri stream =
         let val source = Source.from_stream stream
             val data = {
-                file_iri = Utf8.explode (Utf8.fromString iri),
-                base_iri = Utf8.explode (Utf8.fromString (without_file iri)),
+                file_iri = token_of_string iri,
+                base_iri = token_of_string (without_file iri),
                 triples = [],
                 prefixes = TokenMap.empty,
                 bnodes = TokenMap.empty
