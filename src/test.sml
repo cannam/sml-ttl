@@ -25,10 +25,11 @@ fun check () =
 	    end
 	else ()
     end
+    handle Fail x => print ("exception caught: " ^ x ^ "\n")
 
 fun parse () =
     let open TurtleParser
-        val instr = "@prefix : <blah> .    <a> <b> :c"
+        val instr = "@prefix : <http://blather/blah#> .    <a> <b> :c"
     in
         case parse_string "file:///blah" instr of
             PARSE_ERROR e => print ("error: " ^ e ^ "\n")

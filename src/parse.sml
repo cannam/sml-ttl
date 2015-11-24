@@ -312,8 +312,31 @@ structure TurtleParser :> TURTLE_PARSER = struct
         notmatch_greedy Codepoints.iri_escaped ~>
         (fn (s, token) => consume_ascii #">" s ~> (fn s => OK (s, token)))
 
-    fun match_prefixed_name_namespace s = ERROR "match_prefixed_name_namespace not implemented yet"
-	
+    fun match_prefixed_name_namespace s =
+	case match_prefixed_name_candidate s of
+	    ERROR e => ERROR e
+	  | OK (s, []) => ERROR "malformed prefix"
+	  | OK (s, [w]) => if w = from_ascii #":"
+			   then OK (s, [])
+			   else ERROR "expected \":\" at end of prefix"
+	  | OK (s, all) => 
+	    let val first = hd all
+		val r = rev all
+		val colon = hd r
+		val last = hd (tl r)
+		val token = rev (tl r)
+	    in
+		if colon = from_ascii #":"
+		then
+		    if CodepointSet.contains Codepoints.base_pname_char first
+		       andalso List.all (CodepointSet.contains
+					     Codepoints.pname_char_or_dot) token
+		       andalso CodepointSet.contains Codepoints.pname_char last
+		    then OK (s, token)
+		    else ERROR ("malformed prefix \"" ^ (string_of_token token) ^ "\"")
+		else ERROR "expected \":\" at end of prefix"
+	    end
+		
     (* The parse_* functions take parser data as well as source, and 
        return both, as well as the parsed node or whatever (or error) *)
 
@@ -418,22 +441,20 @@ structure TurtleParser :> TURTLE_PARSER = struct
 
     and parse_predicate_object_list (data, s) =
 	let
-	    fun parse_object_list s =
+	    fun parse_object_list s acc =
 		case (ignore (consume_whitespace s); parse_object (data, s)) of
 		    ERROR e => ERROR e
 		  | OK (data, s, node) =>
 		    if have_punctuation #"," s
 		    then (ignore (consume_ascii #"," s);
-			  case parse_object_list s of
-			      ERROR e => ERROR e
-			    | OK nodes => OK (node::nodes))
-		    else OK [node]
+			  parse_object_list s (node::acc))
+		    else OK (rev (node::acc))
 
 	    fun parse_verb_object_list s =
 		case parse_verb (data, s) of
 		    ERROR e => ERROR ("verb IRI not found: " ^ e)
 		  | OK (data, s, IRI iri) =>
-		    (case parse_object_list s of
+		    (case parse_object_list s [] of
 			 ERROR e => ERROR e
 		       | OK nodes => OK (map (fn n => (IRI iri, n)) nodes))
 		  | OK other => ERROR "IRI expected for verb"

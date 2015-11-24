@@ -94,6 +94,13 @@ structure Codepoints = struct
 	                from_string "-"
 	            ])
 
+    val pname_char_or_dot =
+        with_name "prefixed-name character or dot"
+		  (union [
+			pname_char,
+			from_string "."
+		    ])
+
     val iri_escaped =
         with_name "iri escaped character"
                   (union [
