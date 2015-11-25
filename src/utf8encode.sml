@@ -6,27 +6,26 @@ end
 
 structure Utf8Encode :> UTF8_ENCODE = struct
 
-    fun encode_codepoint cp =
+    fun encode_string cps =
         let open Word
 	    infix orb andb >>
 	    val char_of = Char.chr o toInt
         in
-	    if cp < 0wx80 then
-	        String.str (char_of cp)
-	    else if cp < 0wx800 then
-	        String.implode [
-		    char_of (0wxc0 orb (cp >> 0w6)),
-		    char_of (0wx80 orb (cp andb 0wx3f))
-	        ]
-	    else String.implode [
-		    char_of (0wxe0 orb (cp >> 0w12)),
-		    char_of (0wx80 orb ((cp >> 0w6) andb 0wx3f)),
-		    char_of (0wx80 orb (cp andb 0wx3f))
-	        ]
+            String.implode
+                (rev (foldl (fn (cp, acc) => 
+                                if cp < 0wx80 then
+                                    (char_of cp) :: acc
+                                else if cp < 0wx800 then
+		                    char_of (0wx80 orb (cp andb 0wx3f)) ::
+		                    char_of (0wxc0 orb (cp >> 0w6)) :: acc
+                                else 
+		                    char_of (0wx80 orb (cp andb 0wx3f)) ::
+		                    char_of (0wx80 orb ((cp >> 0w6) andb 0wx3f)) ::
+		                    char_of (0wxe0 orb (cp >> 0w12)) :: acc)
+                            [] cps))
         end
 
-    fun encode_string cps =
-        String.concat (map encode_codepoint cps)
+    fun encode_codepoint cp = encode_string [cp]
 
 end
 					  
