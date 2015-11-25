@@ -29,7 +29,7 @@ fun check () =
 
 fun parse () =
     let open TurtleParser
-        val instr = "@prefix : <http://blather/blah#> .  \n  <a> a :c .\n :c <something> \"this\"."
+        val instr = "@prefix : <http://blather/blah#> .  \n  <a> a :c .\n :c <something> \"this\".\n <b> :has_friends [ :name 'Chris' ; :id '40213' ]."
     in
         case parse_string "file:///blah" instr of
             PARSE_ERROR e => print ("error: " ^ e ^ "\n")

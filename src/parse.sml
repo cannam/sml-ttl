@@ -110,7 +110,14 @@ structure TurtleParser :> TURTLE_PARSER = struct
         }
     val true_token = token_of_string "true"
     val false_token = token_of_string "false"
-				    
+
+    val bnode_counter = ref 0
+    fun new_blank_node () =
+	let val id = !bnode_counter in
+	    bnode_counter := id + 1;
+	    BLANK id
+	end
+				      
     open Source
 
     val contains = CodepointSet.contains
@@ -351,10 +358,10 @@ structure TurtleParser :> TURTLE_PARSER = struct
                           | other => OK (s, acc @ token))
         in
             consume_ascii #"<" s ~>
-                          (fn s => match' s [] ~>
-                                          (fn (s, token) =>
-                                              consume_ascii #">" s ~>
-                                                            (fn s => OK (s, token))))
+                (fn s => match' s [] ~>
+                     (fn (s, token) =>
+                         consume_ascii #">" s ~>
+                                       (fn s => OK (s, token))))
         end
 
     fun match_prefixed_name_namespace s =
@@ -525,7 +532,7 @@ structure TurtleParser :> TURTLE_PARSER = struct
             else prefix_expand (data, s, token)
   
     and parse_iriref (data, s) =
-	match_iriref s ~> (fn (s, iri) => OK (data, s, IRI (string_of_token iri)))
+	match_iriref s ~> (fn (s, iri) => OK (data, s, IRI (resolve_iri (data, iri))))
             
     and parse_iri (data, s) = 
         if looking_at_ascii #"<" s
@@ -540,7 +547,19 @@ structure TurtleParser :> TURTLE_PARSER = struct
 	    then OK (data, s, IRI RdfTypes.iri_rdf_type)
 	    else prefix_expand (data, s, token)
 
-    and parse_blank_node_property_list (data, s) = ERROR "parse_blank_node_property_list not implemented yet"
+    and parse_blank_node_property_list (data, s) =
+	consume_punctuation #"[" s ~>
+	    (fn s =>
+		case parse_predicate_object_list (data, s) of
+                    ERROR e => ERROR e
+		  | OK (d, s, []) => ERROR "predicate missing"
+		  | OK (d, s, p) =>
+		    let val blank_node = new_blank_node () in
+			emit_with_subject (d, s, blank_node, p) ~>
+					  (fn (d, s) =>
+					      consume_punctuation #"]" s ~>
+						  (fn s => OK (d, s, blank_node)))
+		    end)
 
     (* [133s] BooleanLiteral ::= 'true' | 'false' *)
     and parse_boolean_literal (data, s) =
@@ -586,7 +605,7 @@ structure TurtleParser :> TURTLE_PARSER = struct
         let val point = from_ascii #"."
             val candidate =
                 case match_greedy Codepoints.number s of
-                    ERROR e => ""
+                    ERROR e => []
                   | OK (s, n0) =>
                     case peek_n s 2 of
                         [a,b] => if a = point andalso
@@ -595,14 +614,31 @@ structure TurtleParser :> TURTLE_PARSER = struct
                                  then
                                      case match_greedy Codepoints.number
                                                        (discard s) of
-                                         OK (s, n1) =>
-                                         string_of_token (n0 @ [point] @ n1)
-                                       | ERROR e => ""
-                                 else string_of_token n0
-                      | _ => string_of_token n0
+                                         OK (s, n1) => (n0 @ [point] @ n1)
+                                       | ERROR e => []
+                                 else n0
+                      | _ => n0
+	    val candidate_str = string_of_token candidate
+	    val contains_e =
+		(List.find (CodepointSet.contains Codepoints.exponent) candidate)
+		<> NONE
+	    val contains_dot =
+		(List.find (fn c => c = from_ascii #".") candidate) <> NONE
         in
-            (* !!! convert number, complain if it can't be done *)
-            ERROR "tricky bit not here yet"
+	    (* spec says we store the literal as it appears in the
+               file, don't canonicalise: we only convert it to check
+               that it really is a number *)
+	    case Real.fromString candidate_str of
+		SOME i => OK (data, s, LITERAL {
+				  value = candidate_str,
+				  lang = "",
+				  dtype = if contains_e
+					  then RdfTypes.iri_type_double
+					  else if contains_dot
+					  then RdfTypes.iri_type_decimal
+					  else RdfTypes.iri_type_integer
+			      })
+	      | NONE => ERROR "numeric literal expected"
         end
                  
     (* [13] literal ::= RDFLiteral | NumericLiteral | BooleanLiteral *)
@@ -612,7 +648,10 @@ structure TurtleParser :> TURTLE_PARSER = struct
 	  | SOME #"\"" => parse_rdf_literal (data, s)
 	  | SOME #"t"  => parse_boolean_literal (data, s)
 	  | SOME #"f"  => parse_boolean_literal (data, s)
-	  | other => parse_numeric_literal (data, s)
+	  | SOME #"."  => parse_numeric_literal (data, s)
+	  | other => if CodepointSet.contains Codepoints.number (peek s)
+		     then parse_numeric_literal (data, s)
+		     else ERROR "object node expected"
 					
     and parse_non_literal_object (data, s) =
 	case peek_ascii s of
@@ -636,37 +675,38 @@ structure TurtleParser :> TURTLE_PARSER = struct
 
     and parse_predicate_object_list (data, s) =
 	let
-	    fun parse_object_list s acc =
-		case (ignore (consume_whitespace s); parse_object (data, s)) of
+	    fun parse_object_list (d, s) acc =
+		case (ignore (consume_whitespace s); parse_object (d, s)) of
 		    ERROR e => ERROR e
-		  | OK (data, s, node) =>
+		  | OK (d, s, node) =>
 		    if have_punctuation #"," s
 		    then (ignore (consume_ascii #"," s);
-			  parse_object_list s (node::acc))
-		    else OK (rev (node::acc))
+			  parse_object_list (d, s) (node::acc))
+		    else OK (d, s, rev (node::acc))
 
-	    fun parse_verb_object_list s =
-		case parse_verb (data, s) of
+	    fun parse_verb_object_list (d, s) =
+		case parse_verb (d, s) of
 		    ERROR e => ERROR ("verb IRI not found: " ^ e)
-		  | OK (data, s, IRI iri) =>
-		    (case parse_object_list s [] of
+		  | OK (d, s, IRI iri) =>
+		    (case parse_object_list (d, s) [] of
 			 ERROR e => ERROR e
-		       | OK nodes => OK (map (fn n => (IRI iri, n)) nodes))
+		       | OK (d, s, nodes) =>
+			 OK (d, s, map (fn n => (IRI iri, n)) nodes))
 		  | OK other => ERROR "IRI expected for verb"
 
-	    and parse_predicate_object_list' s acc =
+	    and parse_predicate_object_list' (d, s) acc =
 		if have_punctuation #"." s orelse have_punctuation #"]" s
-		then OK (data, s, acc) (* empty list, or list ending with ";" *)
+		then OK (d, s, acc) (* empty list, or list ending with ";" *)
 		else
-		    case parse_verb_object_list s of
+		    case parse_verb_object_list (d, s) of
 			ERROR e => ERROR e
-		      | OK vol =>
+		      | OK (d, s, vol) =>
 			if have_punctuation #";" s
 			then (ignore (consume_greedy_ascii #";" s);
-			      parse_predicate_object_list' s (acc @ vol))
-			else OK (data, s, acc @ vol)
+			      parse_predicate_object_list' (d, s) (acc @ vol))
+			else OK (d, s, acc @ vol)
 	in
-	    parse_predicate_object_list' s []
+	    parse_predicate_object_list' (data, s) []
 	end
           
     (* [10] subject ::= iri | blank *)
@@ -713,8 +753,17 @@ structure TurtleParser :> TURTLE_PARSER = struct
             [] => ""
           | bits => String.concatWith "/" (rev (tl (rev bits)))
 
-    fun arrange_result s (ERROR e) = PARSE_ERROR (e ^ " at " ^ (location s))
-      | arrange_result s (OK (data, _)) = PARSED {
+    fun arrange_result s (ERROR e) =
+	let val message = e ^ " at " ^ (location s)
+	    val next_bit = case peek_n s 8 of [] => peek_n s 4 | p => p
+	in
+	    if next_bit = []
+	    then PARSE_ERROR message
+	    else PARSE_ERROR (message ^ " (at \"" ^
+			      (string_of_token next_bit) ^ "...\")")
+	end
+      | arrange_result s (OK (data, _)) =
+	PARSED {
             prefixes = map (fn (a,b) => (string_of_token a, string_of_token b))
                            (TokenMap.listItemsi (#prefixes data)),
             triples = #triples data
