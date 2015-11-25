@@ -13,18 +13,18 @@ structure Utf8Encode :> UTF8_ENCODE = struct
         in
             String.implode
                 (foldr (fn (cp, acc) => 
-                                if cp < 0wx80 then
-                                    (char_of cp) :: acc
-                                else if cp < 0wx800 then
-		                    char_of (0wxc0 orb (cp >> 0w6)) ::
-		                    char_of (0wx80 orb (cp andb 0wx3f)) ::
-                                    acc
-                                else 
-		                    char_of (0wxe0 orb (cp >> 0w12)) ::
-		                    char_of (0wx80 orb ((cp >> 0w6) andb 0wx3f)) ::
-		                    char_of (0wx80 orb (cp andb 0wx3f)) ::
-                                    acc)
-                            [] cps)
+                           if cp < 0wx80 then
+                               char_of cp :: acc
+                           else if cp < 0wx800 then
+		               char_of (0wxc0 orb (cp >> 0w6)) ::
+		               char_of (0wx80 orb (cp andb 0wx3f)) ::
+                               acc
+                           else 
+		               char_of (0wxe0 orb (cp >> 0w12)) ::
+		               char_of (0wx80 orb ((cp >> 0w6) andb 0wx3f)) ::
+		               char_of (0wx80 orb (cp andb 0wx3f)) ::
+                               acc)
+                       [] cps)
         end
 
     fun encode_codepoint cp = encode_string [cp]
