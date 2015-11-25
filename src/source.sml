@@ -7,6 +7,7 @@ signature SOURCE = sig
     val peek : t -> word
     val peek_n : t -> int -> word list
     val read : t -> word
+    val read_n : t -> int -> word list
     val discard : t -> t
     val location : t -> string
     val eof : t -> bool
@@ -54,6 +55,10 @@ structure Source :> SOURCE = struct
              first)
           | first::[] => (load_line r; first)
           | [] => nl
+
+    fun read_n (r : t) 0 = []
+      | read_n (r : t) n =
+         read r :: (read_n r (n-1))
 
     fun discard r =
         let val _ = read r in r end

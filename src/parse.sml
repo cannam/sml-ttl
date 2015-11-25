@@ -124,6 +124,7 @@ structure TurtleParser :> TURTLE_PARSER = struct
 	  | NONE =>
 	    case new_blank_node () of
 		BLANK id => (add_bnode d (token, id), BLANK id)
+              | _ => raise Fail "new_blank_node returned non-blank node"
 
     open Source
 
@@ -436,11 +437,24 @@ structure TurtleParser :> TURTLE_PARSER = struct
                 match' s [] ~> (fn (s, body) => OK (s, string_of_token body))
             end)
 
-    fun unescape_string_escape e =
-        case Codepoints.CharMap.find (Codepoints.string_escape_map, e) of
-            SOME w => w
-          | NONE => e
-        
+    fun unescape_string_escape s =
+        let val e = read s in
+            case Codepoints.CharMap.find (Codepoints.string_escape_map, e) of
+                SOME w => (s, w)
+              | NONE => (s, e)
+        end
+
+    fun unescape_unicode_escape s =
+        let val n = case peek_ascii s of SOME #"u" => 4 | SOME #"U" => 8 | _ =>0
+            val _ = discard s
+            val u = read_n s n
+            val ustr = Utf8Encode.encode_string u
+        in
+            case Word.fromString ("0wx" ^ ustr) of
+                SOME w => (s, w)
+              | NONE => (s, 0wx0)
+        end
+            
     fun match_short_string_body s q =
 	let val cp = if q = #"'"
 		     then Codepoints.string_single_excluded
@@ -452,11 +466,15 @@ structure TurtleParser :> TURTLE_PARSER = struct
                     if looking_at_ascii #"\\" s
                     then (ignore (discard s);
                           if looking_at Codepoints.string_escape s
-                          then let val w = unescape_string_escape (read s)
+                          then let val (s, w) = unescape_string_escape s
                                in match' s (acc @ [w] @ body)
                                end
                           else if looking_at Codepoints.unicode_u s
-                          then ERROR "unicode escape not yet implemented"
+                          then let val (s, w) = unescape_unicode_escape s
+                               in if w = 0wx0
+                                  then ERROR "invalid Unicode escape"
+                                  else match' s (acc @ [w] @ body)
+                               end
                           else ERROR "expected escape sequence")
                     else OK (s, string_of_token (acc @ body))
         in
@@ -827,8 +845,10 @@ structure TurtleParser :> TURTLE_PARSER = struct
                 prefixes = TokenMap.empty,
                 blank_nodes = TokenMap.empty
             }
+            val parsed = parse_document (data, source)
         in
-            arrange_result source (parse_document (data, source))
+            print "done\n";
+            arrange_result source parsed
         end
 
     fun parse_string iri string =
