@@ -6,7 +6,7 @@ arg="$1"
 
 set -u
 
-mlton -profile count -profile-branch true tests.mlb
+mlton -profile count -profile-branch true -profile-val true tests.mlb
 ./tests >/dev/null
 
 tmpfile=/tmp/"$$"_cov
