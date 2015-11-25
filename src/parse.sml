@@ -417,20 +417,21 @@ structure TurtleParser :> TURTLE_PARSER = struct
 	  | LONG_STRING q => match_long_string_body s q
 
     fun match_language_tag s =
+        (*!!! this is a "match_" but datatype has to be a "parse_", why? *)
         let fun parse' s =
                 case match_greedy Codepoints.alpha s of
                     ERROR e => []
                   | OK (s, token) =>
                     case peek_ascii s of
                         SOME #"-" => token @ [read s] @ (parse' s)
-                      | NONE => token
+                      | other => token
         in
             consume_ascii #"@" s ~>
                 (fn s => case parse' s of
                              [] => ERROR "non-empty language tag expected"
                            | tag => OK tag)
         end
-		
+            
     (* The parse_* functions take parser data as well as source, and 
        return both, as well as the parsed node or whatever (or error) *)
 
@@ -521,6 +522,10 @@ structure TurtleParser :> TURTLE_PARSER = struct
 	else if looking_at_ascii_string "false" s
 	then OK (data, s, new_boolean_literal false)
 	else ERROR "expected \"true\" or \"false\""
+
+    and parse_datatype (data, s) =
+        consume_ascii #"^" s ~> consume_ascii #"^" ~>
+                      (fn s => parse_iri (data, s))
                    
     and parse_rdf_literal (data, s) =
 	case match_string_body s of
@@ -535,13 +540,20 @@ structure TurtleParser :> TURTLE_PARSER = struct
                                           lang = string_of_token tag,
                                           dtype = ""
                              }))
-              | other => 
-                (* !!! todo: lang *)
-                OK (data, s, LITERAL {
-		        value = body,
-		        lang = "",
-		        dtype = ""
-		   })
+              | SOME #"^" => (case parse_datatype (data, s) of
+                                  ERROR e => ERROR e
+                                | OK (data, s, IRI tag) =>
+                                  OK (data, s, LITERAL {
+                                          value = body,
+                                          lang = "",
+                                          dtype = tag
+                                     })
+                                | other => ERROR "internal error")
+              | other => OK (data, s, LITERAL {
+		                 value = body,
+		                 lang = "",
+		                 dtype = ""
+		            })
 	
     and parse_numeric_literal (data, s) =
         let val point = from_ascii #"."
