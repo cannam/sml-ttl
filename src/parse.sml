@@ -436,20 +436,37 @@ structure TurtleParser :> TURTLE_PARSER = struct
                 match' s [] ~> (fn (s, body) => OK (s, string_of_token body))
             end)
 
+    fun unescape_string_escape e =
+        case Codepoints.CharMap.find (Codepoints.string_escape_map, e) of
+            SOME w => w
+          | NONE => e
+        
     fun match_short_string_body s q =
-        (* it is known that the next char on s is the opening quote *)
-        (*!!! no, should check that here as well *)
-	consume_ascii q s ~>
-        (fn s =>
-	    let val cp = if q = #"'"
-		         then Codepoints.string_single_excluded
-		         else Codepoints.string_double_excluded
-	    in
+	let val cp = if q = #"'"
+		     then Codepoints.string_single_excluded
+		     else Codepoints.string_double_excluded
+            fun match' s acc =
 	        case notmatch_greedy cp s of
 		    ERROR e => ERROR e
-	          | OK (s, body) => (* !!! handle escapes *)
-		    (consume_ascii q s ~> (fn s => OK (s, string_of_token body)))
-	    end)
+	          | OK (s, body) =>
+                    if looking_at_ascii #"\\" s
+                    then (ignore (discard s);
+                          if looking_at Codepoints.string_escape s
+                          then let val w = unescape_string_escape (read s)
+                               in match' s (acc @ [w] @ body)
+                               end
+                          else if looking_at Codepoints.unicode_u s
+                          then ERROR "unicode escape not yet implemented"
+                          else ERROR "expected escape sequence")
+                    else OK (s, string_of_token (acc @ body))
+        in
+	    consume_ascii q s ~>
+                          (fn s =>
+                              match' s [] ~>
+                                     (fn (s, str) =>
+                                         consume_ascii q s ~>
+                                                       (fn s => OK (s, str))))
+        end
 		     
     fun match_string_body s =
 	case match_quote s of

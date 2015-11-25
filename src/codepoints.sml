@@ -17,6 +17,10 @@ structure Codepoints = struct
     val exponent =
         with_name "exponent"
                   (from_string "eE")
+
+    val unicode_u =
+        with_name "character u"
+                  (from_string "uU")
                   
     val number_after_point =
         with_name "numeric character"
@@ -148,6 +152,24 @@ structure Codepoints = struct
     val string_escape =
 	with_name "character that can be escaped in string"
 		  (from_string "tbnrf\\\"'")
-			
+
+    structure CharMap = SplayMapFn (struct
+                                     type ord_key = Word.word
+                                     val compare = Word.compare
+                                     end)
+
+    val string_escape_map =
+        let val pairings = [
+                ( #"t", #"\t" ), ( #"b", #"\b" ), ( #"n", #"\n" ),
+                ( #"r", #"\r" ), ( #"f", #"\f" ), ( #"\\", #"\\" ),
+                ( #"\"", #"\"" ), ( #"'", #"'" ) ]
+            fun ascii f = Word.fromInt (Char.ord f)
+        in
+            List.foldl
+                (fn ((from, to), map) =>
+                    CharMap.insert (map, ascii from, ascii to))
+                CharMap.empty pairings
+        end
+		  
 end
                            
