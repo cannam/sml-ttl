@@ -52,8 +52,8 @@ structure TurtleParser :> TURTLE_PARSER = struct
         file_iri : token,
         base_iri : token,
         triples : triple list,
-        prefixes : token TokenMap.map, (* prefix -> expansion *)
-        bnodes : int TokenMap.map      (* token -> blank node id *)
+        prefixes : token TokenMap.map,      (* prefix -> expansion *)
+        blank_nodes : int TokenMap.map      (* token -> blank node id *)
     }
                      
     type source = Source.t
@@ -69,21 +69,21 @@ structure TurtleParser :> TURTLE_PARSER = struct
           base_iri = #base_iri d,
           triples = t :: #triples d,
           prefixes = #prefixes d,
-          bnodes = #bnodes d }
+          blank_nodes = #blank_nodes d }
                      
     fun add_prefix (d : parse_data) (p, e) =
         { file_iri = #file_iri d,
           base_iri = #base_iri d,
           triples = #triples d,
           prefixes = TokenMap.insert (#prefixes d, p, e),
-          bnodes = #bnodes d }
+          blank_nodes = #blank_nodes d }
                      
     fun add_bnode (d : parse_data) (b, id) =
         { file_iri = #file_iri d,
           base_iri = #base_iri d,
           triples = #triples d,
           prefixes = #prefixes d,
-          bnodes = TokenMap.insert (#bnodes d, b, id) }
+          blank_nodes = TokenMap.insert (#blank_nodes d, b, id) }
 
     fun emit_with_subject (d : parse_data, s, subject, polist) =
         OK (foldl (fn ((predicate, object), data) =>
@@ -118,6 +118,13 @@ structure TurtleParser :> TURTLE_PARSER = struct
 	    BLANK id
 	end
 				      
+    fun blank_node_for (d: parse_data, token) =
+	case TokenMap.find (#blank_nodes d, token) of
+	    SOME id => (d, BLANK id)
+	  | NONE =>
+	    case new_blank_node () of
+		BLANK id => (add_bnode d (token, id), BLANK id)
+
     open Source
 
     val contains = CodepointSet.contains
@@ -139,8 +146,8 @@ structure TurtleParser :> TURTLE_PARSER = struct
 	end
 						  
     fun mismatch_message cp found =
-        "expected " ^ (CodepointSet.name cp) ^ ", found '" ^
-        (Utf8Encode.encode_codepoint found) ^ "'"
+        "expected " ^ (CodepointSet.name cp) ^ ", found \"" ^
+        (Utf8Encode.encode_codepoint found) ^ "\""
 
     fun mismatch_message_ascii a found =
         "expected \"" ^ (Char.toString a) ^ "\", found \"" ^
@@ -479,7 +486,7 @@ structure TurtleParser :> TURTLE_PARSER = struct
                       base_iri = base,
                       triples = #triples data,
                       prefixes = #prefixes data,
-                      bnodes = #bnodes data
+                      blank_nodes = #blank_nodes data
                     }, s)
             end)
                 
@@ -516,10 +523,19 @@ structure TurtleParser :> TURTLE_PARSER = struct
 	  | SOME #"p" => parse_sparql_prefix (data, s)
 	  | other => ERROR "expected @prefix, @base, PREFIX, or BASE"
 	
-    and parse_blank_node (data, s) = ERROR "parse_blank_node not implemented yet"
     and parse_collection (data, s) = ERROR "parse_collection not implemented yet"
-    and parse_bnode_triples (data, s) = ERROR "parse_bnode_triples not implemented yet"
 
+    and parse_blank_node (data, s) =
+	consume_ascii #"_" s ~> consume_ascii #":" ~>
+            match_prefixed_name_candidate ~>
+            (fn (s, candidate) =>
+		(* !!! check that we match the blank node pattern. that is:
+                   one initial_bnode_char
+                   zero or more pname_char_or_dot
+                   if there were any of those, then finally one pname_char *)
+		case blank_node_for (data, candidate) of
+		    (data, node) => OK (data, s, node))
+	    
     and parse_prefixed_name (data, s) =
 	case match_prefixed_name_candidate s of
 	    ERROR e => ERROR e
@@ -552,8 +568,7 @@ structure TurtleParser :> TURTLE_PARSER = struct
 	    (fn s =>
 		case parse_predicate_object_list (data, s) of
                     ERROR e => ERROR e
-		  | OK (d, s, []) => ERROR "predicate missing"
-		  | OK (d, s, p) =>
+		  | OK (d, s, p) =>  (* p may legitimately be empty *)
 		    let val blank_node = new_blank_node () in
 			emit_with_subject (d, s, blank_node, p) ~>
 					  (fn (d, s) =>
@@ -651,7 +666,7 @@ structure TurtleParser :> TURTLE_PARSER = struct
 	  | SOME #"."  => parse_numeric_literal (data, s)
 	  | other => if CodepointSet.contains Codepoints.number (peek s)
 		     then parse_numeric_literal (data, s)
-		     else ERROR "object node expected"
+		     else (* not literal after all! *) ERROR "object node expected"
 					
     and parse_non_literal_object (data, s) =
 	case peek_ascii s of
@@ -715,7 +730,23 @@ structure TurtleParser :> TURTLE_PARSER = struct
 	    SOME #"_" => parse_blank_node (data, s)
 	  | SOME #"(" => parse_collection (data, s)
 	  | other => parse_iri (data, s)
-        
+
+    (* [6] triples ::= subject predicateObjectList |
+                       blankNodePropertyList predicateObjectList?
+
+       Handles the blankNodePropertyList part of that alternation *)
+    and parse_blank_node_triples (data, s) =
+	case parse_blank_node_property_list (data, s) of
+	    ERROR e => ERROR e
+	  | OK (d, s, blank_subject) =>
+	    case parse_predicate_object_list (d, s) of
+		ERROR e => ERROR e
+	      | OK (d, s, p) => emit_with_subject (d, s, blank_subject, p)
+
+    (* [6] triples ::= subject predicateObjectList |
+                       blankNodePropertyList predicateObjectList?
+ 
+       Handles the subject part of that alternation *)
     and parse_subject_triples (data, s) =
         case parse_subject_node (data, s) of
             ERROR e => ERROR e
@@ -727,7 +758,8 @@ structure TurtleParser :> TURTLE_PARSER = struct
               | OK (d, s, p) => emit_with_subject (d, s, subject_node, p)
                                         
     and parse_triples (data, s) =
-        if looking_at_ascii #"[" s then parse_bnode_triples (data, s)
+        if looking_at_ascii #"[" s
+	then parse_blank_node_triples (data, s)
         else parse_subject_triples (data, s)
                                         
     (* [2] statement ::= directive | triples '.' *)
@@ -759,7 +791,7 @@ structure TurtleParser :> TURTLE_PARSER = struct
 	in
 	    if next_bit = []
 	    then PARSE_ERROR message
-	    else PARSE_ERROR (message ^ " (at \"" ^
+	    else PARSE_ERROR (message ^ " (before \"" ^
 			      (string_of_token next_bit) ^ "...\")")
 	end
       | arrange_result s (OK (data, _)) =
@@ -776,7 +808,7 @@ structure TurtleParser :> TURTLE_PARSER = struct
                 base_iri = token_of_string (without_file iri),
                 triples = [],
                 prefixes = TokenMap.empty,
-                bnodes = TokenMap.empty
+                blank_nodes = TokenMap.empty
             }
         in
             arrange_result source (parse_document (data, source))

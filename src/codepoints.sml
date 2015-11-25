@@ -101,6 +101,13 @@ structure Codepoints = struct
 			from_string "."
 		    ])
 
+    val initial_bnode_char =
+        with_name "initial blank node character"
+	          (union [
+	                base_pname_char_uscore,
+	                from_ascii_range #"0" #"9"
+	          ])
+
     val iri_escaped =
         with_name "iri escaped character"
                   (union [
