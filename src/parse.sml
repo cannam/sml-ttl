@@ -352,6 +352,17 @@ structure TurtleParser :> TURTLE_PARSER = struct
                        passed through unmodified *)
                     (OK (_, a), OK (s, b)) => OK (s, [from_ascii #"%", a, b])
                   | other => ERROR "expected two-digit hex value")
+
+    fun unescape_unicode_escape s = (* !!! inconsistent name with match_percent_escape *)
+        let val n = case peek_ascii s of SOME #"u" => 4 | SOME #"U" => 8 | _ =>0
+            val _ = discard s
+            val u = read_n s n
+            val ustr = Utf8Encode.encode_string u
+        in
+            case Word.fromString ("0wx" ^ ustr) of
+                SOME w => (s, w)
+              | NONE => (s, 0wx0)
+        end
             
     fun match_iriref s =
         let fun match' s acc =
@@ -362,7 +373,15 @@ structure TurtleParser :> TURTLE_PARSER = struct
                             (case match_percent_escape s of
                                  ERROR e => ERROR e
                                | OK (s, pe) => match' s (acc @ token @ pe))
-                                (*!!! todo : backslash unicode escapes *)
+                          | SOME #"\\" =>
+                            (ignore (discard s);
+                             if looking_at Codepoints.unicode_u s
+                             then let val (s, w) = unescape_unicode_escape s
+                                  in if w = 0wx0
+                                     then ERROR "invalid Unicode escape"
+                                     else match' s (acc @ token @ [w])
+                                  end
+                             else ERROR "expected Unicode escape")
                           | other => OK (s, acc @ token))
         in
             consume_ascii #"<" s ~>
@@ -443,17 +462,6 @@ structure TurtleParser :> TURTLE_PARSER = struct
                 SOME w => (s, w)
               | NONE => (s, e)
         end
-
-    fun unescape_unicode_escape s =
-        let val n = case peek_ascii s of SOME #"u" => 4 | SOME #"U" => 8 | _ =>0
-            val _ = discard s
-            val u = read_n s n
-            val ustr = Utf8Encode.encode_string u
-        in
-            case Word.fromString ("0wx" ^ ustr) of
-                SOME w => (s, w)
-              | NONE => (s, 0wx0)
-        end
             
     fun match_short_string_body s q =
 	let val cp = if q = #"'"
@@ -467,13 +475,13 @@ structure TurtleParser :> TURTLE_PARSER = struct
                     then (ignore (discard s);
                           if looking_at Codepoints.string_escape s
                           then let val (s, w) = unescape_string_escape s
-                               in match' s (acc @ [w] @ body)
+                               in match' s (acc @ body @ [w])
                                end
                           else if looking_at Codepoints.unicode_u s
                           then let val (s, w) = unescape_unicode_escape s
                                in if w = 0wx0
                                   then ERROR "invalid Unicode escape"
-                                  else match' s (acc @ [w] @ body)
+                                  else match' s (acc @ body @ [w])
                                end
                           else ERROR "expected escape sequence")
                     else OK (s, string_of_token (acc @ body))
