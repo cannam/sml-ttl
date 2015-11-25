@@ -1,6 +1,10 @@
 #!/bin/bash
 
-set -eu
+set -e
+
+arg="$1"
+
+set -u
 
 mlton -profile count -profile-branch true tests.mlb
 ./tests >/dev/null
@@ -33,6 +37,27 @@ summarise_for() {
     fi
 }
 
-summarise_for "sml"
-find src -name \*.sml -print | sort | while read x; do summarise_for "$x" ; done
+if [ "$arg" = "" ]; then
+
+    summarise_for "sml"
+    find src -name \*.sml -print | sort |
+	while read x; do
+	    summarise_for "$x" ;
+	done
+
+else 
+
+    # A monumentally inefficient way to show the lines lacking
+    # coverage from a given source file
+    cat -n "$arg" |
+	sed 's/^ *//' |
+	while read x; do
+	    n=${x%%[^0-9]*}
+	    if grep -q "$arg $n no" "$tmpfile" ;
+	    then echo " ### $x";
+	    else echo "     $x";
+	    fi;
+	done | \
+	grep -C2 '^ ###'
+fi
 
