@@ -43,10 +43,10 @@ structure TurtleParser :> TURTLE_PARSER = struct
     val token_of_string = Utf8.explode o Utf8.fromString
     val string_of_token = Utf8Encode.encode_string
 
-    structure TokenMap = SplayMapFn (struct
-                                      type ord_key = token
-                                      val compare = List.collate Word.compare
-                                      end)
+    structure TokenMap = RedBlackMapFn (struct
+                                         type ord_key = token
+                                         val compare = List.collate Word.compare
+                                         end)
 
     type parse_data = {
         file_iri : token,

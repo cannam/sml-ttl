@@ -21,10 +21,10 @@ end
 			   
 structure CodepointSet :> CODEPOINT_SET = struct
 
-    structure CP = SplaySetFn (struct
-			        type ord_key = Word.word
-			        val compare = Word.compare
-			        end)
+    structure CP = RedBlackSetFn (struct
+			           type ord_key = Word.word
+			           val compare = Word.compare
+			           end)
 
     type t = CP.set * string
 	         

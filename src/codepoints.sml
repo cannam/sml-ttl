@@ -153,10 +153,10 @@ structure Codepoints = struct
 	with_name "character that can be escaped in string"
 		  (from_string "tbnrf\\\"'")
 
-    structure CharMap = SplayMapFn (struct
-                                     type ord_key = Word.word
-                                     val compare = Word.compare
-                                     end)
+    structure CharMap = RedBlackMapFn (struct
+                                        type ord_key = Word.word
+                                        val compare = Word.compare
+                                        end)
 
     val string_escape_map =
         let val pairings = [
