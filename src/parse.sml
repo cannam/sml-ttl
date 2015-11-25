@@ -275,7 +275,14 @@ structure TurtleParser :> TURTLE_PARSER = struct
     (* The match_* functions consume and return a token, or error *)
 
     (* what about non-empty matches? *)
-                      
+
+    fun match_one cp s =
+        let val c = read s in
+            if CodepointSet.contains cp c
+            then OK (s, c)
+            else ERROR (mismatch_message cp c)
+        end
+            
     fun match_greedy cp s =
         let fun match_greedy' acc =
                 if eof s then acc
@@ -321,20 +328,15 @@ structure TurtleParser :> TURTLE_PARSER = struct
 
     fun match_percent_escape s =
         consume_ascii #"%" s ~>
-                      (fn s =>
-                          (* eval order is defined for tuples in sml
-                             (but not ocaml) *)
-                          let val (a, b) = (read s, read s)
-                          in
-                              (* This is wrong! %-escapes should be
-                              converted to utf8 values and *then* to
-                              codepoints I think *)
-                              case Word.fromString
-                                       ("0wx" ^
-                                        (Utf8Encode.encode_string [a,b])) of
-                                  SOME w => OK (s, [w])
-                                | NONE => ERROR "expected two-digit hex value"
-                          end)
+            (fn s =>
+                (* eval order is defined for tuples in sml (but not ocaml) *)
+                case (match_one Codepoints.hex s,
+                      match_one Codepoints.hex s) of
+                    (* Percent escapes are *not* supposed to be
+                       evaluated in an IRI in Turtle -- they should be
+                       passed through unmodified *)
+                    (OK (_, a), OK (s, b)) => OK (s, [from_ascii #"%", a, b])
+                  | other => ERROR "expected two-digit hex value")
             
     fun match_iriref s =
         let fun match' s acc =
@@ -382,10 +384,13 @@ structure TurtleParser :> TURTLE_PARSER = struct
 
     datatype quote = NO_QUOTE | SHORT_STRING of char | LONG_STRING of char
 
+    fun have_three s =
+	case peek_n s 3 of [a,b,c] => a = b andalso b = c
+			 | anything_else => false
+
     fun match_quote s =
 	let fun short_or_long s q =
-		if case peek_n s 3 of [a,b,c] => a = b andalso b = c
-				    | anything_else => false
+		if have_three s
 		then LONG_STRING q
 		else SHORT_STRING q
 	in		
@@ -395,20 +400,42 @@ structure TurtleParser :> TURTLE_PARSER = struct
 	      | other => NO_QUOTE
 	end
 
-    fun match_long_string_body s q = ERROR "match_long_string_body not implemented"
+    fun match_long_string_body s q =
+        consume_ascii q s ~> consume_ascii q ~> consume_ascii q ~>
+        (fn s =>
+                      let val cp = if q = #"'"
+		         then Codepoints.string_single_excluded
+		         else Codepoints.string_double_excluded
+                fun match' s acc =
+                    case notmatch_greedy cp s of
+                        ERROR e => ERROR e
+                      | OK (s, body) => (*!!! handle escapes *)
+                        let val n = read s in
+                            if n = from_ascii q andalso peek_n s 2 = [n, n]
+                            then
+                                consume_ascii q s ~> consume_ascii q ~>
+                                              (fn s => OK (s, acc @ body))
+                            else
+                                match' s (acc @ body @ [n])
+                        end
+            in
+                match' s [] ~> (fn (s, body) => OK (s, string_of_token body))
+            end)
 
     fun match_short_string_body s q =
         (* it is known that the next char on s is the opening quote *)
-	let val _ = discard s
-	    val cp = if q = #"'"
-		     then Codepoints.string_single_excluded
-		     else Codepoints.string_double_excluded
-	in
-	    case notmatch_greedy cp s of
-		ERROR e => ERROR e
-	      | OK (s, body) => (* !!! handle escapes *)
-		(consume_ascii q s ~> (fn s => OK (s, string_of_token body)))
-	end			    
+        (*!!! no, should check that here as well *)
+	consume_ascii q s ~>
+        (fn s =>
+	    let val cp = if q = #"'"
+		         then Codepoints.string_single_excluded
+		         else Codepoints.string_double_excluded
+	    in
+	        case notmatch_greedy cp s of
+		    ERROR e => ERROR e
+	          | OK (s, body) => (* !!! handle escapes *)
+		    (consume_ascii q s ~> (fn s => OK (s, string_of_token body)))
+	    end)
 		     
     fun match_string_body s =
 	case match_quote s of
