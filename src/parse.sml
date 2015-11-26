@@ -41,7 +41,7 @@ structure TurtleParser :> TURTLE_PARSER = struct
     type token = word list
 
     val token_of_string = Utf8.explode o Utf8.fromString
-    val string_of_token = Utf8Encode.encode_string
+    val string_of_token = Utf8.toString o Utf8.implode
 
     structure TokenMap = RedBlackMapFn (struct
                                          type ord_key = token
@@ -148,11 +148,11 @@ structure TurtleParser :> TURTLE_PARSER = struct
 						  
     fun mismatch_message cp found =
         "expected " ^ (CodepointSet.name cp) ^ ", found \"" ^
-        (Utf8Encode.encode_codepoint found) ^ "\""
+        (string_of_token [found]) ^ "\""
 
     fun mismatch_message_ascii a found =
         "expected \"" ^ (Char.toString a) ^ "\", found \"" ^
-        (Utf8Encode.encode_codepoint found) ^ "\""
+        (string_of_token [found]) ^ "\""
 
     fun split_at (lst, elt) =
         let fun split' ([], acc) = NONE
@@ -357,7 +357,7 @@ structure TurtleParser :> TURTLE_PARSER = struct
         let val n = case peek_ascii s of SOME #"u" => 4 | SOME #"U" => 8 | _ =>0
             val _ = discard s
             val u = read_n s n
-            val ustr = Utf8Encode.encode_string u
+            val ustr = string_of_token u
         in
             case Word.fromString ("0wx" ^ ustr) of
                 SOME w => (s, w)

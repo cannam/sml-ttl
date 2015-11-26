@@ -1,5 +1,0 @@
-description: Utf8 processing support
-keywords: text, utf-8
-bug-url: https://github.com/melsman/unicode/issues
-maintainer: Martin Elsman <mael@di.ku.dk>
-license: MIT License
