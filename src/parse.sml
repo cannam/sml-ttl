@@ -139,12 +139,14 @@ structure TurtleParser :> TURTLE_PARSER = struct
     fun looking_at_ascii_string a s =
 	peek_n s (String.size a) = token_of_string a
 
-    fun peek_ascii s =
-	let val w = peek s in
-	    if w <= 0wx7f
-	    then SOME (Char.chr (Word.toInt w))
-	    else NONE
-	end
+    datatype turtle_significant_char = datatype Codepoints.turtle_significant_char
+                                                   
+    fun peek_ttl s =
+        let val w = peek s in
+            case Codepoints.CharMap.find (Codepoints.significant_char_map, w) of
+                SOME significant => significant
+              | NONE => P_NOTHING_INTERESTING
+        end
 						  
     fun mismatch_message cp found =
         "expected " ^ (CodepointSet.name cp) ^ ", found \"" ^
@@ -326,7 +328,7 @@ structure TurtleParser :> TURTLE_PARSER = struct
 		case notmatch_greedy Codepoints.pname_definitely_excluded s of
 		    ERROR e => ERROR e
 		  | OK (s, token) =>
-		    if looking_at_ascii #"." s
+		    if peek_ttl s = P_DOT
 		    then
                         case peek_n s 2 of
                             dot::next::[] =>
@@ -354,7 +356,10 @@ structure TurtleParser :> TURTLE_PARSER = struct
                   | other => ERROR "expected two-digit hex value")
 
     fun unescape_unicode_escape s = (* !!! inconsistent name with match_percent_escape *)
-        let val n = case peek_ascii s of SOME #"u" => 4 | SOME #"U" => 8 | _ =>0
+        let val n = case peek_ttl s of
+                        P_LC_U => 4
+                      | P_UC_U => 8
+                      | other => 0
             val _ = discard s
             val u = read_n s n
             val ustr = string_of_token u
@@ -368,12 +373,12 @@ structure TurtleParser :> TURTLE_PARSER = struct
         let fun match' s acc =
                 notmatch_greedy Codepoints.iri_escaped s ~>
                     (fn (s, token) =>
-                        case peek_ascii s of
-                            SOME #"%" =>
+                        case peek_ttl s of
+                            P_PERCENT =>
                             (case match_percent_escape s of
                                  ERROR e => ERROR e
                                | OK (s, pe) => match' s (acc @ token @ pe))
-                          | SOME #"\\" =>
+                          | P_BACKSLASH =>
                             (ignore (discard s);
                              if looking_at Codepoints.unicode_u s
                              then let val (s, w) = unescape_unicode_escape s
@@ -428,16 +433,16 @@ structure TurtleParser :> TURTLE_PARSER = struct
 		then LONG_STRING q
 		else SHORT_STRING q
 	in		
-	    case peek_ascii s of
-		SOME #"\"" => short_or_long s #"\""
-	      | SOME #"'"  => short_or_long s #"'"
+	    case peek_ttl s of
+		P_QUOTE_DOUBLE => short_or_long s #"\""
+	      | P_QUOTE_SINGLE => short_or_long s #"'"
 	      | other => NO_QUOTE
 	end
 
     fun match_long_string_body s q =
         consume_ascii q s ~> consume_ascii q ~> consume_ascii q ~>
         (fn s =>
-                      let val cp = if q = #"'"
+            let val cp = if q = #"'"
 		         then Codepoints.string_single_excluded
 		         else Codepoints.string_double_excluded
                 fun match' s acc =
@@ -471,7 +476,7 @@ structure TurtleParser :> TURTLE_PARSER = struct
 	        case notmatch_greedy cp s of
 		    ERROR e => ERROR e
 	          | OK (s, body) =>
-                    if looking_at_ascii #"\\" s
+                    if peek_ttl s = P_BACKSLASH
                     then (ignore (discard s);
                           if looking_at Codepoints.string_escape s
                           then let val (s, w) = unescape_string_escape s
@@ -506,8 +511,8 @@ structure TurtleParser :> TURTLE_PARSER = struct
                 case match_greedy Codepoints.alpha s of
                     ERROR e => []
                   | OK (s, token) =>
-                    case peek_ascii s of
-                        SOME #"-" => token @ [read s] @ (parse' s)
+                    case peek_ttl s of
+                        P_DASH => token @ [read s] @ (parse' s)
                       | other => token
         in
             consume_ascii #"@" s ~>
@@ -546,8 +551,8 @@ structure TurtleParser :> TURTLE_PARSER = struct
     and parse_sparql_prefix (data, s) = ERROR "parse_sparql_prefix not implemented yet"
 		     
     and parse_directive (data, s) =
-	case peek_ascii s of
-	    SOME #"@" =>
+	case peek_ttl s of
+	    P_AT =>
 	    (ignore (discard s) ;
 	     match_greedy Codepoints.alpha s ~>
 			  (fn (s, token) =>
@@ -560,10 +565,8 @@ structure TurtleParser :> TURTLE_PARSER = struct
 						 ERROR e => ERROR e
 					       | OK (data, s) => consume_punctuation #"." s ~> (fn s => OK (data, s)))
 				| other => ERROR ("expected \"prefix\" or \"base\" after @, not \"" ^ other ^ "\"")))
-	  | SOME #"B" => parse_sparql_prefix (data, s)
-	  | SOME #"b" => parse_sparql_prefix (data, s)
-	  | SOME #"P" => parse_sparql_prefix (data, s)
-	  | SOME #"p" => parse_sparql_prefix (data, s)
+	  | P_LETTER_B => parse_sparql_prefix (data, s)
+	  | P_LETTER_P => parse_sparql_prefix (data, s)
 	  | other => ERROR "expected @prefix, @base, PREFIX, or BASE"
 	
     and parse_collection (data, s) = ERROR "parse_collection not implemented yet"
@@ -594,7 +597,7 @@ structure TurtleParser :> TURTLE_PARSER = struct
 	match_iriref s ~> (fn (s, iri) => OK (data, s, IRI (resolve_iri (data, iri))))
             
     and parse_iri (data, s) = 
-        if looking_at_ascii #"<" s
+        if peek_ttl s = P_OPEN_ANGLE
         then parse_iriref (data, s)
         else parse_prefixed_name (data, s)
 
@@ -635,24 +638,24 @@ structure TurtleParser :> TURTLE_PARSER = struct
 	case match_string_body s of
 	    ERROR e => ERROR e
 	  | OK (s, body) =>
-            case peek_ascii s of
-                SOME #"@" => (case match_language_tag s of
-                                  ERROR e => ERROR e
-                                | OK tag =>
-                                  OK (data, s, LITERAL {
-                                          value = body,
-                                          lang = string_of_token tag,
-                                          dtype = ""
-                             }))
-              | SOME #"^" => (case parse_datatype (data, s) of
-                                  ERROR e => ERROR e
-                                | OK (data, s, IRI tag) =>
-                                  OK (data, s, LITERAL {
-                                          value = body,
-                                          lang = "",
-                                          dtype = tag
-                                     })
-                                | other => ERROR "internal error")
+            case peek_ttl s of
+                P_AT => (case match_language_tag s of
+                             ERROR e => ERROR e
+                           | OK tag =>
+                             OK (data, s, LITERAL {
+                                     value = body,
+                                     lang = string_of_token tag,
+                                     dtype = ""
+                        }))
+              | P_CARET => (case parse_datatype (data, s) of
+                                ERROR e => ERROR e
+                              | OK (data, s, IRI tag) =>
+                                OK (data, s, LITERAL {
+                                        value = body,
+                                        lang = "",
+                                        dtype = tag
+                                   })
+                              | other => ERROR "internal error")
               | other => OK (data, s, LITERAL {
 		                 value = body,
 		                 lang = "",
@@ -701,21 +704,21 @@ structure TurtleParser :> TURTLE_PARSER = struct
                  
     (* [13] literal ::= RDFLiteral | NumericLiteral | BooleanLiteral *)
     and parse_literal (data, s) =
-	case peek_ascii s of
-	    SOME #"'"  => parse_rdf_literal (data, s)
-	  | SOME #"\"" => parse_rdf_literal (data, s)
-	  | SOME #"t"  => parse_boolean_literal (data, s)
-	  | SOME #"f"  => parse_boolean_literal (data, s)
-	  | SOME #"."  => parse_numeric_literal (data, s)
+	case peek_ttl s of
+	    P_QUOTE_SINGLE => parse_rdf_literal (data, s)
+	  | P_QUOTE_DOUBLE => parse_rdf_literal (data, s)
+	  | P_LETTER_T => parse_boolean_literal (data, s)
+	  | P_LETTER_F => parse_boolean_literal (data, s)
+	  | P_DOT => parse_numeric_literal (data, s)
 	  | other => if CodepointSet.contains Codepoints.number (peek s)
 		     then parse_numeric_literal (data, s)
 		     else (* not literal after all! *) ERROR "object node expected"
 					
     and parse_non_literal_object (data, s) =
-	case peek_ascii s of
-	    SOME #"_" => parse_blank_node (data, s)
-	  | SOME #"(" => parse_collection (data, s)
-	  | SOME #"[" => parse_blank_node_property_list (data, s)
+	case peek_ttl s of
+	    P_UNDERSCORE => parse_blank_node (data, s)
+	  | P_OPEN_PAREN => parse_collection (data, s)
+	  | P_OPEN_SQUARE => parse_blank_node_property_list (data, s)
 	  | other => parse_iri (data, s)
                                
     and parse_object (data, s) =
@@ -724,7 +727,7 @@ structure TurtleParser :> TURTLE_PARSER = struct
         else parse_literal (data, s)
                                
     and parse_verb (data, s) =
-	if looking_at_ascii #"<" s then parse_iri (data, s)
+	if peek_ttl s = P_OPEN_ANGLE then parse_iri (data, s)
 	else parse_a_or_prefixed_name (data, s)
 					    
     (* [7] predicateObjectList ::= verb objectList (';' (verb objectList)?)*
@@ -769,9 +772,9 @@ structure TurtleParser :> TURTLE_PARSER = struct
           
     (* [10] subject ::= iri | blank *)
     and parse_subject_node (data, s) =
-	case peek_ascii s of
-	    SOME #"_" => parse_blank_node (data, s)
-	  | SOME #"(" => parse_collection (data, s)
+	case peek_ttl s of
+	    P_UNDERSCORE => parse_blank_node (data, s)
+	  | P_OPEN_PAREN => parse_collection (data, s)
 	  | other => parse_iri (data, s)
 
     (* [6] triples ::= subject predicateObjectList |
@@ -801,7 +804,7 @@ structure TurtleParser :> TURTLE_PARSER = struct
               | OK (d, s, p) => emit_with_subject (d, s, subject_node, p)
                                         
     and parse_triples (data, s) =
-        if looking_at_ascii #"[" s
+        if peek_ttl s = P_OPEN_SQUARE
 	then parse_blank_node_triples (data, s)
         else parse_subject_triples (data, s)
                                         
@@ -811,7 +814,7 @@ structure TurtleParser :> TURTLE_PARSER = struct
         (fn s =>
             if eof s then OK (data, s)
             else
-                if looking_at_ascii #"@" s
+                if peek_ttl s = P_AT
                 then parse_directive (data, s)
                 else parse_triples (data, s) ~>
                      (fn r => (consume_punctuation #"." s; OK r)))
