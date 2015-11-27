@@ -547,9 +547,24 @@ structure TurtleParser :> TURTLE_PARSER = struct
 			     ERROR e => ERROR e
 			   | OK (s, iri) => OK (add_prefix data (prefix, iri), s)))
 	
-    and parse_sparql_base (data, s) = ERROR "parse_sparql_base not implemented yet"
-    and parse_sparql_prefix (data, s) = ERROR "parse_sparql_prefix not implemented yet"
-		     
+    and parse_sparql_base (data, s) =
+        match_prefixed_name_candidate s ~>
+            (fn (s, token) =>
+                if token = token_of_string "base" orelse
+                   token = token_of_string "BASE" then
+                    parse_base (data, s)
+                else
+                    ERROR "expected \"BASE\"")
+	
+    and parse_sparql_prefix (data, s) =
+        match_prefixed_name_candidate s ~>
+            (fn (s, token) =>
+                if token = token_of_string "prefix" orelse
+                   token = token_of_string "PREFIX" then
+                    parse_prefix (data, s)
+                else
+                    ERROR "expected \"PREFIX\"")
+        
     and parse_directive (data, s) =
 	case peek_ttl s of
 	    P_AT =>
