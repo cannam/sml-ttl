@@ -172,46 +172,58 @@ structure Codepoints = struct
         end
 
     datatype turtle_significant_char =
-             P_UNDERSCORE |
-             P_OPEN_PAREN |
-             P_OPEN_SQUARE |
-             P_OPEN_ANGLE |
-             P_PERCENT |
-             P_BACKSLASH |
-             P_QUOTE_DOUBLE |
-             P_QUOTE_SINGLE |
-             P_DASH |
-             P_AT |
-             P_CARET |
-             P_DOT |
-             P_LC_U |      (* for Unicode escapes *)
-             P_UC_U |      (* for Unicode escapes *)
-             P_LETTER_B |  (* for SPARQL-style base *)
-             P_LETTER_P |  (* for SPARQL-style prefix *)
-             P_LETTER_T |  (* for true *)
-             P_LETTER_F |  (* for false *)
-             P_NOTHING_INTERESTING
+             C_UNDERSCORE |
+             C_OPEN_PAREN |
+             C_OPEN_SQUARE |
+             C_OPEN_ANGLE |
+             C_CLOSE_PAREN |
+             C_CLOSE_SQUARE |
+             C_CLOSE_ANGLE |
+             C_PERCENT |
+             C_BACKSLASH |
+             C_QUOTE_DOUBLE |
+             C_QUOTE_SINGLE |
+             C_DASH |
+             C_AT |
+             C_CARET |
+             C_DOT |
+             C_COMMA |
+             C_COLON |
+             C_SEMICOLON |
+             C_LC_U |      (* for Unicode escapes *)
+             C_UC_U |      (* for Unicode escapes *)
+             C_LETTER_B |  (* for SPARQL-style base *)
+             C_LETTER_P |  (* for SPARQL-style prefix *)
+             C_LETTER_T |  (* for true *)
+             C_LETTER_F |  (* for false *)
+             C_NOTHING_INTERESTING
 
     val significant_char_map =
         let val pairings = [
-             ( [ #"_"  ], P_UNDERSCORE ),
-             ( [ #"("  ], P_OPEN_PAREN ),
-             ( [ #"["  ], P_OPEN_SQUARE ),
-             ( [ #"<"  ], P_OPEN_ANGLE ),
-             ( [ #"%"  ], P_PERCENT ),
-             ( [ #"\\" ], P_BACKSLASH ),
-             ( [ #"\"" ], P_QUOTE_DOUBLE ),
-             ( [ #"'"  ], P_QUOTE_SINGLE ),
-             ( [ #"-"  ], P_DASH ),
-             ( [ #"@"  ], P_AT ),
-             ( [ #"^"  ], P_CARET ),
-             ( [ #"."  ], P_DOT ),
-             ( [ #"u"  ], P_LC_U ),
-             ( [ #"U"  ], P_UC_U ),
-             ( [ #"B", #"b" ], P_LETTER_B ),
-             ( [ #"P", #"p" ], P_LETTER_P ),
-             ( [ #"t"  ], P_LETTER_T ),  (* true and false are lower-case only *)
-             ( [ #"f"  ], P_LETTER_F )
+             ( [ #"_"  ], C_UNDERSCORE ),
+             ( [ #"("  ], C_OPEN_PAREN ),
+             ( [ #"["  ], C_OPEN_SQUARE ),
+             ( [ #"<"  ], C_OPEN_ANGLE ),
+             ( [ #")"  ], C_CLOSE_PAREN ),
+             ( [ #"]"  ], C_CLOSE_SQUARE ),
+             ( [ #">"  ], C_CLOSE_ANGLE ),
+             ( [ #"%"  ], C_PERCENT ),
+             ( [ #"\\" ], C_BACKSLASH ),
+             ( [ #"\"" ], C_QUOTE_DOUBLE ),
+             ( [ #"'"  ], C_QUOTE_SINGLE ),
+             ( [ #"-"  ], C_DASH ),
+             ( [ #"@"  ], C_AT ),
+             ( [ #"^"  ], C_CARET ),
+             ( [ #"."  ], C_DOT ),
+             ( [ #","  ], C_COMMA ),
+             ( [ #":"  ], C_COLON ),
+             ( [ #";"  ], C_SEMICOLON ),
+             ( [ #"u"  ], C_LC_U ),
+             ( [ #"U"  ], C_UC_U ),
+             ( [ #"B", #"b" ], C_LETTER_B ),
+             ( [ #"P", #"p" ], C_LETTER_P ),
+             ( [ #"t"  ], C_LETTER_T ),  (* true and false are lower-case only *)
+             ( [ #"f"  ], C_LETTER_F )
             ]
             fun ascii f = Word.fromInt (Char.ord f)
         in
