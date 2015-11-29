@@ -14,22 +14,22 @@ type prefix = string * string
 
 signature TURTLE_PARSER = sig
 
-    datatype result =
+    datatype parsed =
              PARSE_ERROR of string |
              PARSED of {
                  prefixes : prefix list,
                  triples : triple list
              }
 
-    val parse_string : string -> string -> result
-    val parse_stream : string -> TextIO.instream -> result
-    val parse_file : string -> string -> result
+    val parse_string : string -> string -> parsed
+    val parse_stream : string -> TextIO.instream -> parsed
+    val parse_file : string -> string -> parsed
 
 end
 
 structure TurtleParser :> TURTLE_PARSER = struct
 
-    datatype result =
+    datatype parsed =
              PARSE_ERROR of string |
              PARSED of {
                  prefixes : prefix list,
@@ -57,14 +57,18 @@ structure TurtleParser :> TURTLE_PARSER = struct
         prefixes : token TokenMap.map,      (* prefix -> expansion *)
         blank_nodes : int TokenMap.map      (* token -> blank node id *)
     }
-                     
+
+    (* todo: subsume source into parse_data ? *)
+                          
     type source = Source.t
 
-    type parse_state = parse_data * source * token
+    type match_state = parse_data * source * token
+    type parse_state = parse_data * source * node option
                       
-    datatype 'a parse = ERROR of string | OK of 'a
+    datatype 'a result = ERROR of string | OK of 'a
 
-    type parse_result = parse_state parse
+    type match_result = match_state result
+    type parse_result = parse_state result
 
     fun from_ascii a = Word.fromInt (Char.ord a)
 
@@ -232,8 +236,8 @@ structure TurtleParser :> TURTLE_PARSER = struct
 
      require -> reads 1 or more of something, throws it away, fails if not present
 
-     match -> reads something, returns it in token part of parse_state tuple, 
-              fails if not matched
+     match -> reads something, appends it to token part of parse_state
+              tuple, fails if not matched
 
      parse -> reads something, possibly stashes it in parse_data, fails if not
               matched
@@ -296,16 +300,17 @@ structure TurtleParser :> TURTLE_PARSER = struct
 	else ERROR "whitespace expected"
 		
     fun require_punctuation c s =
-        composePartial (require_ttl c, discard_whitespace) s
+        sequence [ discard_whitespace, require_ttl c ] s
 
-    fun match cps (s as (d, source, tok)) : parse_result =
+    fun match cps (s as (d, source, tok)) : match_result =
         let val c = read s in
             if CodepointSet.contains cps c
             then OK (d, source, tok @ [c])
             else ERROR (mismatch_message cps c)
         end
-            
-    fun match_token cps (s as (d, source, tok)) : parse_result =
+
+    (* May return an empty token *)
+    fun match_token cps (s as (d, source, tok)) : match_result =
         let fun match' acc =
                 if eof s then acc
                 else
@@ -316,7 +321,8 @@ structure TurtleParser :> TURTLE_PARSER = struct
             OK (d, source, rev (match' (rev tok)))
         end
 
-    fun match_token_excl cps (s as (d, source, tok)) : parse_result =
+    (* May return an empty token *)
+    fun match_token_excl cps (s as (d, source, tok)) : match_result =
         let fun match' acc =
                 if eof s orelse CodepointSet.contains cps (peek s)
                 then acc
@@ -328,7 +334,7 @@ structure TurtleParser :> TURTLE_PARSER = struct
     (* Read something structured like a prefixed name. The caller is
        expected to test whether the result is properly formed depending
        on context. *)
-    fun match_prefixed_name_candidate s : parse_result =
+    fun match_prefixed_name_candidate s : match_result =
 	let fun match' s acc =
 		case match_token_excl Codepoints.pname_definitely_excluded s of
 		    ERROR e => ERROR e
@@ -348,7 +354,7 @@ structure TurtleParser :> TURTLE_PARSER = struct
 	    match' s []
 	end
 
-    fun match_percent_escape s : parse_result =
+    fun match_percent_escape s : match_result =
         (* Percent escapes are *not* supposed to be evaluated in an
            IRI -- they should be passed through unmodified *)
         sequence [ require_ttl C_PERCENT,
@@ -369,7 +375,7 @@ structure TurtleParser :> TURTLE_PARSER = struct
               | NONE => (s, 0wx0)
         end
             
-    fun match_iriref s : parse_result =
+    fun match_iriref s : match_result =
         let fun match' s =
                 case match_token_excl Codepoints.iri_escaped s of
                     ERROR e => ERROR e
@@ -395,7 +401,7 @@ structure TurtleParser :> TURTLE_PARSER = struct
                        require_ttl C_CLOSE_ANGLE ] s
         end
 
-    fun match_prefixed_name_namespace s : parse_result =
+    fun match_prefixed_name_namespace s : match_result =
 	case match_prefixed_name_candidate s of
 	    ERROR e => ERROR e
 	  | OK (d, source, []) => ERROR "malformed prefix"
@@ -445,7 +451,7 @@ structure TurtleParser :> TURTLE_PARSER = struct
 	then Codepoints.string_single_excluded
 	else Codepoints.string_double_excluded
                      
-    fun match_long_string_body s q : parse_result =
+    fun match_long_string_body s q : match_result =
         let fun match' s =
                 case match_token_excl (quote_codepoint q) s of
                     ERROR e => ERROR e
@@ -467,7 +473,7 @@ structure TurtleParser :> TURTLE_PARSER = struct
               | NONE => (s, e)
         end
             
-    fun match_short_string_body s q : parse_result =
+    fun match_short_string_body s q : match_result =
 	let fun match' s =
                 case match_token_excl (quote_codepoint q) s of
 		    ERROR e => ERROR e
@@ -494,92 +500,103 @@ structure TurtleParser :> TURTLE_PARSER = struct
             ] s
         end
 		     
-    fun match_string_body s =
+    fun match_string_body s : match_result =
 	case match_quote s of
 	    NO_QUOTE => ERROR "expected quotation mark"
 	  | SHORT_STRING q => match_short_string_body s q
 	  | LONG_STRING q => match_long_string_body s q
 
-    fun match_language_tag s =
-        (*!!! this is a "match_" but datatype has to be a "parse_", why? *)
-        let fun parse' s =
-                case match_greedy Codepoints.alpha s of
-                    ERROR e => []
-                  | OK (s, token) =>
+    fun match_language_tag s : match_result =
+        let fun match' s =
+                case match_token Codepoints.alpha s of
+                    ERROR e => ERROR e
+                  | OK (s as (d, source, token)) =>
                     case peek_ttl s of
-                        C_DASH => token @ [read s] @ (parse' s)
-                      | other => token
+                        C_DASH => match' (d, source, token @ [read s])
+                      | other => OK s
         in
-            consume_ascii #"@" s ~>
-                (fn s => case parse' s of
-                             [] => ERROR "non-empty language tag expected"
-                           | tag => OK tag)
+            sequence [
+                require_ttl C_AT,
+                match',
+                fn (d, source, []) => ERROR "non-empty language tag expected"
+                  | s => OK s
+            ] s
         end
             
     (* The parse_* functions take parser data as well as source, and 
        return both, as well as the parsed node or whatever (or error) *)
 
-    fun parse_base (data, s) = 
-	consume_required_whitespace s ~>
-        match_iriref ~>
-	(fn (s, token) =>
-            let val base = token_of_string (resolve_iri (data, token))
+    fun parse_base (d, source) : parse_result =
+        case sequence [
+	        require_whitespace,
+                match_iriref
+            ] (d, source, []) of
+            ERROR e => ERROR e
+          | OK (s as (d, source, token)) => 
+            let val base = token_of_string (resolve_iri (d, token))
             in
                 OK ({ file_iri = base,
                       base_iri = base,
-                      triples = #triples data,
-                      prefixes = #prefixes data,
-                      blank_nodes = #blank_nodes data
-                    }, s)
-            end)
-                
-    and parse_prefix (data, s) =
-	consume_required_whitespace s ~>
-        match_prefixed_name_namespace ~>
-	(fn (s, prefix) =>
-	    consume_required_whitespace s ~>
-                (fn s => case match_iriref s of
-			     ERROR e => ERROR e
-			   | OK (s, iri) => OK (add_prefix data (prefix, iri), s)))
+                      triples = #triples d,
+                      prefixes = #prefixes d,
+                      blank_nodes = #blank_nodes d
+                    }, source, NONE)
+            end
+                 
+    and parse_prefix (d, source) : parse_result =
+        case sequence [
+	        require_whitespace,
+                match_prefixed_name_namespace,
+                require_whitespace
+            ] (d, source, []) of
+            ERROR e => ERROR e
+          | OK (d, source, prefix) =>
+            case match_iriref (d, source, []) of
+                ERROR e => ERROR e
+              | OK (d, source, iri) =>
+	        OK (add_prefix d (prefix, iri), source, NONE)
 	
-    and parse_sparql_base (data, s) =
-        match_prefixed_name_candidate s ~>
-            (fn (s, token) =>
-                if token = token_of_string "base" orelse
-                   token = token_of_string "BASE" then
-                    parse_base (data, s)
-                else
-                    ERROR "expected \"BASE\"")
+    and parse_sparql_base (d, source) : parse_result =
+        case match_prefixed_name_candidate (d, source, []) of
+            ERROR e => ERROR e
+          | OK (d, source, token) =>
+            if token = token_of_string "base" orelse
+               token = token_of_string "BASE" then
+                parse_base (d, source)
+            else
+                ERROR "expected \"BASE\""
 	
-    and parse_sparql_prefix (data, s) =
-        match_prefixed_name_candidate s ~>
-            (fn (s, token) =>
-                if token = token_of_string "prefix" orelse
-                   token = token_of_string "PREFIX" then
-                    parse_prefix (data, s)
-                else
-                    ERROR "expected \"PREFIX\"")
+    and parse_sparql_prefix (d, source) : parse_result =
+        case match_prefixed_name_candidate (d, source, []) of
+            ERROR e => ERROR e
+         | OK (d, source, token) => 
+           if token = token_of_string "prefix" orelse
+              token = token_of_string "PREFIX" then
+               parse_prefix (d, source)
+           else
+               ERROR "expected \"PREFIX\""
         
-    and parse_directive (data, s) =
-	case peek_ttl s of
-	    C_AT =>
-	    (ignore (discard s) ;
-	     match_greedy Codepoints.alpha s ~>
-			  (fn (s, token) =>
-			      (* !!! v ugly *)
-			      case string_of_token token of
-				  "prefix" => (case parse_prefix (data, s) of
-						  ERROR e => ERROR e
-						| OK (data, s) => consume_punctuation #"." s ~> (fn s => OK (data, s)))
-				| "base" => (case parse_base (data, s) of
-						 ERROR e => ERROR e
-					       | OK (data, s) => consume_punctuation #"." s ~> (fn s => OK (data, s)))
-				| other => ERROR ("expected \"prefix\" or \"base\" after @, not \"" ^ other ^ "\"")))
-	  | C_LETTER_B => parse_sparql_prefix (data, s)
-	  | C_LETTER_P => parse_sparql_prefix (data, s)
-	  | other => ERROR "expected @prefix, @base, PREFIX, or BASE"
-	
-    and parse_collection (data, s) = ERROR "parse_collection not implemented yet"
+    and parse_directive (d, source) : parse_result =
+        let val s = (d, source, []) in
+	    case peek_ttl s of
+	        C_LETTER_B => parse_sparql_prefix (d, source)
+	      | C_LETTER_P => parse_sparql_prefix (d, source)
+	      | C_AT =>
+                (case sequence [
+                         require_ttl C_AT,
+                         match_token Codepoints.alpha,
+                         require_punctuation C_DOT
+                     ] s of
+                     ERROR e => ERROR e
+                   | OK (d, source, token) => 
+                     case string_of_token token of
+                         "prefix" => parse_prefix (d, source)
+                       | "base" => parse_base (d, source)
+		       | other => ERROR ("expected \"prefix\" or \"base\" after @, not \"" ^ other ^ "\""))
+	      | other => ERROR "expected @prefix, @base, PREFIX, or BASE"
+        end
+	                   
+    and parse_collection (d, source) : parse_result = ERROR "parse_collection not implemented yet"
 
     and parse_blank_node (data, s) =
 	consume_ascii #"_" s ~> consume_ascii #":" ~>
