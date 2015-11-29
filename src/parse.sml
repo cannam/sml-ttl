@@ -104,7 +104,12 @@ structure TurtleParser :> TURTLE_PARSER = struct
                OK result => g result
              | ERROR e => ERROR e
 
-    fun sequence funcs s = foldr composePartial s funcs
+    fun sequence [] = (fn x => OK x)
+      | sequence funcs =
+        (* e.g. [ f, g, h ] -> composePartial (h, composePartial (g, f)) *)
+        let val rf = rev funcs
+        in foldl composePartial (hd rf) (tl rf)
+        end
                                 
     fun new_boolean_literal b =
         LITERAL {
@@ -293,14 +298,14 @@ structure TurtleParser :> TURTLE_PARSER = struct
     fun require_punctuation c s =
         composePartial (require_ttl c, discard_whitespace) s
 
-    fun match cps (s as (d, source, tok)) =
+    fun match cps (s as (d, source, tok)) : parse_result =
         let val c = read s in
             if CodepointSet.contains cps c
             then OK (d, source, tok @ [c])
             else ERROR (mismatch_message cps c)
         end
             
-    fun match_token cps (s as (d, source, tok)) =
+    fun match_token cps (s as (d, source, tok)) : parse_result =
         let fun match' acc =
                 if eof s then acc
                 else
@@ -311,7 +316,7 @@ structure TurtleParser :> TURTLE_PARSER = struct
             OK (d, source, rev (match' (rev tok)))
         end
 
-    fun match_token_excluding cps (s as (d, source, tok)) =
+    fun match_token_excl cps (s as (d, source, tok)) : parse_result =
         let fun match' acc =
                 if eof s orelse CodepointSet.contains cps (peek s)
                 then acc
@@ -323,9 +328,9 @@ structure TurtleParser :> TURTLE_PARSER = struct
     (* Read something structured like a prefixed name. The caller is
        expected to test whether the result is properly formed depending
        on context. *)
-    fun match_prefixed_name_candidate s =
+    fun match_prefixed_name_candidate s : parse_result =
 	let fun match' s acc =
-		case match_token_excluding Codepoints.pname_definitely_excluded s of
+		case match_token_excl Codepoints.pname_definitely_excluded s of
 		    ERROR e => ERROR e
 		  | OK (s as (d, source, token)) =>
 		    if peek_ttl s = C_DOT
@@ -343,7 +348,7 @@ structure TurtleParser :> TURTLE_PARSER = struct
 	    match' s []
 	end
 
-    fun match_percent_escape s =
+    fun match_percent_escape s : parse_result =
         (* Percent escapes are *not* supposed to be evaluated in an
            IRI -- they should be passed through unmodified *)
         sequence [ require_ttl C_PERCENT,
@@ -364,40 +369,40 @@ structure TurtleParser :> TURTLE_PARSER = struct
               | NONE => (s, 0wx0)
         end
             
-    fun match_iriref s =
-        let fun match' acc s =
-                sequence [
-                    match_token_excluding Codepoints.iri_escaped,
-                    fn (s as (d, source, token)) =>
-                       case peek_ttl s of
-                           C_PERCENT =>
-                           (case match_percent_escape s of
-                                 ERROR e => ERROR e
-                               | OK (d, s, pe) => match' (acc @ token @ pe) s)
-                         | C_BACKSLASH =>
-                           (discard s;
-                            if looking_at Codepoints.unicode_u s
-                            then let val (s, w) = unescape_unicode_escape s
-                                 in if w = 0wx0
-                                    then ERROR "invalid Unicode escape"
-                                    else match' (acc @ token @ [w]) s
-                                 end
-                            else ERROR "expected Unicode escape")
-                         | other => OK (s, acc @ token) ]
+    fun match_iriref s : parse_result =
+        let fun match' s =
+                case match_token_excl Codepoints.iri_escaped s of
+                    ERROR e => ERROR e
+                  | OK (s as (d, source, token)) => 
+                    case peek_ttl s of
+                        C_PERCENT =>
+                        (case match_percent_escape s of
+                             ERROR e => ERROR e
+                           | OK (d, source, pe) => match' (d, source, token @ pe))
+                      | C_BACKSLASH =>
+                        (discard s;
+                         if looking_at Codepoints.unicode_u s
+                         then let val (s, w) = unescape_unicode_escape s
+                              in if w = 0wx0
+                                 then ERROR "invalid Unicode escape"
+                                 else match' (d, source, token @ [w])
+                              end
+                         else ERROR "expected Unicode escape")
+                      | other => OK (d, source, token)
         in
             sequence [ require_ttl C_OPEN_ANGLE,
-                       match' [],
-                       require_ttl C_CLOSE_ANGLE ] 
+                       match',
+                       require_ttl C_CLOSE_ANGLE ] s
         end
 
-    fun match_prefixed_name_namespace s =
+    fun match_prefixed_name_namespace s : parse_result =
 	case match_prefixed_name_candidate s of
 	    ERROR e => ERROR e
-	  | OK (s, []) => ERROR "malformed prefix"
-	  | OK (s, [w]) => if w = from_ascii #":"
-			   then OK (s, [])
-			   else ERROR "expected \":\" at end of prefix"
-	  | OK (s, all) => 
+	  | OK (d, source, []) => ERROR "malformed prefix"
+	  | OK (d, source, [w]) => if w = from_ascii #":"
+			           then OK (d, source, [])
+			           else ERROR "expected \":\" at end of prefix"
+	  | OK (d, source, all) => 
 	    let val first = hd all
 		val r = rev all
 		val colon = hd r
@@ -410,15 +415,17 @@ structure TurtleParser :> TURTLE_PARSER = struct
 		       andalso List.all (CodepointSet.contains
 					     Codepoints.pname_char_or_dot) token
 		       andalso CodepointSet.contains Codepoints.pname_char last
-		    then OK (s, token)
+		    then OK (d, source, token)
 		    else ERROR ("malformed prefix \"" ^ (string_of_token token) ^ "\"")
 		else ERROR "expected \":\" at end of prefix"
 	    end
 
-    datatype quote = NO_QUOTE | SHORT_STRING of char | LONG_STRING of char
+    datatype quote = NO_QUOTE |
+                     SHORT_STRING of Codepoints.turtle_significant_char |
+                     LONG_STRING of Codepoints.turtle_significant_char
 
     fun have_three s =
-	case peek_n s 3 of [a,b,c] => a = b andalso b = c
+	case peek_n 3 s of [a,b,c] => a = b andalso b = c
 			 | anything_else => false
 
     fun match_quote s =
@@ -428,33 +435,31 @@ structure TurtleParser :> TURTLE_PARSER = struct
 		else SHORT_STRING q
 	in		
 	    case peek_ttl s of
-		C_QUOTE_DOUBLE => short_or_long s #"\""
-	      | C_QUOTE_SINGLE => short_or_long s #"'"
+		C_QUOTE_DOUBLE => short_or_long s C_QUOTE_DOUBLE
+	      | C_QUOTE_SINGLE => short_or_long s C_QUOTE_SINGLE
 	      | other => NO_QUOTE
 	end
 
-    fun match_long_string_body s q =
-        consume_ascii q s ~> consume_ascii q ~> consume_ascii q ~>
-        (fn s =>
-            let val cp = if q = #"'"
-		         then Codepoints.string_single_excluded
-		         else Codepoints.string_double_excluded
-                fun match' s acc =
-                    case notmatch_greedy cp s of
-                        ERROR e => ERROR e
-                      | OK (s, body) => (*!!! handle escapes *)
-                        let val n = read s in
-                            if n = from_ascii q andalso peek_n s 2 = [n, n]
-                            then
-                                consume_ascii q s ~> consume_ascii q ~>
-                                              (fn s => OK (s, acc @ body))
-                            else
-                                match' s (acc @ body @ [n])
-                        end
-            in
-                match' s [] ~> (fn (s, body) => OK (s, string_of_token body))
-            end)
-
+    fun quote_codepoint q =
+        if q = C_QUOTE_SINGLE
+	then Codepoints.string_single_excluded
+	else Codepoints.string_double_excluded
+                     
+    fun match_long_string_body s q : parse_result =
+        let fun match' s =
+                case match_token_excl (quote_codepoint q) s of
+                    ERROR e => ERROR e
+                  | OK s => (*!!! todo: handle escapes *)
+                    if have_three s then OK s
+                    else match' s
+        in
+            sequence [
+                require_ttl q, require_ttl q, require_ttl q,
+                match',
+                require_ttl q, require_ttl q, require_ttl q
+            ] s
+        end
+                 
     fun unescape_string_escape s =
         let val e = read s in
             case Codepoints.CharMap.find (Codepoints.string_escape_map, e) of
@@ -462,35 +467,31 @@ structure TurtleParser :> TURTLE_PARSER = struct
               | NONE => (s, e)
         end
             
-    fun match_short_string_body s q =
-	let val cp = if q = #"'"
-		     then Codepoints.string_single_excluded
-		     else Codepoints.string_double_excluded
-            fun match' s acc =
-	        case notmatch_greedy cp s of
+    fun match_short_string_body s q : parse_result =
+	let fun match' s =
+                case match_token_excl (quote_codepoint q) s of
 		    ERROR e => ERROR e
-	          | OK (s, body) =>
+	          | OK (s as (d, source, body)) =>
                     if peek_ttl s = C_BACKSLASH
-                    then (ignore (discard s);
+                    then (discard s;
                           if looking_at Codepoints.string_escape s
                           then let val (s, w) = unescape_string_escape s
-                               in match' s (acc @ body @ [w])
+                               in match' (d, source, body @ [w])
                                end
                           else if looking_at Codepoints.unicode_u s
                           then let val (s, w) = unescape_unicode_escape s
                                in if w = 0wx0
                                   then ERROR "invalid Unicode escape"
-                                  else match' s (acc @ body @ [w])
+                                  else match' (d, source, body @ [w])
                                end
                           else ERROR "expected escape sequence")
-                    else OK (s, string_of_token (acc @ body))
+                    else OK s
         in
-	    consume_ascii q s ~>
-                          (fn s =>
-                              match' s [] ~>
-                                     (fn (s, str) =>
-                                         consume_ascii q s ~>
-                                                       (fn s => OK (s, str))))
+            sequence [
+                require_ttl q,
+                match',
+                require_ttl q
+            ] s
         end
 		     
     fun match_string_body s =
