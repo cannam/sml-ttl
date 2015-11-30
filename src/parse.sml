@@ -660,16 +660,20 @@ structure TurtleParser :> TURTLE_PARSER = struct
 		end
 
     (* [133s] BooleanLiteral ::= 'true' | 'false' *)
-    and parse_boolean_literal (data, s) =
-	if looking_at_ascii_string "true" s
-	then OK (data, s, new_boolean_literal true)
-	else if looking_at_ascii_string "false" s
-	then OK (data, s, new_boolean_literal false)
+    and parse_boolean_literal (d, source) : parse_result =
+	if looking_at_token true_token (d, source, [])
+	then OK (d, source, SOME (new_boolean_literal true))
+	else if looking_at_token false_token (d, source, [])
+	then OK (d, source, SOME (new_boolean_literal false))
 	else ERROR "expected \"true\" or \"false\""
 
-    and parse_datatype (data, s) =
-        consume_ascii #"^" s ~> consume_ascii #"^" ~>
-                      (fn s => parse_iri (data, s))
+    and parse_datatype (d, source) : parse_result =
+	case sequence [
+		require_ttl C_CARET,
+		require_ttl C_CARET
+	    ] (d, source, []) of
+	    ERROR e => ERROR e
+	  | OK (d, source, _) => parse_iri (d, source)
                    
     and parse_rdf_literal (data, s) =
 	case match_string_body s of
