@@ -675,107 +675,110 @@ structure TurtleParser :> TURTLE_PARSER = struct
 	    ERROR e => ERROR e
 	  | OK (d, source, _) => parse_iri (d, source)
                    
-    and parse_rdf_literal (data, s) =
-	case match_string_body s of
+    and parse_rdf_literal (d, source) : parse_result =
+	case match_string_body (d, source, []) of
 	    ERROR e => ERROR e
-	  | OK (s, body) =>
-            case peek_ttl s of
-                C_AT => (case match_language_tag s of
+	  | OK (d, source, body) =>
+            case peek_ttl (d, source, []) of
+                C_AT => (case match_language_tag (d, source, []) of
                              ERROR e => ERROR e
-                           | OK tag =>
-                             OK (data, s, LITERAL {
-                                     value = body,
-                                     lang = string_of_token tag,
-                                     dtype = ""
-                        }))
-              | C_CARET => (case parse_datatype (data, s) of
+                           | OK (d, source, tag) =>
+                             OK (d, source, SOME (LITERAL {
+						       value = string_of_token body,
+						       lang = string_of_token tag,
+						       dtype = ""
+						   })))
+              | C_CARET => (case parse_datatype (d, source) of
                                 ERROR e => ERROR e
-                              | OK (data, s, IRI tag) =>
-                                OK (data, s, LITERAL {
-                                        value = body,
-                                        lang = "",
-                                        dtype = tag
-                                   })
+                              | OK (d, source, SOME (IRI tag)) =>
+                                OK (d, source, SOME (LITERAL {
+							  value = string_of_token body,
+							  lang = "",
+							  dtype = tag
+						      }))
                               | other => ERROR "internal error")
-              | other => OK (data, s, LITERAL {
-		                 value = body,
-		                 lang = "",
-		                 dtype = ""
-		            })
+              | other => OK (d, source, SOME (LITERAL {
+						   value = string_of_token body,
+						   lang = "",
+						   dtype = ""
+					       }))
 	
-    and parse_numeric_literal (data, s) =
+    and parse_numeric_literal (d, source) =
         let val point = from_ascii #"."
+
             val candidate =
-                case match_greedy Codepoints.number s of
+                case match_token Codepoints.number (d, source, []) of
                     ERROR e => []
-                  | OK (s, n0) =>
-                    case peek_n s 2 of
+                  | OK (s as (d, source, n0)) =>
+                    case peek_n 2 s of
                         [a,b] => if a = point andalso
                                     CodepointSet.contains
                                         Codepoints.number_after_point b
                                  then
-                                     case match_greedy Codepoints.number
-                                                       (discard s) of
-                                         OK (s, n1) => (n0 @ [point] @ n1)
-                                       | ERROR e => []
+				     (discard s;
+                                      case match_token Codepoints.number s of
+                                          OK (d, source, n1) => (n0 @ [point] @ n1)
+					| ERROR e => [])
                                  else n0
                       | _ => n0
+
 	    val candidate_str = string_of_token candidate
+
 	    val contains_e =
-		(List.find (CodepointSet.contains Codepoints.exponent) candidate)
-		<> NONE
+		isSome (List.find
+			    (CodepointSet.contains Codepoints.exponent) candidate)
 	    val contains_dot =
-		(List.find (fn c => c = from_ascii #".") candidate) <> NONE
+		isSome (List.find (fn c => c = from_ascii #".") candidate)
+
+	    val dtype = if contains_e then RdfTypes.iri_type_double
+			else if contains_dot then RdfTypes.iri_type_decimal
+			else RdfTypes.iri_type_integer
         in
 	    (* spec says we store the literal as it appears in the
                file, don't canonicalise: we only convert it to check
                that it really is a number *)
 	    case Real.fromString candidate_str of
-		SOME i => OK (data, s, LITERAL {
-				  value = candidate_str,
-				  lang = "",
-				  dtype = if contains_e
-					  then RdfTypes.iri_type_double
-					  else if contains_dot
-					  then RdfTypes.iri_type_decimal
-					  else RdfTypes.iri_type_integer
-			      })
+		SOME i => OK (d, source, SOME (LITERAL {
+						    value = candidate_str,
+						    lang = "",
+						    dtype = dtype
+						}))
 	      | NONE => ERROR "numeric literal expected"
         end
-                 
+            
     (* [13] literal ::= RDFLiteral | NumericLiteral | BooleanLiteral *)
-    and parse_literal (data, s) =
-	case peek_ttl s of
-	    C_QUOTE_SINGLE => parse_rdf_literal (data, s)
-	  | C_QUOTE_DOUBLE => parse_rdf_literal (data, s)
-	  | C_LETTER_T => parse_boolean_literal (data, s)
-	  | C_LETTER_F => parse_boolean_literal (data, s)
-	  | C_DOT => parse_numeric_literal (data, s)
-	  | other => if CodepointSet.contains Codepoints.number (peek s)
-		     then parse_numeric_literal (data, s)
+    and parse_literal (d, source) =
+	case peek_ttl (d, source, []) of
+	    C_QUOTE_SINGLE => parse_rdf_literal (d, source)
+	  | C_QUOTE_DOUBLE => parse_rdf_literal (d, source)
+	  | C_LETTER_T => parse_boolean_literal (d, source)
+	  | C_LETTER_F => parse_boolean_literal (d, source)
+	  | C_DOT => parse_numeric_literal (d, source)
+	  | other => if CodepointSet.contains Codepoints.number (peek (d, source, []))
+		     then parse_numeric_literal (d, source)
 		     else (* not literal after all! *) ERROR "object node expected"
 					
-    and parse_non_literal_object (data, s) =
-	case peek_ttl s of
-	    C_UNDERSCORE => parse_blank_node (data, s)
-	  | C_OPEN_PAREN => parse_collection (data, s)
-	  | C_OPEN_SQUARE => parse_blank_node_property_list (data, s)
-	  | other => parse_iri (data, s)
+    and parse_non_literal_object (d, source) =
+	case peek_ttl (d, source, []) of
+	    C_UNDERSCORE => parse_blank_node (d, source)
+	  | C_OPEN_PAREN => parse_collection (d, source)
+	  | C_OPEN_SQUARE => parse_blank_node_property_list (d, source)
+	  | other => parse_iri (d, source)
                                
-    and parse_object (data, s) =
-        if looking_at Codepoints.not_a_literal s
-        then parse_non_literal_object (data, s)
-        else parse_literal (data, s)
+    and parse_object (d, source) =
+        if looking_at Codepoints.not_a_literal (d, source, [])
+        then parse_non_literal_object (d, source)
+        else parse_literal (d, source)
                                
-    and parse_verb (data, s) =
-	if peek_ttl s = C_OPEN_ANGLE then parse_iri (data, s)
-	else parse_a_or_prefixed_name (data, s)
+    and parse_verb (d, source) =
+	if peek_ttl (d, source, []) = C_OPEN_ANGLE then parse_iri (d, source)
+	else parse_a_or_prefixed_name (d, source)
 					    
     (* [7] predicateObjectList ::= verb objectList (';' (verb objectList)?)*
        NB we permit an empty list here; caller must reject if its rule
        demands predicateObjectList rather than predicateObjectList? *)
 
-    and parse_predicate_object_list (data, s) =
+    and parse_predicate_object_list (d, source) =
 	let
 	    fun parse_object_list (d, s) acc =
 		case (ignore (consume_whitespace s); parse_object (d, s)) of
@@ -808,22 +811,22 @@ structure TurtleParser :> TURTLE_PARSER = struct
 			      parse_predicate_object_list' (d, s) (acc @ vol))
 			else OK (d, s, acc @ vol)
 	in
-	    parse_predicate_object_list' (data, s) []
+	    parse_predicate_object_list' (d, source) []
 	end
           
     (* [10] subject ::= iri | blank *)
-    and parse_subject_node (data, s) =
+    and parse_subject_node (d, source) =
 	case peek_ttl s of
-	    C_UNDERSCORE => parse_blank_node (data, s)
-	  | C_OPEN_PAREN => parse_collection (data, s)
-	  | other => parse_iri (data, s)
+	    C_UNDERSCORE => parse_blank_node (d, source)
+	  | C_OPEN_PAREN => parse_collection (d, source)
+	  | other => parse_iri (d, source)
 
     (* [6] triples ::= subject predicateObjectList |
                        blankNodePropertyList predicateObjectList?
 
        Handles the blankNodePropertyList part of that alternation *)
-    and parse_blank_node_triples (data, s) =
-	case parse_blank_node_property_list (data, s) of
+    and parse_blank_node_triples (d, source) =
+	case parse_blank_node_property_list (d, source) of
 	    ERROR e => ERROR e
 	  | OK (d, s, blank_subject) =>
 	    case parse_predicate_object_list (d, s) of
@@ -834,8 +837,8 @@ structure TurtleParser :> TURTLE_PARSER = struct
                        blankNodePropertyList predicateObjectList?
  
        Handles the subject part of that alternation *)
-    and parse_subject_triples (data, s) =
-        case parse_subject_node (data, s) of
+    and parse_subject_triples (d, source) =
+        case parse_subject_node (d, source) of
             ERROR e => ERROR e
           | OK (d, s, LITERAL _) => ERROR "subject may not be a literal"
           | OK (d, s, subject_node) =>
@@ -844,26 +847,26 @@ structure TurtleParser :> TURTLE_PARSER = struct
               | OK (d, s, []) => ERROR "predicate missing"
               | OK (d, s, p) => emit_with_subject (d, s, subject_node, p)
                                         
-    and parse_triples (data, s) =
+    and parse_triples (d, source) =
         if peek_ttl s = C_OPEN_SQUARE
-	then parse_blank_node_triples (data, s)
-        else parse_subject_triples (data, s)
+	then parse_blank_node_triples (d, source)
+        else parse_subject_triples (d, source)
                                         
     (* [2] statement ::= directive | triples '.' *)
-    and parse_statement (data, s) =
+    and parse_statement (d, source) =
         consume_whitespace s ~>
         (fn s =>
-            if eof s then OK (data, s)
+            if eof s then OK (d, source)
             else
                 if peek_ttl s = C_AT
-                then parse_directive (data, s)
-                else parse_triples (data, s) ~>
+                then parse_directive (d, source)
+                else parse_triples (d, source) ~>
                      (fn r => (consume_punctuation #"." s; OK r)))
                                                  
-    fun parse_document (data, s) =
-        if eof s then OK (data, s)
+    fun parse_document (d, source) =
+        if eof s then OK (d, source)
         else
-            case parse_statement (data, s) of
+            case parse_statement (d, source) of
                 OK r => parse_document r
               | ERROR e => ERROR e
 
