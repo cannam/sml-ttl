@@ -96,11 +96,10 @@ structure TurtleParser :> TURTLE_PARSER = struct
           prefixes = #prefixes d,
           blank_nodes = TokenMap.insert (#blank_nodes d, b, id) }
 
-    fun emit_with_subject (d : parse_data, s, subject, polist) =
-        OK (foldl (fn ((predicate, object), data) =>
-                      add_triple data (subject, predicate, object))
-                  d polist,
-            s)
+    fun emit_with_subject (d : parse_data, subject, polist) =
+        foldl (fn ((predicate, object), data) =>
+                  add_triple data (subject, predicate, object))
+              d polist
 
     fun composePartial (f, g) =
         fn a => 
@@ -214,14 +213,14 @@ structure TurtleParser :> TURTLE_PARSER = struct
                    check for well-formedness when making the map *)
                 case TokenMap.find (#prefixes data, pre) of
                     SOME ex => OK (data, s,
-                                   IRI (resolve_iri
-                                            (data, ex @ unescape_local post)))
+                                   SOME (IRI (resolve_iri
+						  (data, ex @ unescape_local post))))
                   | NONE => ERROR ("unknown namespace prefix \"" ^
                                    (string_of_token pre) ^ "\"")
                 
         in
             case split_at (token, from_ascii #":") of
-                NONE => OK (data, s, IRI (string_of_token token))
+                NONE => OK (data, s, SOME (IRI (string_of_token token)))
               | SOME (pre, post) =>
                 if like_pname_local_part post
                 then prefix_expand' (pre, post)
@@ -598,56 +597,67 @@ structure TurtleParser :> TURTLE_PARSER = struct
 	                   
     and parse_collection (d, source) : parse_result = ERROR "parse_collection not implemented yet"
 
-    and parse_blank_node (data, s) =
-	consume_ascii #"_" s ~> consume_ascii #":" ~>
-            match_prefixed_name_candidate ~>
-            (fn (s, candidate) =>
+    and parse_blank_node (d, source) : parse_result =
+	case sequence [
+		require_ttl C_UNDERSCORE,
+		require_ttl C_COLON,
+		match_prefixed_name_candidate
+	    ] (d, source, []) of
+	    ERROR e => ERROR e
+	  | OK (d, source, candidate) => 
 		(* !!! check that we match the blank node pattern. that is:
                    one initial_bnode_char
                    zero or more pname_char_or_dot
                    if there were any of those, then finally one pname_char *)
-		case blank_node_for (data, candidate) of
-		    (data, node) => OK (data, s, node))
+	    case blank_node_for (d, candidate) of
+		(d, node) => OK (d, source, SOME node)
 	    
-    and parse_prefixed_name (data, s) =
-	case match_prefixed_name_candidate s of
+    and parse_prefixed_name (d, source) : parse_result =
+	case match_prefixed_name_candidate (d, source, []) of
 	    ERROR e => ERROR e
-	  | OK (s, token) =>
+	  | OK (d, source, token) =>
             (* We can't tell the difference, until we get here,
                between a prefixed name and the bare literals true
                or false *)
-            if token = true_token then OK (data, s,  new_boolean_literal true)
-            else if token = false_token then OK (data, s, new_boolean_literal false)
-            else prefix_expand (data, s, token)
+            if token = true_token
+	    then OK (d, source, SOME (new_boolean_literal true))
+            else if token = false_token
+	    then OK (d, source, SOME (new_boolean_literal false))
+            else prefix_expand (d, source, token)
   
-    and parse_iriref (data, s) =
-	match_iriref s ~> (fn (s, iri) => OK (data, s, IRI (resolve_iri (data, iri))))
-            
-    and parse_iri (data, s) = 
-        if peek_ttl s = C_OPEN_ANGLE
-        then parse_iriref (data, s)
-        else parse_prefixed_name (data, s)
-
-    and parse_a_or_prefixed_name (data, s) =
-	case match_prefixed_name_candidate s of
+    and parse_iriref (d, source) : parse_result=
+	case match_iriref (d, source, []) of
 	    ERROR e => ERROR e
-	  | OK (s, token) =>
-	    if token = [ from_ascii #"a" ]
-	    then OK (data, s, IRI RdfTypes.iri_rdf_type)
-	    else prefix_expand (data, s, token)
+	  | OK (d, source, token) =>
+	    OK (d, source, SOME (IRI (resolve_iri (d, token))))
+            
+    and parse_iri (d, source) : parse_result = 
+        if peek_ttl (d, source, []) = C_OPEN_ANGLE
+        then parse_iriref (d, source)
+        else parse_prefixed_name (d, source)
 
-    and parse_blank_node_property_list (data, s) =
-	consume_punctuation #"[" s ~>
-	    (fn s =>
-		case parse_predicate_object_list (data, s) of
-                    ERROR e => ERROR e
-		  | OK (d, s, p) =>  (* p may legitimately be empty *)
-		    let val blank_node = new_blank_node () in
-			emit_with_subject (d, s, blank_node, p) ~>
-					  (fn (d, s) =>
-					      consume_punctuation #"]" s ~>
-						  (fn s => OK (d, s, blank_node)))
-		    end)
+    and parse_a_or_prefixed_name (d, source) : parse_result =
+	case match_prefixed_name_candidate (d, source, []) of
+	    ERROR e => ERROR e
+	  | OK (d, source, token) =>
+	    if token = [ from_ascii #"a" ]
+	    then OK (d, source, SOME (IRI RdfTypes.iri_rdf_type))
+	    else prefix_expand (d, source, token)
+
+    and parse_blank_node_property_list (d, source) : parse_result =
+	case require_ttl C_OPEN_SQUARE (d, source, []) of
+	    ERROR e => ERROR e
+	  | OK (d, source, _) => 
+	    case parse_predicate_object_list (d, source) of
+                ERROR e => ERROR e
+	      | OK (d, source, p) =>  (* p may legitimately be empty *)
+		let val blank_node = new_blank_node ()
+		    val d = emit_with_subject (d, blank_node, p)
+		in
+		    case require_ttl C_CLOSE_SQUARE (d, source, []) of
+			ERROR e => ERROR e
+		      | OK (d, source, _) => OK (d, source, SOME blank_node)
+		end
 
     (* [133s] BooleanLiteral ::= 'true' | 'false' *)
     and parse_boolean_literal (data, s) =
