@@ -60,11 +60,9 @@ structure TurtleParser :> TURTLE_PARSER = struct
     }
 
     (* todo: subsume source into parse_data ? *)
-                          
-    type source = Source.t
 
-    type match_state = parse_data * source * token
-    type parse_state = parse_data * source * node option
+    type match_state = parse_data * token
+    type parse_state = parse_data * node option
                       
     datatype 'a result = ERROR of string | OK of 'a
 
@@ -154,12 +152,12 @@ fun add_triple (d : parse_data) (t : triple) =
 		BLANK id => (add_bnode d (token, id), BLANK id)
               | _ => raise Fail "new_blank_node returned non-blank node"
 
-    fun peek (_,s,_) = Source.peek s
-    fun peek_n n (_,s,_) = Source.peek_n n s
-    fun read (_,s,_) = Source.read s
-    fun read_n n (_,s,_) = Source.read_n n s
-    fun location (_,s,_) = Source.location s
-    fun eof (_,s,_) = Source.eof s
+    fun peek (d,_) = Source.peek (#source d)
+    fun peek_n n (d,_) = Source.peek_n n (#source d)
+    fun read (d,_) = Source.read (#source d)
+    fun read_n n (d,_) = Source.read_n n (#source d)
+    fun location (d,_) = Source.location (#source d)
+    fun eof (d,_) = Source.eof (#source d)
 
     fun looking_at cps st =
         not (eof st) andalso CodepointSet.contains cps (peek st)
@@ -216,7 +214,7 @@ fun add_triple (d : parse_data) (t : triple) =
 
     fun unescape_local token = token (*!!!*)
             
-    fun prefix_expand (data, s, token) =
+    fun prefix_expand (d, token) =
         let fun like_pname_local_part token =
                 true (*!!! todo! *)
                 (* first check post matches rePNLocal:
@@ -231,16 +229,16 @@ fun add_triple (d : parse_data) (t : triple) =
                    because if it isn't well-formed, it won't match
                    anything in our namespace map -- because we did
                    check for well-formedness when making the map *)
-                case TokenMap.find (#prefixes data, pre) of
-                    SOME ex => OK (data, s,
-                                   SOME (IRI (resolve_iri
-						  (data, ex @ unescape_local post))))
+                case TokenMap.find (#prefixes d, pre) of
+                    SOME ex =>
+                    OK (d, SOME (IRI (resolve_iri
+					  (d, ex @ unescape_local post))))
                   | NONE => ERROR ("unknown namespace prefix \"" ^
                                    (string_of_token pre) ^ "\"")
                 
         in
             case split_at (token, from_ascii #":") of
-                NONE => OK (data, s, SOME (IRI (string_of_token token)))
+                NONE => OK (d, SOME (IRI (string_of_token token)))
               | SOME (pre, post) =>
                 if like_pname_local_part post
                 then prefix_expand' (pre, post)
@@ -262,7 +260,7 @@ fun add_triple (d : parse_data) (t : triple) =
               matched
      *)
 
-    fun discard (d, source, t) = (Source.discard source; (d, source, t))
+    fun discard (d, t) = (Source.discard (#source d); (d, t))
 
     fun discard_greedy cps s =
         if eof s then OK s
@@ -321,22 +319,22 @@ fun add_triple (d : parse_data) (t : triple) =
     fun require_punctuation c s =
         sequence [ discard_whitespace, require_ttl c ] s
 
-    fun match cps (s as (d, source, tok)) : match_result =
+    fun match cps (s as (d, tok)) : match_result =
         let val w = read s in
             if CodepointSet.contains cps w
-            then OK (d, source, tok @ [w])
+            then OK (d, tok @ [w])
             else ERROR (mismatch_message cps w)
         end
 
-    fun match_ttl c (s as (d, source, tok)) : match_result =
+    fun match_ttl c (s as (d, tok)) : match_result =
         let val w = read s in
             if Codepoints.CharMap.find (Codepoints.significant_char_map, w) = SOME c
-            then OK (d, source, tok @ [w])
+            then OK (d, tok @ [w])
             else ERROR (mismatch_message_ttl c w)
         end
 
     (* May return an empty token *)
-    fun match_token cps (s as (d, source, tok)) : match_result =
+    fun match_token cps (s as (d, tok)) : match_result =
         let fun match' acc =
                 if eof s then acc
                 else
@@ -344,17 +342,17 @@ fun add_triple (d : parse_data) (t : triple) =
                     then match' ((read s) :: acc)
                     else acc
         in
-            OK (d, source, rev (match' (rev tok)))
+            OK (d, rev (match' (rev tok)))
         end
 
     (* May return an empty token *)
-    fun match_token_excl cps (s as (d, source, tok)) : match_result =
+    fun match_token_excl cps (s as (d, tok)) : match_result =
         let fun match' acc =
                 if eof s orelse CodepointSet.contains cps (peek s)
                 then acc
                 else match' ((read s) :: acc)
         in
-            OK (d, source, rev (match' (rev tok)))
+            OK (d, rev (match' (rev tok)))
         end
 
     (* Read something structured like a prefixed name. The caller is
@@ -364,8 +362,8 @@ fun add_triple (d : parse_data) (t : triple) =
 	let fun match' s acc =
 		case match_token_excl Codepoints.pname_definitely_excluded s of
 		    ERROR e => ERROR e
-		  | OK (s as (d, source, [])) => ERROR "token expected"
-		  | OK (s as (d, source, token)) =>
+		  | OK (s as (d, [])) => ERROR "token expected"
+		  | OK (s as (d, token)) =>
 		    if peek_ttl s = C_DOT
 		    then
                         case peek_n 2 s of
@@ -374,9 +372,9 @@ fun add_triple (d : parse_data) (t : triple) =
                             then let val c = read s (* the dot *) in
 				     match' s (acc @ token @ [c])
                                  end
-                            else OK (d, source, acc @ token)
-                          | anything_else => OK (d, source, acc @ token)
-		    else OK (d, source, acc @ token)
+                            else OK (d, acc @ token)
+                          | anything_else => OK (d, acc @ token)
+		    else OK (d, acc @ token)
 	in
 	    match' s []
 	end
@@ -406,22 +404,22 @@ fun add_triple (d : parse_data) (t : triple) =
         let fun match' s =
                 case match_token_excl Codepoints.iri_escaped s of
                     ERROR e => ERROR e
-                  | OK (s as (d, source, token)) => 
+                  | OK (s as (d, token)) => 
                     case peek_ttl s of
                         C_PERCENT =>
-                        (case match_percent_escape (d, source, []) of
+                        (case match_percent_escape (d, []) of
                              ERROR e => ERROR e
-                           | OK (d, source, pe) => match' (d, source, token @ pe))
+                           | OK (d, pe) => match' (d, token @ pe))
                       | C_BACKSLASH =>
                         (discard s;
                          if looking_at Codepoints.unicode_u s
                          then let val (s, w) = unescape_unicode_escape s
                               in if w = 0wx0
                                  then ERROR "invalid Unicode escape"
-                                 else match' (d, source, token @ [w])
+                                 else match' (d, token @ [w])
                               end
                          else ERROR "expected Unicode escape")
-                      | other => OK (d, source, token)
+                      | other => OK (d, token)
         in
             sequence [ require_ttl C_OPEN_ANGLE,
                        match',
@@ -431,11 +429,11 @@ fun add_triple (d : parse_data) (t : triple) =
     fun match_prefixed_name_namespace s : match_result =
 	case match_prefixed_name_candidate s of
 	    ERROR e => ERROR e
-	  | OK (d, source, []) => ERROR "malformed prefix"
-	  | OK (d, source, [w]) => if w = from_ascii #":"
-			           then OK (d, source, [])
+	  | OK (d, []) => ERROR "malformed prefix"
+	  | OK (d, [w]) => if w = from_ascii #":"
+			           then OK (d, [])
 			           else ERROR "expected \":\" at end of prefix"
-	  | OK (d, source, all) => 
+	  | OK (d, all) => 
 	    let val first = hd all
 		val r = rev all
 		val colon = hd r
@@ -448,7 +446,7 @@ fun add_triple (d : parse_data) (t : triple) =
 		       andalso List.all (CodepointSet.contains
 					     Codepoints.pname_char_or_dot) token
 		       andalso CodepointSet.contains Codepoints.pname_char last
-		    then OK (d, source, token)
+		    then OK (d, token)
 		    else ERROR ("malformed prefix \"" ^ (string_of_token token) ^ "\"")
 		else ERROR "expected \":\" at end of prefix"
 	    end
@@ -483,9 +481,9 @@ fun add_triple (d : parse_data) (t : triple) =
 	    fun match' s =
                 case match_token_excl quote_codepoint s of
                     ERROR e => ERROR e
-                  | OK (s as (d, source, token)) => (*!!! todo: handle escapes *)
+                  | OK (s as (d, token)) => (*!!! todo: handle escapes *)
                     if have_three s then OK s
-                    else match' (d, source, token @ [read s])
+                    else match' (d, token @ [read s])
         in
             sequence [
                 require_ttl q, require_ttl q, require_ttl q,
@@ -511,18 +509,18 @@ fun add_triple (d : parse_data) (t : triple) =
 	    fun match' s =
                 case match_token_excl quote_codepoint s of
 		    ERROR e => ERROR e
-	          | OK (s as (d, source, body)) =>
+	          | OK (s as (d, body)) =>
                     if peek_ttl s = C_BACKSLASH
                     then (discard s;
                           if looking_at Codepoints.string_escape s
                           then let val (s, w) = unescape_string_escape s
-                               in match' (d, source, body @ [w])
+                               in match' (d, body @ [w])
                                end
                           else if looking_at Codepoints.unicode_u s
                           then let val (s, w) = unescape_unicode_escape s
                                in if w = 0wx0
                                   then ERROR "invalid Unicode escape"
-                                  else match' (d, source, body @ [w])
+                                  else match' (d, body @ [w])
                                end
                           else ERROR "expected escape sequence")
                     else OK s
@@ -544,15 +542,15 @@ fun add_triple (d : parse_data) (t : triple) =
         let fun match' s =
                 case match_token Codepoints.alpha s of
                     ERROR e => ERROR e
-                  | OK (s as (d, source, token)) =>
+                  | OK (s as (d, token)) =>
                     case peek_ttl s of
-                        C_DASH => match' (d, source, token @ [read s])
+                        C_DASH => match' (d, token @ [read s])
                       | other => OK s
         in
             sequence [
                 require_ttl C_AT,
                 match',
-                fn (d, source, []) => ERROR "non-empty language tag expected"
+                fn (d, []) => ERROR "non-empty language tag expected"
                   | s => OK s
             ] s
         end
@@ -560,14 +558,14 @@ fun add_triple (d : parse_data) (t : triple) =
     (* The parse_* functions take parser data as well as source, and 
        return both, as well as the parsed node or whatever (or error) *)
 
-    fun parse_base (d, source) : parse_result =
+    fun parse_base d : parse_result =
         case sequence [
 	        require_whitespace,
                 match_iriref,
 		require_punctuation C_DOT
-            ] (d, source, []) of
+            ] (d, []) of
             ERROR e => ERROR e
-          | OK (s as (d, source, token)) => 
+          | OK (s as (d, token)) => 
             let val base = token_of_string (resolve_iri (d, token))
             in
                 OK ({ source = #source d,
@@ -576,179 +574,179 @@ fun add_triple (d : parse_data) (t : triple) =
                       triples = #triples d,
                       prefixes = #prefixes d,
                       blank_nodes = #blank_nodes d
-                    }, source, NONE)
+                    }, NONE)
             end
                  
-    and parse_prefix (d, source) : parse_result =
+    and parse_prefix d : parse_result =
         case sequence [
 	        require_whitespace,
                 match_prefixed_name_namespace,
                 require_whitespace
-            ] (d, source, []) of
+            ] (d, []) of
             ERROR e => ERROR e
-          | OK (d, source, prefix) =>
+          | OK (d, prefix) =>
             case sequence [
 		    match_iriref,
 		    require_punctuation C_DOT
-		] (d, source, []) of
+		] (d, []) of
                 ERROR e => ERROR e
-              | OK (d, source, iri) =>
-	        OK (add_prefix d (prefix, iri), source, NONE)
+              | OK (d, iri) =>
+	        OK (add_prefix d (prefix, iri), NONE)
 	
-    and parse_sparql_base (d, source) : parse_result =
-        case match_prefixed_name_candidate (d, source, []) of
+    and parse_sparql_base d : parse_result =
+        case match_prefixed_name_candidate (d, []) of
             ERROR e => ERROR e
-          | OK (d, source, token) =>
+          | OK (d, token) =>
             if token = token_of_string "base" orelse
                token = token_of_string "BASE" then
-                parse_base (d, source)
+                parse_base d
             else
                 ERROR "expected \"BASE\""
 	
-    and parse_sparql_prefix (d, source) : parse_result =
-        case match_prefixed_name_candidate (d, source, []) of
+    and parse_sparql_prefix d : parse_result =
+        case match_prefixed_name_candidate (d, []) of
             ERROR e => ERROR e
-         | OK (d, source, token) => 
+         | OK (d, token) => 
            if token = token_of_string "prefix" orelse
               token = token_of_string "PREFIX" then
-               parse_prefix (d, source)
+               parse_prefix d
            else
                ERROR "expected \"PREFIX\""
         
-    and parse_directive (d, source) : parse_result =
-        let val s = (d, source, []) in
+    and parse_directive d : parse_result =
+        let val s = (d, []) in
 	    case peek_ttl s of
-	        C_LETTER_B => parse_sparql_prefix (d, source)
-	      | C_LETTER_P => parse_sparql_prefix (d, source)
+	        C_LETTER_B => parse_sparql_prefix d
+	      | C_LETTER_P => parse_sparql_prefix d
 	      | C_AT =>
                 (case sequence [
                          require_ttl C_AT,
                          match_token Codepoints.alpha
                      ] s of
                      ERROR e => ERROR e
-                   | OK (d, source, token) => 
+                   | OK (d, token) => 
                      case string_of_token token of
-                         "prefix" => parse_prefix (d, source)
-                       | "base" => parse_base (d, source)
+                         "prefix" => parse_prefix d
+                       | "base" => parse_base d
 		       | other => ERROR ("expected \"prefix\" or \"base\" after @, not \"" ^ other ^ "\""))
 	      | other => ERROR "expected @prefix, @base, PREFIX, or BASE"
         end
 	                   
-    and parse_collection (d, source) : parse_result = ERROR "parse_collection not implemented yet"
+    and parse_collection d : parse_result = ERROR "parse_collection not implemented yet"
 
-    and parse_blank_node (d, source) : parse_result =
+    and parse_blank_node d : parse_result =
 	case sequence [
 		require_ttl C_UNDERSCORE,
 		require_ttl C_COLON,
 		match_prefixed_name_candidate
-	    ] (d, source, []) of
+	    ] (d, []) of
 	    ERROR e => ERROR e
-	  | OK (d, source, candidate) => 
+	  | OK (d, candidate) => 
 		(* !!! check that we match the blank node pattern. that is:
                    one initial_bnode_char
                    zero or more pname_char_or_dot
                    if there were any of those, then finally one pname_char *)
 	    case blank_node_for (d, candidate) of
-		(d, node) => OK (d, source, SOME node)
+		(d, node) => OK (d, SOME node)
 	    
-    and parse_prefixed_name (d, source) : parse_result =
-	case match_prefixed_name_candidate (d, source, []) of
+    and parse_prefixed_name d : parse_result =
+	case match_prefixed_name_candidate (d, []) of
 	    ERROR e => ERROR e
-	  | OK (d, source, token) =>
+	  | OK (d, token) =>
             (* We can't tell the difference, until we get here,
                between a prefixed name and the bare literals true
                or false *)
             if token = true_token
-	    then OK (d, source, SOME (new_boolean_literal true))
+	    then OK (d, SOME (new_boolean_literal true))
             else if token = false_token
-	    then OK (d, source, SOME (new_boolean_literal false))
-            else prefix_expand (d, source, token)
+	    then OK (d, SOME (new_boolean_literal false))
+            else prefix_expand (d, token)
   
-    and parse_iriref (d, source) : parse_result=
-	case match_iriref (d, source, []) of
+    and parse_iriref d : parse_result=
+	case match_iriref (d, []) of
 	    ERROR e => ERROR e
-	  | OK (d, source, token) =>
-	    OK (d, source, SOME (IRI (resolve_iri (d, token))))
+	  | OK (d, token) =>
+	    OK (d, SOME (IRI (resolve_iri (d, token))))
             
-    and parse_iri (d, source) : parse_result = 
-        if peek_ttl (d, source, []) = C_OPEN_ANGLE
-        then parse_iriref (d, source)
-        else parse_prefixed_name (d, source)
+    and parse_iri d : parse_result = 
+        if peek_ttl (d, []) = C_OPEN_ANGLE
+        then parse_iriref d
+        else parse_prefixed_name d
 
-    and parse_a_or_prefixed_name (d, source) : parse_result =
-	case match_prefixed_name_candidate (d, source, []) of
+    and parse_a_or_prefixed_name d : parse_result =
+	case match_prefixed_name_candidate (d, []) of
 	    ERROR e => ERROR e
-	  | OK (d, source, token) =>
+	  | OK (d, token) =>
 	    if token = [ from_ascii #"a" ]
-	    then OK (d, source, SOME (IRI RdfTypes.iri_rdf_type))
-	    else prefix_expand (d, source, token)
+	    then OK (d, SOME (IRI RdfTypes.iri_rdf_type))
+	    else prefix_expand (d, token)
 
-    and parse_blank_node_property_list (d, source) : parse_result =
-	case require_ttl C_OPEN_SQUARE (d, source, []) of
+    and parse_blank_node_property_list d : parse_result =
+	case require_ttl C_OPEN_SQUARE (d, []) of
 	    ERROR e => ERROR e
-	  | OK (d, source, _) => 
-	    case parse_predicate_object_list (d, source) of
+	  | OK (d, _) => 
+	    case parse_predicate_object_list d of
                 ERROR e => ERROR e
-	      | OK (d, source, p) =>  (* p may legitimately be empty *)
+	      | OK (d, p) =>  (* p may legitimately be empty *)
 		let val blank_node = new_blank_node ()
 		    val d = emit_with_subject (d, blank_node, p)
 		in
-		    case require_ttl C_CLOSE_SQUARE (d, source, []) of
+		    case require_ttl C_CLOSE_SQUARE (d, []) of
 			ERROR e => ERROR e
-		      | OK (d, source, _) => OK (d, source, SOME blank_node)
+		      | OK (d, _) => OK (d, SOME blank_node)
 		end
 
     (* [133s] BooleanLiteral ::= 'true' | 'false' *)
-    and parse_boolean_literal (d, source) : parse_result =
-	if looking_at_token true_token (d, source, [])
-	then OK (d, source, SOME (new_boolean_literal true))
-	else if looking_at_token false_token (d, source, [])
-	then OK (d, source, SOME (new_boolean_literal false))
+    and parse_boolean_literal d : parse_result =
+	if looking_at_token true_token (d, [])
+	then OK (d, SOME (new_boolean_literal true))
+	else if looking_at_token false_token (d, [])
+	then OK (d, SOME (new_boolean_literal false))
 	else ERROR "expected \"true\" or \"false\""
 
-    and parse_datatype (d, source) : parse_result =
+    and parse_datatype d : parse_result =
 	case sequence [
 		require_ttl C_CARET,
 		require_ttl C_CARET
-	    ] (d, source, []) of
+	    ] (d, []) of
 	    ERROR e => ERROR e
-	  | OK (d, source, _) => parse_iri (d, source)
+	  | OK (d, _) => parse_iri d
                    
-    and parse_rdf_literal (d, source) : parse_result =
-	case match_string_body (d, source, []) of
+    and parse_rdf_literal d : parse_result =
+	case match_string_body (d, []) of
 	    ERROR e => ERROR e
-	  | OK (d, source, body) =>
-            case peek_ttl (d, source, []) of
-                C_AT => (case match_language_tag (d, source, []) of
+	  | OK (d, body) =>
+            case peek_ttl (d, []) of
+                C_AT => (case match_language_tag (d, []) of
                              ERROR e => ERROR e
-                           | OK (d, source, tag) =>
-                             OK (d, source, SOME (LITERAL {
+                           | OK (d, tag) =>
+                             OK (d, SOME (LITERAL {
 						       value = string_of_token body,
 						       lang = string_of_token tag,
 						       dtype = ""
 						   })))
-              | C_CARET => (case parse_datatype (d, source) of
+              | C_CARET => (case parse_datatype d of
                                 ERROR e => ERROR e
-                              | OK (d, source, SOME (IRI tag)) =>
-                                OK (d, source, SOME (LITERAL {
+                              | OK (d, SOME (IRI tag)) =>
+                                OK (d, SOME (LITERAL {
 							  value = string_of_token body,
 							  lang = "",
 							  dtype = tag
 						      }))
                               | other => ERROR "internal error")
-              | other => OK (d, source, SOME (LITERAL {
+              | other => OK (d, SOME (LITERAL {
 						   value = string_of_token body,
 						   lang = "",
 						   dtype = ""
 					       }))
 	
-    and parse_numeric_literal (d, source) =
+    and parse_numeric_literal d =
         let val point = from_ascii #"."
 
             val candidate =
-                case match_token Codepoints.number (d, source, []) of
+                case match_token Codepoints.number (d, []) of
                     ERROR e => []
-                  | OK (s as (d, source, n0)) =>
+                  | OK (s as (d, n0)) =>
                     case peek_n 2 s of
                         [a,b] => if a = point andalso
                                     CodepointSet.contains
@@ -756,7 +754,7 @@ fun add_triple (d : parse_data) (t : triple) =
                                  then
 				     (discard s;
                                       case match_token Codepoints.number s of
-                                          OK (d, source, n1) => (n0 @ [point] @ n1)
+                                          OK (d, n1) => (n0 @ [point] @ n1)
 					| ERROR e => [])
                                  else n0
                       | _ => n0
@@ -777,7 +775,7 @@ fun add_triple (d : parse_data) (t : triple) =
                file, don't canonicalise: we only convert it to check
                that it really is a number *)
 	    case Real.fromString candidate_str of
-		SOME i => OK (d, source, SOME (LITERAL {
+		SOME i => OK (d, SOME (LITERAL {
 						    value = candidate_str,
 						    lang = "",
 						    dtype = dtype
@@ -787,144 +785,144 @@ fun add_triple (d : parse_data) (t : triple) =
         end
             
     (* [13] literal ::= RDFLiteral | NumericLiteral | BooleanLiteral *)
-    and parse_literal (d, source) =
-	case peek_ttl (d, source, []) of
-	    C_QUOTE_SINGLE => parse_rdf_literal (d, source)
-	  | C_QUOTE_DOUBLE => parse_rdf_literal (d, source)
-	  | C_LETTER_T => parse_boolean_literal (d, source)
-	  | C_LETTER_F => parse_boolean_literal (d, source)
-	  | C_DOT => parse_numeric_literal (d, source)
-	  | other => if CodepointSet.contains Codepoints.number (peek (d, source, []))
-		     then parse_numeric_literal (d, source)
+    and parse_literal d =
+	case peek_ttl (d, []) of
+	    C_QUOTE_SINGLE => parse_rdf_literal d
+	  | C_QUOTE_DOUBLE => parse_rdf_literal d
+	  | C_LETTER_T => parse_boolean_literal d
+	  | C_LETTER_F => parse_boolean_literal d
+	  | C_DOT => parse_numeric_literal d
+	  | other => if CodepointSet.contains Codepoints.number (peek (d, []))
+		     then parse_numeric_literal d
 		     else (* not literal after all! *) ERROR "object node expected"
 					
-    and parse_non_literal_object (d, source) =
-	case peek_ttl (d, source, []) of
-	    C_UNDERSCORE => parse_blank_node (d, source)
-	  | C_OPEN_PAREN => parse_collection (d, source)
-	  | C_OPEN_SQUARE => parse_blank_node_property_list (d, source)
-	  | other => parse_iri (d, source)
+    and parse_non_literal_object d =
+	case peek_ttl (d, []) of
+	    C_UNDERSCORE => parse_blank_node d
+	  | C_OPEN_PAREN => parse_collection d
+	  | C_OPEN_SQUARE => parse_blank_node_property_list d
+	  | other => parse_iri d
                                
-    and parse_object (d, source) =
-        if looking_at Codepoints.not_a_literal (d, source, [])
-        then parse_non_literal_object (d, source)
-        else parse_literal (d, source)
+    and parse_object d =
+        if looking_at Codepoints.not_a_literal (d, [])
+        then parse_non_literal_object d
+        else parse_literal d
                                
-    and parse_verb (d, source) =
-	if peek_ttl (d, source, []) = C_OPEN_ANGLE then parse_iri (d, source)
-	else parse_a_or_prefixed_name (d, source)
+    and parse_verb d =
+	if peek_ttl (d, []) = C_OPEN_ANGLE then parse_iri d
+	else parse_a_or_prefixed_name d
 					    
     (* [7] predicateObjectList ::= verb objectList (';' (verb objectList)?)*
        NB we permit an empty list here; caller must reject if its rule
        demands predicateObjectList rather than predicateObjectList? *)
 
-    and parse_predicate_object_list (d, source) =
+    and parse_predicate_object_list d =
 	let
-	    fun parse_object_list (d, source, nodes) =
+	    fun parse_object_list (d, nodes) =
                 (* would be better for these if the require/discard functions just took d/source *)
-		case (ignore (require_whitespace (d, source, []));
-                      parse_object (d, source)) of
+		case (ignore (require_whitespace (d, []));
+                      parse_object d) of
 		    ERROR e => ERROR e
-		  | OK (d, source, NONE) => ERROR "object node not found"
-		  | OK (d, source, SOME node) =>
-		    if peek_ttl (d, source, []) = C_COMMA
-		    then (discard (d, source, []);
-                          parse_object_list (d, source, node::nodes))
-		    else OK (d, source, rev (node::nodes))
+		  | OK (d, NONE) => ERROR "object node not found"
+		  | OK (d, SOME node) =>
+		    if peek_ttl (d, []) = C_COMMA
+		    then (discard (d, []);
+                          parse_object_list (d, node::nodes))
+		    else OK (d, rev (node::nodes))
 
-	    fun parse_verb_object_list (d, source) =
-		case parse_verb (d, source) of
+	    fun parse_verb_object_list d =
+		case parse_verb d of
 		    ERROR e => ERROR ("verb IRI not found: " ^ e)
-		  | OK (d, source, SOME (IRI iri)) =>
-		    (case parse_object_list (d, source, []) of
+		  | OK (d, SOME (IRI iri)) =>
+		    (case parse_object_list (d, []) of
 			 ERROR e => ERROR e
-		       | OK (d, source, nodes) =>
-			 OK (d, source, map (fn n => (IRI iri, n)) nodes))
+		       | OK (d, nodes) =>
+			 OK (d, map (fn n => (IRI iri, n)) nodes))
 		  | OK other => ERROR "IRI expected for verb"
 
-	    and parse_predicate_object_list' (d, source, volist) =
-                case (discard_whitespace (d, source, []);
-		      peek_ttl (d, source, [])) of
-                    C_DOT => OK (d, source, volist)
-                  | C_CLOSE_SQUARE => OK (d, source, volist)
+	    and parse_predicate_object_list' (d, volist) =
+                case (discard_whitespace (d, []);
+		      peek_ttl (d, [])) of
+                    C_DOT => OK (d, volist)
+                  | C_CLOSE_SQUARE => OK (d, volist)
                   | other => 
-		    case parse_verb_object_list (d, source) of
+		    case parse_verb_object_list d of
 			ERROR e => ERROR e
-		      | OK (d, source, vos) =>
-			if (discard_whitespace (d, source, []);
-			    peek_ttl (d, source, [])) = C_SEMICOLON
-			then (discard_greedy_ttl C_SEMICOLON (d, source, []);
-			      parse_predicate_object_list' (d, source, volist @ vos))
-			else OK (d, source, volist @ vos)
+		      | OK (d, vos) =>
+			if (discard_whitespace (d, []);
+			    peek_ttl (d, [])) = C_SEMICOLON
+			then (discard_greedy_ttl C_SEMICOLON (d, []);
+			      parse_predicate_object_list' (d, volist @ vos))
+			else OK (d, volist @ vos)
 	in
-	    parse_predicate_object_list' (d, source, [])
+	    parse_predicate_object_list' (d, [])
 	end
           
     (* [10] subject ::= iri | blank *)
-    and parse_subject_node (d, source) =
-	case peek_ttl (d, source, []) of
-	    C_UNDERSCORE => parse_blank_node (d, source)
-	  | C_OPEN_PAREN => parse_collection (d, source)
-	  | other => parse_iri (d, source)
+    and parse_subject_node d =
+	case peek_ttl (d, []) of
+	    C_UNDERSCORE => parse_blank_node d
+	  | C_OPEN_PAREN => parse_collection d
+	  | other => parse_iri d
 
     (* [6] triples ::= subject predicateObjectList |
                        blankNodePropertyList predicateObjectList?
        Handles the blankNodePropertyList part of that alternation *)
-    and parse_blank_node_triples (d, source) =
-	case parse_blank_node_property_list (d, source) of
+    and parse_blank_node_triples d =
+	case parse_blank_node_property_list d of
 	    ERROR e => ERROR e
           (* !!! when do we return NONE from a parser? *)
-	  | OK (d, source, NONE) => ERROR "node expected"
-	  | OK (d, source, SOME blank_subject) =>
-	    case parse_predicate_object_list (d, source) of
+	  | OK (d, NONE) => ERROR "node expected"
+	  | OK (d, SOME blank_subject) =>
+	    case parse_predicate_object_list d of
 		ERROR e => ERROR e
-	      | OK (d, source, polist) =>
+	      | OK (d, polist) =>
                 OK (emit_with_subject (d, blank_subject, polist))
 
     (* [6] triples ::= subject predicateObjectList |
                        blankNodePropertyList predicateObjectList?
        Handles the subject part of that alternation *)
-    and parse_subject_triples (d, source) =
-        case parse_subject_node (d, source) of
+    and parse_subject_triples d =
+        case parse_subject_node d of
             ERROR e => ERROR e
-          | OK (d, source, NONE) => ERROR "node expected"
-          | OK (d, source, SOME (LITERAL _)) => ERROR "subject may not be a literal"
-          | OK (d, source, SOME subject_node) =>
-            case parse_predicate_object_list (d, source) of
+          | OK (d, NONE) => ERROR "node expected"
+          | OK (d, SOME (LITERAL _)) => ERROR "subject may not be a literal"
+          | OK (d, SOME subject_node) =>
+            case parse_predicate_object_list d of
                 ERROR e => ERROR e
-              | OK (d, source, []) => ERROR "predicate missing"
-              | OK (d, source, polist) =>
+              | OK (d, []) => ERROR "predicate missing"
+              | OK (d, polist) =>
                 OK (emit_with_subject (d, subject_node, polist))
                                         
-    and parse_triples (d, source) =
-        if peek_ttl (d, source, []) = C_OPEN_SQUARE
-	then parse_blank_node_triples (d, source)
-        else parse_subject_triples (d, source)
+    and parse_triples d =
+        if peek_ttl (d, []) = C_OPEN_SQUARE
+	then parse_blank_node_triples d
+        else parse_subject_triples d
                                         
     (* [2] statement ::= directive | triples '.' *)
-    and parse_statement (d, source) =
-        case discard_whitespace (d, source, []) of
+    and parse_statement d =
+        case discard_whitespace (d, []) of
             ERROR e => ERROR e
-          | OK (d, source, _) => 
-            if eof (d, source, []) then OK (d, source, NONE)
+          | OK (d, _) => 
+            if eof (d, []) then OK (d, NONE)
             else
-                if peek_ttl (d, source, []) = C_AT
-                then parse_directive (d, source)
-                else case parse_triples (d, source) of
+                if peek_ttl (d, []) = C_AT
+                then parse_directive d
+                else case parse_triples d of
                          ERROR e => ERROR e
                (* !!! inconsistency: this returns only one value, parse_directive returns three (with NONE) *)
                        | OK d =>
-                         (require_punctuation C_DOT (d, source, []);
-                          OK (d, source, NONE))
+                         (require_punctuation C_DOT (d, []);
+                          OK (d, NONE))
 
 (* !!! todo: cut down mutually-recursive list of functions above so only the actually mutually-recursive ones are declared that way *)
                              
-    fun parse_document (d, source) =
+    fun parse_document d =
         (*!!! must fix inconsistency mentioned above *)
-        if eof (d, source, []) then OK (d, source)
+        if eof (d, []) then OK d
         else
-            case parse_statement (d, source) of
-                OK (d, source, _) => parse_document (d, source)
+            case parse_statement d of
+                OK (d, _) => parse_document d
               | ERROR e => ERROR e
 
     fun without_file iri =
@@ -932,21 +930,21 @@ fun add_triple (d : parse_data) (t : triple) =
             [] => ""
           | bits => String.concatWith "/" (rev (tl (rev bits)))
 
-    fun arrange_result s (ERROR e) =
+    fun arrange_result d (ERROR e) =
         (*!!! todo: separate out this lookahead & arranging error message so this function only needs accept source once (with data, in OK outcome) *)
-	let val message = e ^ " at " ^ (location s)
-	    val next_bit = case peek_n 8 s of [] => peek_n 4 s | p => p
+	let val message = e ^ " at " ^ (location (d, []))
+	    val next_bit = case peek_n 8 (d, []) of [] => peek_n 4 (d, []) | p => p
 	in
 	    if next_bit = []
 	    then PARSE_ERROR message
 	    else PARSE_ERROR (message ^ " (before \"" ^
 			      (string_of_token next_bit) ^ "...\")")
 	end
-      | arrange_result _ (OK (data, _)) =
+      | arrange_result _ (OK d) =
 	PARSED {
             prefixes = map (fn (a,b) => (string_of_token a, string_of_token b))
-                           (TokenMap.listItemsi (#prefixes data)),
-            triples = #triples data
+                           (TokenMap.listItemsi (#prefixes d)),
+            triples = #triples d
         }
                                       
     fun parse_stream iri stream =
@@ -959,10 +957,10 @@ fun add_triple (d : parse_data) (t : triple) =
                 prefixes = TokenMap.empty,
                 blank_nodes = TokenMap.empty
             }
-            val parsed = parse_document (d, source)
+            val parsed = parse_document d
         in
             print "done\n";
-            arrange_result (d, source, []) parsed (*!!! see above *)
+            arrange_result d parsed (*!!! see above *)
         end
 
     fun parse_string iri string =
