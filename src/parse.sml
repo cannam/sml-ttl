@@ -87,11 +87,12 @@ fun string_of_triple (a,b,c) =
            maybe should just write them inline *)
                                     
 fun add_triple (d : parse_data) (t : triple) =
+    (print ("adding triple: " ^ (string_of_triple t) ^ "\n");
         { file_iri = #file_iri d,
           base_iri = #base_iri d,
           triples = t :: #triples d,
           prefixes = #prefixes d,
-          blank_nodes = #blank_nodes d }
+          blank_nodes = #blank_nodes d })
                      
     fun add_prefix (d : parse_data) (p, e) =
         { file_iri = #file_iri d,
@@ -317,10 +318,17 @@ fun add_triple (d : parse_data) (t : triple) =
         sequence [ discard_whitespace, require_ttl c ] s
 
     fun match cps (s as (d, source, tok)) : match_result =
-        let val c = read s in
-            if CodepointSet.contains cps c
-            then OK (d, source, tok @ [c])
-            else ERROR (mismatch_message cps c)
+        let val w = read s in
+            if CodepointSet.contains cps w
+            then OK (d, source, tok @ [w])
+            else ERROR (mismatch_message cps w)
+        end
+
+    fun match_ttl c (s as (d, source, tok)) : match_result =
+        let val w = read s in
+            if Codepoints.CharMap.find (Codepoints.significant_char_map, w) = SOME c
+            then OK (d, source, tok @ [w])
+            else ERROR (mismatch_message_ttl c w)
         end
 
     (* May return an empty token *)
@@ -372,7 +380,7 @@ fun add_triple (d : parse_data) (t : triple) =
     fun match_percent_escape s : match_result =
         (* Percent escapes are *not* supposed to be evaluated in an
            IRI -- they should be passed through unmodified *)
-        sequence [ require_ttl C_PERCENT,
+        sequence [ match_ttl C_PERCENT,
                    match Codepoints.hex,
                    match Codepoints.hex ] s
         
@@ -397,7 +405,7 @@ fun add_triple (d : parse_data) (t : triple) =
                   | OK (s as (d, source, token)) => 
                     case peek_ttl s of
                         C_PERCENT =>
-                        (case match_percent_escape s of
+                        (case match_percent_escape (d, source, []) of
                              ERROR e => ERROR e
                            | OK (d, source, pe) => match' (d, source, token @ pe))
                       | C_BACKSLASH =>
