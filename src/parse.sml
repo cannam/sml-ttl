@@ -780,94 +780,109 @@ structure TurtleParser :> TURTLE_PARSER = struct
 
     and parse_predicate_object_list (d, source) =
 	let
-	    fun parse_object_list (d, s) acc =
-		case (ignore (consume_whitespace s); parse_object (d, s)) of
+	    fun parse_object_list (d, source, nodes) =
+                (* would be better for these if the require/discard functions just took d/source *)
+		case (ignore (require_whitespace (d, source, []));
+                      parse_object (d, source)) of
 		    ERROR e => ERROR e
-		  | OK (d, s, node) =>
-		    if peek_ttl s = C_COMMA
-		    then (discard s; parse_object_list (d, s) (node::acc))
-		    else OK (d, s, rev (node::acc))
+		  | OK (d, source, NONE) => ERROR "object node not found"
+		  | OK (d, source, SOME node) =>
+		    if peek_ttl (d, source, []) = C_COMMA
+		    then (discard (d, source, []);
+                          parse_object_list (d, source, node::nodes))
+		    else OK (d, source, rev (node::nodes))
 
-	    fun parse_verb_object_list (d, s) =
-		case parse_verb (d, s) of
+	    fun parse_verb_object_list (d, source) =
+		case parse_verb (d, source) of
 		    ERROR e => ERROR ("verb IRI not found: " ^ e)
-		  | OK (d, s, IRI iri) =>
-		    (case parse_object_list (d, s) [] of
+		  | OK (d, source, SOME (IRI iri)) =>
+		    (case parse_object_list (d, source, []) of
 			 ERROR e => ERROR e
-		       | OK (d, s, nodes) =>
-			 OK (d, s, map (fn n => (IRI iri, n)) nodes))
+		       | OK (d, source, nodes) =>
+			 OK (d, source, map (fn n => (IRI iri, n)) nodes))
 		  | OK other => ERROR "IRI expected for verb"
 
-	    and parse_predicate_object_list' (d, s) acc =
-                case peek_ttl s of
-                    C_DOT => OK (d, s, acc)
-                  | C_CLOSE_SQUARE => OK (d, s, acc)
+	    and parse_predicate_object_list' (d, source, volist) =
+                case peek_ttl (d, source, []) of
+                    C_DOT => OK (d, source, volist)
+                  | C_CLOSE_SQUARE => OK (d, source, volist)
                   | other => 
-		    case parse_verb_object_list (d, s) of
+		    case parse_verb_object_list (d, source) of
 			ERROR e => ERROR e
-		      | OK (d, s, vol) =>
-			if peek_ttl s = C_SEMICOLON
-			then (ignore (consume_greedy_identical s);
-			      parse_predicate_object_list' (d, s) (acc @ vol))
-			else OK (d, s, acc @ vol)
+		      | OK (d, source, vos) =>
+			if peek_ttl (d, source, []) = C_SEMICOLON
+			then (discard_greedy_ttl C_SEMICOLON (d, source, []);
+			      parse_predicate_object_list' (d, source, volist @ vos))
+			else OK (d, source, volist @ vos)
 	in
-	    parse_predicate_object_list' (d, source) []
+	    parse_predicate_object_list' (d, source, [])
 	end
           
     (* [10] subject ::= iri | blank *)
     and parse_subject_node (d, source) =
-	case peek_ttl s of
+	case peek_ttl (d, source, []) of
 	    C_UNDERSCORE => parse_blank_node (d, source)
 	  | C_OPEN_PAREN => parse_collection (d, source)
 	  | other => parse_iri (d, source)
 
     (* [6] triples ::= subject predicateObjectList |
                        blankNodePropertyList predicateObjectList?
-
        Handles the blankNodePropertyList part of that alternation *)
     and parse_blank_node_triples (d, source) =
 	case parse_blank_node_property_list (d, source) of
 	    ERROR e => ERROR e
-	  | OK (d, s, blank_subject) =>
-	    case parse_predicate_object_list (d, s) of
+          (* !!! when do we return NONE from a parser? *)
+	  | OK (d, source, NONE) => ERROR "node expected"
+	  | OK (d, source, SOME blank_subject) =>
+	    case parse_predicate_object_list (d, source) of
 		ERROR e => ERROR e
-	      | OK (d, s, p) => emit_with_subject (d, s, blank_subject, p)
+	      | OK (d, source, polist) =>
+                OK (emit_with_subject (d, blank_subject, polist))
 
     (* [6] triples ::= subject predicateObjectList |
                        blankNodePropertyList predicateObjectList?
- 
        Handles the subject part of that alternation *)
     and parse_subject_triples (d, source) =
         case parse_subject_node (d, source) of
             ERROR e => ERROR e
-          | OK (d, s, LITERAL _) => ERROR "subject may not be a literal"
-          | OK (d, s, subject_node) =>
-            case parse_predicate_object_list (d, s) of
+          | OK (d, source, NONE) => ERROR "node expected"
+          | OK (d, source, SOME (LITERAL _)) => ERROR "subject may not be a literal"
+          | OK (d, source, SOME subject_node) =>
+            case parse_predicate_object_list (d, source) of
                 ERROR e => ERROR e
-              | OK (d, s, []) => ERROR "predicate missing"
-              | OK (d, s, p) => emit_with_subject (d, s, subject_node, p)
+              | OK (d, source, []) => ERROR "predicate missing"
+              | OK (d, source, polist) =>
+                OK (emit_with_subject (d, subject_node, polist))
                                         
     and parse_triples (d, source) =
-        if peek_ttl s = C_OPEN_SQUARE
+        if peek_ttl (d, source, []) = C_OPEN_SQUARE
 	then parse_blank_node_triples (d, source)
         else parse_subject_triples (d, source)
                                         
     (* [2] statement ::= directive | triples '.' *)
     and parse_statement (d, source) =
-        consume_whitespace s ~>
-        (fn s =>
-            if eof s then OK (d, source)
+        case discard_whitespace (d, source, []) of
+            ERROR e => ERROR e
+          | OK (d, source, _) => 
+            if eof (d, source, []) then OK (d, source, NONE)
             else
-                if peek_ttl s = C_AT
+                if peek_ttl (d, source, []) = C_AT
                 then parse_directive (d, source)
-                else parse_triples (d, source) ~>
-                     (fn r => (consume_punctuation #"." s; OK r)))
-                                                 
+                else case parse_triples (d, source) of
+                         ERROR e => ERROR e
+               (* !!! inconsistency: this returns only one value, parse_directive returns three (with NONE) *)
+                       | OK d =>
+                         (require_punctuation C_DOT (d, source, []);
+                          OK (d, source, NONE))
+
+(* !!! todo: cut down mutually-recursive list of functions above so only the actually mutually-recursive ones are declared that way *)
+                             
     fun parse_document (d, source) =
-        if eof s then OK (d, source)
+        (*!!! must fix inconsistency mentioned above *)
+        if eof (d, source, []) then OK (d, source)
         else
             case parse_statement (d, source) of
-                OK r => parse_document r
+                OK (d, source, _) => parse_document (d, source)
               | ERROR e => ERROR e
 
     fun without_file iri =
@@ -876,15 +891,16 @@ structure TurtleParser :> TURTLE_PARSER = struct
           | bits => String.concatWith "/" (rev (tl (rev bits)))
 
     fun arrange_result s (ERROR e) =
+        (*!!! todo: separate out this lookahead & arranging error message so this function only needs accept source once (with data, in OK outcome) *)
 	let val message = e ^ " at " ^ (location s)
-	    val next_bit = case peek_n s 8 of [] => peek_n s 4 | p => p
+	    val next_bit = case peek_n 8 s of [] => peek_n 4 s | p => p
 	in
 	    if next_bit = []
 	    then PARSE_ERROR message
 	    else PARSE_ERROR (message ^ " (before \"" ^
 			      (string_of_token next_bit) ^ "...\")")
 	end
-      | arrange_result s (OK (data, _)) =
+      | arrange_result _ (OK (data, _)) =
 	PARSED {
             prefixes = map (fn (a,b) => (string_of_token a, string_of_token b))
                            (TokenMap.listItemsi (#prefixes data)),
@@ -893,17 +909,17 @@ structure TurtleParser :> TURTLE_PARSER = struct
                                       
     fun parse_stream iri stream =
         let val source = Source.from_stream stream
-            val data = {
+            val d = {
                 file_iri = token_of_string iri,
                 base_iri = token_of_string (without_file iri),
                 triples = [],
                 prefixes = TokenMap.empty,
                 blank_nodes = TokenMap.empty
             }
-            val parsed = parse_document (data, source)
+            val parsed = parse_document (d, source)
         in
             print "done\n";
-            arrange_result source parsed
+            arrange_result (d, source, []) parsed (*!!! see above *)
         end
 
     fun parse_string iri string =
