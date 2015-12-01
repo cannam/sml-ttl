@@ -68,5 +68,6 @@ structure Source :> SOURCE = struct
         ", column " ^ (Int.toString (!(#colno r)))
 
     fun eof (r : t) =
-        (!(#line r) = [])
+	(!(#line r) = [])
+	    
 end

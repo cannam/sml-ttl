@@ -72,10 +72,21 @@ structure TurtleParser :> TURTLE_PARSER = struct
 
     fun from_ascii a = Word.fromInt (Char.ord a)
 
+(*!!!*)				    
+fun string_of_node (IRI iri) = "<" ^ iri ^ ">"
+  | string_of_node (BLANK n) = "_" ^ (Int.toString n)
+  | string_of_node (LITERAL lit) = "\"" ^ (#value lit) ^ "\""
+
+fun string_of_triple (a,b,c) =
+    "(" ^ (string_of_node a) ^
+    "," ^ (string_of_node b) ^
+    "," ^ (string_of_node c) ^
+    ")"
+
     (* !!! pretty sure each of these is called only in one place, so
            maybe should just write them inline *)
                                     
-    fun add_triple (d : parse_data) (t : triple) =
+fun add_triple (d : parse_data) (t : triple) =
         { file_iri = #file_iri d,
           base_iri = #base_iri d,
           triples = t :: #triples d,
@@ -160,6 +171,10 @@ structure TurtleParser :> TURTLE_PARSER = struct
 						  
     fun mismatch_message cps found =
         "expected " ^ (CodepointSet.name cps) ^ ", found \"" ^
+        (string_of_token [found]) ^ "\""
+						  
+    fun mismatch_message_ttl c found =
+        "expected " ^ (Codepoints.significant_char_name c) ^ ", found \"" ^
         (string_of_token [found]) ^ "\""
 
     fun split_at (lst, elt) =
@@ -290,8 +305,7 @@ structure TurtleParser :> TURTLE_PARSER = struct
         else if Codepoints.CharMap.find (Codepoints.significant_char_map,
                                          peek s) = SOME c
         then OK (discard s)
-        else ERROR ("expected " ^ (Codepoints.significant_char_name c) ^
-                    ", found \"" ^ (string_of_token [peek s]) ^ "\"")
+        else ERROR (mismatch_message_ttl c (peek s))
 
     fun require_whitespace s =
 	if looking_at Codepoints.whitespace_eol s orelse
@@ -338,6 +352,7 @@ structure TurtleParser :> TURTLE_PARSER = struct
 	let fun match' s acc =
 		case match_token_excl Codepoints.pname_definitely_excluded s of
 		    ERROR e => ERROR e
+		  | OK (s as (d, source, [])) => ERROR "token expected"
 		  | OK (s as (d, source, token)) =>
 		    if peek_ttl s = C_DOT
 		    then
@@ -446,18 +461,19 @@ structure TurtleParser :> TURTLE_PARSER = struct
 	      | other => NO_QUOTE
 	end
 
-    fun quote_codepoint q =
-        if q = C_QUOTE_SINGLE
-	then Codepoints.string_single_excluded
-	else Codepoints.string_double_excluded
-                     
     fun match_long_string_body s q : match_result =
-        let fun match' s =
-                case match_token_excl (quote_codepoint q) s of
+        let
+	    val quote_codepoint =
+		if q = C_QUOTE_SINGLE
+		then Codepoints.long_string_single_excluded
+		else Codepoints.long_string_double_excluded
+
+	    fun match' s =
+                case match_token_excl quote_codepoint s of
                     ERROR e => ERROR e
-                  | OK s => (*!!! todo: handle escapes *)
+                  | OK (s as (d, source, token)) => (*!!! todo: handle escapes *)
                     if have_three s then OK s
-                    else match' s
+                    else match' (d, source, token @ [read s])
         in
             sequence [
                 require_ttl q, require_ttl q, require_ttl q,
@@ -474,8 +490,14 @@ structure TurtleParser :> TURTLE_PARSER = struct
         end
             
     fun match_short_string_body s q : match_result =
-	let fun match' s =
-                case match_token_excl (quote_codepoint q) s of
+	let
+	    val quote_codepoint =
+		if q = C_QUOTE_SINGLE
+		then Codepoints.short_string_single_excluded
+		else Codepoints.short_string_double_excluded
+
+	    fun match' s =
+                case match_token_excl quote_codepoint s of
 		    ERROR e => ERROR e
 	          | OK (s as (d, source, body)) =>
                     if peek_ttl s = C_BACKSLASH
@@ -529,7 +551,8 @@ structure TurtleParser :> TURTLE_PARSER = struct
     fun parse_base (d, source) : parse_result =
         case sequence [
 	        require_whitespace,
-                match_iriref
+                match_iriref,
+		require_punctuation C_DOT
             ] (d, source, []) of
             ERROR e => ERROR e
           | OK (s as (d, source, token)) => 
@@ -551,7 +574,10 @@ structure TurtleParser :> TURTLE_PARSER = struct
             ] (d, source, []) of
             ERROR e => ERROR e
           | OK (d, source, prefix) =>
-            case match_iriref (d, source, []) of
+            case sequence [
+		    match_iriref,
+		    require_punctuation C_DOT
+		] (d, source, []) of
                 ERROR e => ERROR e
               | OK (d, source, iri) =>
 	        OK (add_prefix d (prefix, iri), source, NONE)
@@ -584,8 +610,7 @@ structure TurtleParser :> TURTLE_PARSER = struct
 	      | C_AT =>
                 (case sequence [
                          require_ttl C_AT,
-                         match_token Codepoints.alpha,
-                         require_punctuation C_DOT
+                         match_token Codepoints.alpha
                      ] s of
                      ERROR e => ERROR e
                    | OK (d, source, token) => 
@@ -744,7 +769,8 @@ structure TurtleParser :> TURTLE_PARSER = struct
 						    lang = "",
 						    dtype = dtype
 						}))
-	      | NONE => ERROR "numeric literal expected"
+	      | NONE => ERROR ("expected numeric literal, found \"" ^
+			       candidate_str ^ "\"")
         end
             
     (* [13] literal ::= RDFLiteral | NumericLiteral | BooleanLiteral *)
@@ -804,14 +830,16 @@ structure TurtleParser :> TURTLE_PARSER = struct
 		  | OK other => ERROR "IRI expected for verb"
 
 	    and parse_predicate_object_list' (d, source, volist) =
-                case peek_ttl (d, source, []) of
+                case (discard_whitespace (d, source, []);
+		      peek_ttl (d, source, [])) of
                     C_DOT => OK (d, source, volist)
                   | C_CLOSE_SQUARE => OK (d, source, volist)
                   | other => 
 		    case parse_verb_object_list (d, source) of
 			ERROR e => ERROR e
 		      | OK (d, source, vos) =>
-			if peek_ttl (d, source, []) = C_SEMICOLON
+			if (discard_whitespace (d, source, []);
+			    peek_ttl (d, source, [])) = C_SEMICOLON
 			then (discard_greedy_ttl C_SEMICOLON (d, source, []);
 			      parse_predicate_object_list' (d, source, volist @ vos))
 			else OK (d, source, volist @ vos)
