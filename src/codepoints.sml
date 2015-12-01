@@ -235,6 +235,20 @@ structure Codepoints = struct
                 CharMap.empty pairings
         end
             
-            
+    fun significant_char_name c =
+        (* Slow, but that doesn't matter as long as this is only used once 
+           for constructing an error message *)
+        case List.filter (fn (k, v) => v = c)
+                         (CharMap.listItemsi significant_char_map) of
+            [] => raise Fail "internal error: unknown character"
+          | pairs =>
+            String.concatWith " or "
+                              (List.map
+                                   (fn (w, _) =>
+                                       "\"" ^
+                                       (Utf8.toString (Utf8.implode [w])) ^
+                                       "\"")
+                                   pairs)
+        
 end
                            

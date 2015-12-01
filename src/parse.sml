@@ -290,7 +290,8 @@ structure TurtleParser :> TURTLE_PARSER = struct
         else if Codepoints.CharMap.find (Codepoints.significant_char_map,
                                          peek s) = SOME c
         then OK (discard s)
-        else ERROR ("unexpected character \"" ^ (string_of_token [peek s]) ^ "\"")
+        else ERROR ("expected " ^ (Codepoints.significant_char_name c) ^
+                    ", found \"" ^ (string_of_token [peek s]) ^ "\"")
 
     fun require_whitespace s =
 	if looking_at Codepoints.whitespace_eol s orelse
