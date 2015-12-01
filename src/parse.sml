@@ -51,6 +51,7 @@ structure TurtleParser :> TURTLE_PARSER = struct
                                          end)
 
     type parse_data = {
+        source : Source.t,                  (* contains mutable state *)
         file_iri : token,
         base_iri : token,
         triples : triple list,
@@ -87,22 +88,25 @@ fun string_of_triple (a,b,c) =
            maybe should just write them inline *)
                                     
 fun add_triple (d : parse_data) (t : triple) =
-    (print ("adding triple: " ^ (string_of_triple t) ^ "\n");
-        { file_iri = #file_iri d,
+    ((* print ("adding triple: " ^ (string_of_triple t) ^ "\n"); *)
+        { source = #source d,
+          file_iri = #file_iri d,
           base_iri = #base_iri d,
           triples = t :: #triples d,
           prefixes = #prefixes d,
           blank_nodes = #blank_nodes d })
                      
     fun add_prefix (d : parse_data) (p, e) =
-        { file_iri = #file_iri d,
+        { source = #source d,
+          file_iri = #file_iri d,
           base_iri = #base_iri d,
           triples = #triples d,
           prefixes = TokenMap.insert (#prefixes d, p, e),
           blank_nodes = #blank_nodes d }
                      
     fun add_bnode (d : parse_data) (b, id) =
-        { file_iri = #file_iri d,
+        { source = #source d,
+          file_iri = #file_iri d,
           base_iri = #base_iri d,
           triples = #triples d,
           prefixes = #prefixes d,
@@ -566,7 +570,8 @@ fun add_triple (d : parse_data) (t : triple) =
           | OK (s as (d, source, token)) => 
             let val base = token_of_string (resolve_iri (d, token))
             in
-                OK ({ file_iri = base,
+                OK ({ source = #source d,
+                      file_iri = base,
                       base_iri = base,
                       triples = #triples d,
                       prefixes = #prefixes d,
@@ -947,6 +952,7 @@ fun add_triple (d : parse_data) (t : triple) =
     fun parse_stream iri stream =
         let val source = Source.from_stream stream
             val d = {
+                source = source,
                 file_iri = token_of_string iri,
                 base_iri = token_of_string (without_file iri),
                 triples = [],
