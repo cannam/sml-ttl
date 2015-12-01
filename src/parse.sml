@@ -121,11 +121,11 @@ fun add_triple (d : parse_data) (t : triple) =
                OK result => g result
              | ERROR e => ERROR e
 
-    fun sequence [] = (fn x => OK x)
-      | sequence funcs =
+    fun sequence s [] = OK s
+      | sequence s funcs =
         (* e.g. [ f, g, h ] -> composePartial (h, composePartial (g, f)) *)
         let val rf = rev funcs
-        in foldl composePartial (hd rf) (tl rf)
+        in (foldl composePartial (hd rf) (tl rf)) s
         end
                                 
     fun new_boolean_literal b =
@@ -317,7 +317,7 @@ fun add_triple (d : parse_data) (t : triple) =
 	else ERROR "whitespace expected"
 		
     fun require_punctuation c s =
-        sequence [ discard_whitespace, require_ttl c ] s
+        sequence s [ discard_whitespace, require_ttl c ]
 
     fun match cps (s as (d, tok)) : match_result =
         let val w = read s in
@@ -382,9 +382,9 @@ fun add_triple (d : parse_data) (t : triple) =
     fun match_percent_escape s : match_result =
         (* Percent escapes are *not* supposed to be evaluated in an
            IRI -- they should be passed through unmodified *)
-        sequence [ match_ttl C_PERCENT,
-                   match Codepoints.hex,
-                   match Codepoints.hex ] s
+        sequence s [ match_ttl C_PERCENT,
+                     match Codepoints.hex,
+                     match Codepoints.hex ]
         
     fun unescape_unicode_escape s = (* !!! inconsistent name with match_percent_escape *)
         let val n = case peek_ttl s of
@@ -421,9 +421,9 @@ fun add_triple (d : parse_data) (t : triple) =
                          else ERROR "expected Unicode escape")
                       | other => OK (d, token)
         in
-            sequence [ require_ttl C_OPEN_ANGLE,
-                       match',
-                       require_ttl C_CLOSE_ANGLE ] s
+            sequence s [ require_ttl C_OPEN_ANGLE,
+                         match',
+                         require_ttl C_CLOSE_ANGLE ]
         end
 
     fun match_prefixed_name_namespace s : match_result =
@@ -485,11 +485,11 @@ fun add_triple (d : parse_data) (t : triple) =
                     if have_three s then OK s
                     else match' (d, token @ [read s])
         in
-            sequence [
+            sequence s [
                 require_ttl q, require_ttl q, require_ttl q,
                 match',
                 require_ttl q, require_ttl q, require_ttl q
-            ] s
+            ]
         end
                  
     fun unescape_string_escape s =
@@ -525,11 +525,11 @@ fun add_triple (d : parse_data) (t : triple) =
                           else ERROR "expected escape sequence")
                     else OK s
         in
-            sequence [
+            sequence s [
                 require_ttl q,
                 match',
                 require_ttl q
-            ] s
+            ]
         end
 		     
     fun match_string_body s : match_result =
@@ -547,71 +547,69 @@ fun add_triple (d : parse_data) (t : triple) =
                         C_DASH => match' (d, token @ [read s])
                       | other => OK s
         in
-            sequence [
+            sequence s [
                 require_ttl C_AT,
                 match',
                 fn (d, []) => ERROR "non-empty language tag expected"
                   | s => OK s
-            ] s
+            ]
         end
             
     (* The parse_* functions take parser data as well as source, and 
        return both, as well as the parsed node or whatever (or error) *)
 
+    fun match_parse_seq d match_seq parse_fn =
+        case (sequence (d, []) match_seq) of
+            ERROR e => ERROR e
+          | OK (d, token) => parse_fn (d, token)
+            
     fun parse_base d : parse_result =
-        case sequence [
-	        require_whitespace,
-                match_iriref,
-		require_punctuation C_DOT
-            ] (d, []) of
-            ERROR e => ERROR e
-          | OK (s as (d, token)) => 
-            let val base = token_of_string (resolve_iri (d, token))
-            in
-                OK ({ source = #source d,
-                      file_iri = base,
-                      base_iri = base,
-                      triples = #triples d,
-                      prefixes = #prefixes d,
-                      blank_nodes = #blank_nodes d
-                    }, NONE)
-            end
-                 
+        match_parse_seq d [
+	    require_whitespace,
+            match_iriref,
+	    require_punctuation C_DOT
+        ] (fn (d, token) =>
+              let val base = token_of_string (resolve_iri (d, token))
+              in
+                  OK ({ source = #source d,
+                        file_iri = base,
+                        base_iri = base,
+                        triples = #triples d,
+                        prefixes = #prefixes d,
+                        blank_nodes = #blank_nodes d
+                      }, NONE)
+              end)
+            
     and parse_prefix d : parse_result =
-        case sequence [
-	        require_whitespace,
-                match_prefixed_name_namespace,
-                require_whitespace
-            ] (d, []) of
-            ERROR e => ERROR e
-          | OK (d, prefix) =>
-            case sequence [
-		    match_iriref,
-		    require_punctuation C_DOT
-		] (d, []) of
-                ERROR e => ERROR e
-              | OK (d, iri) =>
-	        OK (add_prefix d (prefix, iri), NONE)
+        match_parse_seq d [
+	    require_whitespace,
+            match_prefixed_name_namespace,
+            require_whitespace
+        ] (fn (d, prefix) =>
+              match_parse_seq d [
+		  match_iriref,
+		  require_punctuation C_DOT
+	      ] (fn (d, iri) => OK (add_prefix d (prefix, iri), NONE)))
 	
     and parse_sparql_base d : parse_result =
-        case match_prefixed_name_candidate (d, []) of
-            ERROR e => ERROR e
-          | OK (d, token) =>
-            if token = token_of_string "base" orelse
-               token = token_of_string "BASE" then
-                parse_base d
-            else
-                ERROR "expected \"BASE\""
+        match_parse_seq d [
+            match_prefixed_name_candidate
+        ] (fn (d, token) =>
+              if token = token_of_string "base" orelse
+                 token = token_of_string "BASE" then
+                  parse_base d
+              else
+                  ERROR "expected \"BASE\"")
 	
     and parse_sparql_prefix d : parse_result =
-        case match_prefixed_name_candidate (d, []) of
-            ERROR e => ERROR e
-         | OK (d, token) => 
-           if token = token_of_string "prefix" orelse
-              token = token_of_string "PREFIX" then
-               parse_prefix d
-           else
-               ERROR "expected \"PREFIX\""
+        match_parse_seq d [
+            match_prefixed_name_candidate
+        ] (fn (d, token) => 
+              if token = token_of_string "prefix" orelse
+                 token = token_of_string "PREFIX" then
+                  parse_prefix d
+              else
+                  ERROR "expected \"PREFIX\"")
         
     and parse_directive d : parse_result =
         let val s = (d, []) in
@@ -619,54 +617,50 @@ fun add_triple (d : parse_data) (t : triple) =
 	        C_LETTER_B => parse_sparql_prefix d
 	      | C_LETTER_P => parse_sparql_prefix d
 	      | C_AT =>
-                (case sequence [
-                         require_ttl C_AT,
-                         match_token Codepoints.alpha
-                     ] s of
-                     ERROR e => ERROR e
-                   | OK (d, token) => 
-                     case string_of_token token of
-                         "prefix" => parse_prefix d
-                       | "base" => parse_base d
-		       | other => ERROR ("expected \"prefix\" or \"base\" after @, not \"" ^ other ^ "\""))
+                match_parse_seq d
+                    [ require_ttl C_AT, match_token Codepoints.alpha ]
+                    (fn (d, token) => 
+                        case string_of_token token of
+                            "prefix" => parse_prefix d
+                          | "base" => parse_base d
+		          | other => ERROR ("expected \"prefix\" or \"base\" " ^
+                                            "after @, not \"" ^ other ^ "\""))
 	      | other => ERROR "expected @prefix, @base, PREFIX, or BASE"
         end
 	                   
     and parse_collection d : parse_result = ERROR "parse_collection not implemented yet"
 
     and parse_blank_node d : parse_result =
-	case sequence [
-		require_ttl C_UNDERSCORE,
-		require_ttl C_COLON,
-		match_prefixed_name_candidate
-	    ] (d, []) of
-	    ERROR e => ERROR e
-	  | OK (d, candidate) => 
-		(* !!! check that we match the blank node pattern. that is:
+	match_parse_seq d [
+	    require_ttl C_UNDERSCORE,
+	    require_ttl C_COLON,
+	    match_prefixed_name_candidate
+	] (fn (d, candidate) => 
+	      (* !!! check that we match the blank node pattern. that is:
                    one initial_bnode_char
                    zero or more pname_char_or_dot
                    if there were any of those, then finally one pname_char *)
-	    case blank_node_for (d, candidate) of
-		(d, node) => OK (d, SOME node)
+	      case blank_node_for (d, candidate) of
+		  (d, node) => OK (d, SOME node))
 	    
     and parse_prefixed_name d : parse_result =
-	case match_prefixed_name_candidate (d, []) of
-	    ERROR e => ERROR e
-	  | OK (d, token) =>
-            (* We can't tell the difference, until we get here,
-               between a prefixed name and the bare literals true
-               or false *)
-            if token = true_token
-	    then OK (d, SOME (new_boolean_literal true))
-            else if token = false_token
-	    then OK (d, SOME (new_boolean_literal false))
-            else prefix_expand (d, token)
-  
-    and parse_iriref d : parse_result=
-	case match_iriref (d, []) of
-	    ERROR e => ERROR e
-	  | OK (d, token) =>
-	    OK (d, SOME (IRI (resolve_iri (d, token))))
+        match_parse_seq d [
+            match_prefixed_name_candidate
+        ] (fn (d, token) =>
+              (* We can't tell the difference, until we get here,
+                 between a prefixed name and the bare literals true
+                 or false *)
+              if token = true_token
+	      then OK (d, SOME (new_boolean_literal true))
+              else if token = false_token
+	      then OK (d, SOME (new_boolean_literal false))
+              else prefix_expand (d, token))
+                               
+    and parse_iriref d : parse_result =
+        match_parse_seq d [
+            match_iriref
+        ] (fn (d, token) => 
+	      OK (d, SOME (IRI (resolve_iri (d, token)))))
             
     and parse_iri d : parse_result = 
         if peek_ttl (d, []) = C_OPEN_ANGLE
@@ -674,12 +668,12 @@ fun add_triple (d : parse_data) (t : triple) =
         else parse_prefixed_name d
 
     and parse_a_or_prefixed_name d : parse_result =
-	case match_prefixed_name_candidate (d, []) of
-	    ERROR e => ERROR e
-	  | OK (d, token) =>
-	    if token = [ from_ascii #"a" ]
-	    then OK (d, SOME (IRI RdfTypes.iri_rdf_type))
-	    else prefix_expand (d, token)
+        match_parse_seq d [
+            match_prefixed_name_candidate
+        ] (fn (d, token) =>
+	      if token = [ from_ascii #"a" ]
+	      then OK (d, SOME (IRI RdfTypes.iri_rdf_type))
+	      else prefix_expand (d, token))
 
     and parse_blank_node_property_list d : parse_result =
 	case require_ttl C_OPEN_SQUARE (d, []) of
@@ -705,40 +699,40 @@ fun add_triple (d : parse_data) (t : triple) =
 	else ERROR "expected \"true\" or \"false\""
 
     and parse_datatype d : parse_result =
-	case sequence [
-		require_ttl C_CARET,
-		require_ttl C_CARET
-	    ] (d, []) of
-	    ERROR e => ERROR e
-	  | OK (d, _) => parse_iri d
+        match_parse_seq d [
+	    require_ttl C_CARET,
+	    require_ttl C_CARET
+	] (fn (d, _) => parse_iri d)
                    
     and parse_rdf_literal d : parse_result =
-	case match_string_body (d, []) of
-	    ERROR e => ERROR e
-	  | OK (d, body) =>
-            case peek_ttl (d, []) of
-                C_AT => (case match_language_tag (d, []) of
-                             ERROR e => ERROR e
-                           | OK (d, tag) =>
-                             OK (d, SOME (LITERAL {
-						       value = string_of_token body,
-						       lang = string_of_token tag,
-						       dtype = ""
-						   })))
-              | C_CARET => (case parse_datatype d of
-                                ERROR e => ERROR e
-                              | OK (d, SOME (IRI tag)) =>
-                                OK (d, SOME (LITERAL {
-							  value = string_of_token body,
-							  lang = "",
-							  dtype = tag
-						      }))
-                              | other => ERROR "internal error")
-              | other => OK (d, SOME (LITERAL {
-						   value = string_of_token body,
-						   lang = "",
-						   dtype = ""
-					       }))
+        match_parse_seq d [
+            match_string_body
+        ] (fn (d, body) =>
+              case peek_ttl (d, []) of
+                  C_AT =>
+                  match_parse_seq d [
+                      match_language_tag
+                  ] (fn (d, tag) =>
+                        OK (d, SOME (LITERAL {
+					  value = string_of_token body,
+					  lang = string_of_token tag,
+					  dtype = ""
+		    })))
+                | C_CARET =>
+                  (case parse_datatype d of
+                       ERROR e => ERROR e
+                     | OK (d, SOME (IRI tag)) =>
+                       OK (d, SOME (LITERAL {
+					 value = string_of_token body,
+					 lang = "",
+					 dtype = tag
+			  }))
+                     | other => ERROR "internal error")
+                | other => OK (d, SOME (LITERAL {
+					     value = string_of_token body,
+					     lang = "",
+					     dtype = ""
+			      })))
 	
     and parse_numeric_literal d =
         let val point = from_ascii #"."
