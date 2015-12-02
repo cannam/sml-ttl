@@ -9,7 +9,6 @@ tests:	tests.deps tests.mlb
 load:	load.deps load.mlb
 	./scripts/polybuild load.mlb
 # mlton load.mlb
-	./load
 
 tests.deps:	tests.mlb
 	./scripts/dependencies $<
