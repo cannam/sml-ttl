@@ -1,33 +1,10 @@
 
-datatype node =
-         IRI of string |
-         BLANK of int |
-         LITERAL of {
-             value : string,
-             dtype : string,
-             lang  : string
-         }
+structure TurtleParser : RDF_PARSER = struct
 
-type triple = node * node * node
+    open Rdf
+    open TurtleCodepoints
 
-type prefix = string * string
-
-signature TURTLE_PARSER = sig
-
-    datatype parsed =
-             PARSE_ERROR of string |
-             PARSED of {
-                 prefixes : prefix list,
-                 triples : triple list
-             }
-
-    val parse_string : string -> string -> parsed
-    val parse_stream : string -> TextIO.instream -> parsed
-    val parse_file : string -> string -> parsed
-
-end
-
-structure TurtleParser :> TURTLE_PARSER = struct
+    type base_iri = string
 
     datatype parsed =
              PARSE_ERROR of string |
@@ -39,8 +16,6 @@ structure TurtleParser :> TURTLE_PARSER = struct
     (* individual tokens are read as codepoint sequences, but they're
        encoded back to utf8 strings when constructing nodes or iris *)
     type token = word list
-
-    datatype significant_char = datatype Codepoints.turtle_significant_char
 
     val token_of_string = Utf8.explode o Utf8.fromString
     val string_of_token = Utf8.toString o Utf8.implode
@@ -71,28 +46,16 @@ structure TurtleParser :> TURTLE_PARSER = struct
 
     fun from_ascii a = Word.fromInt (Char.ord a)
 
-(*!!!*)				    
-fun string_of_node (IRI iri) = "<" ^ iri ^ ">"
-  | string_of_node (BLANK n) = "_" ^ (Int.toString n)
-  | string_of_node (LITERAL lit) = "\"" ^ (#value lit) ^ "\""
-
-fun string_of_triple (a,b,c) =
-    "(" ^ (string_of_node a) ^
-    "," ^ (string_of_node b) ^
-    "," ^ (string_of_node c) ^
-    ")"
-
     (* !!! pretty sure each of these is called only in one place, so
            maybe should just write them inline *)
                                     
-fun add_triple (d : parse_data) (t : triple) =
-    ((* print ("adding triple: " ^ (string_of_triple t) ^ "\n"); *)
+    fun add_triple (d : parse_data) (t : triple) =
         { source = #source d,
           file_iri = #file_iri d,
           base_iri = #base_iri d,
           triples = t :: #triples d,
           prefixes = #prefixes d,
-          blank_nodes = #blank_nodes d })
+          blank_nodes = #blank_nodes d }
                      
     fun add_prefix (d : parse_data) (p, e) =
         { source = #source d,
@@ -132,7 +95,7 @@ fun add_triple (d : parse_data) (t : triple) =
         LITERAL {
             value = if b then "true" else "false",
             lang = "",
-            dtype = RdfTypes.iri_type_boolean
+            dtype = RdfStandardIRIs.iri_type_boolean
         }
     val true_token = token_of_string "true"
     val false_token = token_of_string "false"
@@ -167,7 +130,7 @@ fun add_triple (d : parse_data) (t : triple) =
 
     fun peek_ttl s =
         let val w = peek s in
-            case Codepoints.CharMap.find (Codepoints.significant_char_map, w) of
+            case CharMap.find (significant_char_map, w) of
                 SOME significant => significant
               | NONE => C_NOTHING_INTERESTING
         end
@@ -177,7 +140,7 @@ fun add_triple (d : parse_data) (t : triple) =
         (string_of_token [found]) ^ "\""
 						  
     fun mismatch_message_ttl c found =
-        "expected " ^ (Codepoints.significant_char_name c) ^ ", found \"" ^
+        "expected " ^ (significant_char_name c) ^ ", found \"" ^
         (string_of_token [found]) ^ "\""
 
     fun split_at (lst, elt) =
@@ -193,7 +156,7 @@ fun add_triple (d : parse_data) (t : triple) =
             val fi = #file_iri data
             fun like_absolute_iri [] = false
               | like_absolute_iri (first::rest) = 
-                if CodepointSet.contains Codepoints.alpha first
+                if CodepointSet.contains alpha first
                 then like_absolute_iri rest
                 else if first = from_ascii #":"
                 then case rest of
@@ -279,19 +242,19 @@ fun add_triple (d : parse_data) (t : triple) =
     fun discard_to_eol s =
         if eof s then OK s
         else
-            if CodepointSet.contains Codepoints.eol (read s)
-            then discard_greedy Codepoints.eol s
+            if CodepointSet.contains eol (read s)
+            then discard_greedy eol s
             else discard_to_eol s
 
     fun discard_whitespace s =
         if eof s then OK s
         else
             let val c = peek s in
-                if CodepointSet.contains Codepoints.comment c then
+                if CodepointSet.contains comment c then
                     case discard_to_eol (discard s) of
                         OK s => discard_whitespace s
                       | ERROR e => ERROR e
-                else if CodepointSet.contains Codepoints.whitespace_eol c then
+                else if CodepointSet.contains whitespace_eol c then
                     discard_whitespace (discard s)
                 else OK s
             end
@@ -305,14 +268,14 @@ fun add_triple (d : parse_data) (t : triple) =
 
     fun require_ttl c s =
         if eof s then ERROR "unexpected end of input"
-        else if Codepoints.CharMap.find (Codepoints.significant_char_map,
+        else if CharMap.find (significant_char_map,
                                          peek s) = SOME c
         then OK (discard s)
         else ERROR (mismatch_message_ttl c (peek s))
 
     fun require_whitespace s =
-	if looking_at Codepoints.whitespace_eol s orelse
-	   looking_at Codepoints.comment s
+	if looking_at whitespace_eol s orelse
+	   looking_at comment s
 	then discard_whitespace s
 	else ERROR "whitespace expected"
 		
@@ -328,7 +291,7 @@ fun add_triple (d : parse_data) (t : triple) =
 
     fun match_ttl c (s as (d, tok)) : match_result =
         let val w = read s in
-            if Codepoints.CharMap.find (Codepoints.significant_char_map, w) = SOME c
+            if CharMap.find (significant_char_map, w) = SOME c
             then OK (d, tok @ [w])
             else ERROR (mismatch_message_ttl c w)
         end
@@ -360,7 +323,7 @@ fun add_triple (d : parse_data) (t : triple) =
        on context. *)
     fun match_prefixed_name_candidate s : match_result =
 	let fun match' s acc =
-		case match_token_excl Codepoints.pname_definitely_excluded s of
+		case match_token_excl pname_definitely_excluded s of
 		    ERROR e => ERROR e
 		  | OK (s as (d, [])) => ERROR "token expected"
 		  | OK (s as (d, token)) =>
@@ -368,7 +331,7 @@ fun add_triple (d : parse_data) (t : triple) =
 		    then
                         case peek_n 2 s of
                             dot::next::[] =>
-                            if CodepointSet.contains Codepoints.pname_after_dot next
+                            if CodepointSet.contains pname_after_dot next
                             then let val c = read s (* the dot *) in
 				     match' s (acc @ token @ [c])
                                  end
@@ -383,8 +346,8 @@ fun add_triple (d : parse_data) (t : triple) =
         (* Percent escapes are *not* supposed to be evaluated in an
            IRI -- they should be passed through unmodified *)
         sequence s [ match_ttl C_PERCENT,
-                     match Codepoints.hex,
-                     match Codepoints.hex ]
+                     match hex,
+                     match hex ]
         
     fun unescape_unicode_escape s = (* !!! inconsistent name with match_percent_escape *)
         let val n = case peek_ttl s of
@@ -402,7 +365,7 @@ fun add_triple (d : parse_data) (t : triple) =
             
     fun match_iriref s : match_result =
         let fun match' s =
-                case match_token_excl Codepoints.iri_escaped s of
+                case match_token_excl iri_escaped s of
                     ERROR e => ERROR e
                   | OK (s as (d, token)) => 
                     case peek_ttl s of
@@ -412,7 +375,7 @@ fun add_triple (d : parse_data) (t : triple) =
                            | OK (d, pe) => match' (d, token @ pe))
                       | C_BACKSLASH =>
                         (discard s;
-                         if looking_at Codepoints.unicode_u s
+                         if looking_at unicode_u s
                          then let val (s, w) = unescape_unicode_escape s
                               in if w = 0wx0
                                  then ERROR "invalid Unicode escape"
@@ -442,18 +405,18 @@ fun add_triple (d : parse_data) (t : triple) =
 	    in
 		if colon = from_ascii #":"
 		then
-		    if CodepointSet.contains Codepoints.base_pname_char first
+		    if CodepointSet.contains base_pname_char first
 		       andalso List.all (CodepointSet.contains
-					     Codepoints.pname_char_or_dot) token
-		       andalso CodepointSet.contains Codepoints.pname_char last
+					     pname_char_or_dot) token
+		       andalso CodepointSet.contains pname_char last
 		    then OK (d, token)
 		    else ERROR ("malformed prefix \"" ^ (string_of_token token) ^ "\"")
 		else ERROR "expected \":\" at end of prefix"
 	    end
 
     datatype quote = NO_QUOTE |
-                     SHORT_STRING of Codepoints.turtle_significant_char |
-                     LONG_STRING of Codepoints.turtle_significant_char
+                     SHORT_STRING of turtle_significant_char |
+                     LONG_STRING of turtle_significant_char
 
     fun have_three s =
 	case peek_n 3 s of [a,b,c] => a = b andalso b = c
@@ -475,8 +438,8 @@ fun add_triple (d : parse_data) (t : triple) =
         let
 	    val quote_codepoint =
 		if q = C_QUOTE_SINGLE
-		then Codepoints.long_string_single_excluded
-		else Codepoints.long_string_double_excluded
+		then long_string_single_excluded
+		else long_string_double_excluded
 
 	    fun match' s =
                 case match_token_excl quote_codepoint s of
@@ -494,7 +457,7 @@ fun add_triple (d : parse_data) (t : triple) =
                  
     fun unescape_string_escape s =
         let val e = read s in
-            case Codepoints.CharMap.find (Codepoints.string_escape_map, e) of
+            case CharMap.find (string_escape_map, e) of
                 SOME w => (s, w)
               | NONE => (s, e)
         end
@@ -503,8 +466,8 @@ fun add_triple (d : parse_data) (t : triple) =
 	let
 	    val quote_codepoint =
 		if q = C_QUOTE_SINGLE
-		then Codepoints.short_string_single_excluded
-		else Codepoints.short_string_double_excluded
+		then short_string_single_excluded
+		else short_string_double_excluded
 
 	    fun match' s =
                 case match_token_excl quote_codepoint s of
@@ -512,11 +475,11 @@ fun add_triple (d : parse_data) (t : triple) =
 	          | OK (s as (d, body)) =>
                     if peek_ttl s = C_BACKSLASH
                     then (discard s;
-                          if looking_at Codepoints.string_escape s
+                          if looking_at string_escape s
                           then let val (s, w) = unescape_string_escape s
                                in match' (d, body @ [w])
                                end
-                          else if looking_at Codepoints.unicode_u s
+                          else if looking_at unicode_u s
                           then let val (s, w) = unescape_unicode_escape s
                                in if w = 0wx0
                                   then ERROR "invalid Unicode escape"
@@ -540,7 +503,7 @@ fun add_triple (d : parse_data) (t : triple) =
 
     fun match_language_tag s : match_result =
         let fun match' s =
-                case match_token Codepoints.alpha s of
+                case match_token alpha s of
                     ERROR e => ERROR e
                   | OK (s as (d, token)) =>
                     case peek_ttl s of
@@ -618,7 +581,7 @@ fun add_triple (d : parse_data) (t : triple) =
 	      | C_LETTER_P => parse_sparql_prefix d
 	      | C_AT =>
                 match_parse_seq d
-                    [ require_ttl C_AT, match_token Codepoints.alpha ]
+                    [ require_ttl C_AT, match_token alpha ]
                     (fn (d, token) => 
                         case string_of_token token of
                             "prefix" => parse_prefix d
@@ -672,7 +635,7 @@ fun add_triple (d : parse_data) (t : triple) =
             match_prefixed_name_candidate
         ] (fn (d, token) =>
 	      if token = [ from_ascii #"a" ]
-	      then OK (d, SOME (IRI RdfTypes.iri_rdf_type))
+	      then OK (d, SOME (IRI RdfStandardIRIs.iri_rdf_type))
 	      else prefix_expand (d, token))
 
     and parse_blank_node_property_list d : parse_result =
@@ -738,16 +701,16 @@ fun add_triple (d : parse_data) (t : triple) =
         let val point = from_ascii #"."
 
             val candidate =
-                case match_token Codepoints.number (d, []) of
+                case match_token number (d, []) of
                     ERROR e => []
                   | OK (s as (d, n0)) =>
                     case peek_n 2 s of
                         [a,b] => if a = point andalso
                                     CodepointSet.contains
-                                        Codepoints.number_after_point b
+                                        number_after_point b
                                  then
 				     (discard s;
-                                      case match_token Codepoints.number s of
+                                      case match_token number s of
                                           OK (d, n1) => (n0 @ [point] @ n1)
 					| ERROR e => [])
                                  else n0
@@ -757,13 +720,13 @@ fun add_triple (d : parse_data) (t : triple) =
 
 	    val contains_e =
 		isSome (List.find
-			    (CodepointSet.contains Codepoints.exponent) candidate)
+			    (CodepointSet.contains exponent) candidate)
 	    val contains_dot =
 		isSome (List.find (fn c => c = from_ascii #".") candidate)
 
-	    val dtype = if contains_e then RdfTypes.iri_type_double
-			else if contains_dot then RdfTypes.iri_type_decimal
-			else RdfTypes.iri_type_integer
+	    val dtype = if contains_e then RdfStandardIRIs.iri_type_double
+			else if contains_dot then RdfStandardIRIs.iri_type_decimal
+			else RdfStandardIRIs.iri_type_integer
         in
 	    (* spec says we store the literal as it appears in the
                file, don't canonicalise: we only convert it to check
@@ -786,7 +749,7 @@ fun add_triple (d : parse_data) (t : triple) =
 	  | C_LETTER_T => parse_boolean_literal d
 	  | C_LETTER_F => parse_boolean_literal d
 	  | C_DOT => parse_numeric_literal d
-	  | other => if CodepointSet.contains Codepoints.number (peek (d, []))
+	  | other => if CodepointSet.contains number (peek (d, []))
 		     then parse_numeric_literal d
 		     else (* not literal after all! *) ERROR "object node expected"
 					
@@ -798,7 +761,7 @@ fun add_triple (d : parse_data) (t : triple) =
 	  | other => parse_iri d
                                
     and parse_object d =
-        if looking_at Codepoints.not_a_literal (d, [])
+        if looking_at not_a_literal (d, [])
         then parse_non_literal_object d
         else parse_literal d
                                
@@ -940,7 +903,7 @@ fun add_triple (d : parse_data) (t : triple) =
                            (TokenMap.listItemsi (#prefixes d)),
             triples = #triples d
         }
-                                      
+	       
     fun parse_stream iri stream =
         let val source = Source.from_stream stream
             val d = {

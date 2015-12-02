@@ -1,4 +1,6 @@
 
+open Rdf
+
 fun string_of_node (IRI iri) = "<" ^ iri ^ ">"
   | string_of_node (BLANK n) = "_" ^ (Int.toString n)
   | string_of_node (LITERAL lit) = "\"" ^ (#value lit) ^ "\""
@@ -10,7 +12,7 @@ fun string_of_triple (a,b,c) =
     ")"
 
 fun check () =
-    let open Codepoints
+    let open TurtleCodepoints
         val str1 = CodepointSet.to_string pname_char
 	val cp2  = CodepointSet.from_string str1
         val str2 = CodepointSet.to_string cp2
@@ -40,10 +42,10 @@ fun parse () =
         
 fun main () =
     (print "pname_local_escapable = \n";
-     print (CodepointSet.to_string Codepoints.pname_local_escapable);
+     print (CodepointSet.to_string TurtleCodepoints.pname_local_escapable);
      print "\n";
      print "iri_escaped = \n";
-     print (CodepointSet.to_string Codepoints.iri_escaped);
+     print (CodepointSet.to_string TurtleCodepoints.iri_escaped);
      print "\n";
      parse ();
      check ());

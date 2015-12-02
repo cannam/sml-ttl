@@ -9,9 +9,11 @@ $(SML_LIB)/smlnj-lib/Util/redblack-map-fn.sml
 src/sml-utf8/UTF8.sig
 src/sml-utf8/Utf8.sml
 src/codepointset.sml
-src/codepoints.sml
 src/source.sml
-src/rdftypes.sml
-src/parse.sml
+src/rdf-triple.sml
+src/rdf-standard-iris.sml
+src/rdf-parser.sig
+src/turtle-codepoints.sml
+src/turtle-parser.sml
 src/test.sml
 src/main.sml

@@ -1,5 +1,5 @@
 
-structure RdfTypes = struct
+structure RdfStandardIRIs = struct
 
     val prefix_xsd = "http://www.w3.org/2001/XMLSchema#"
     val prefix_rdf = "http://www.w3.org/1999/02/22-rdf-syntax-ns#"

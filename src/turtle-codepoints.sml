@@ -1,5 +1,5 @@
 
-structure Codepoints = struct
+structure TurtleCodepoints = struct
 
     open CodepointSet
 
