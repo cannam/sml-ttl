@@ -1,17 +1,18 @@
 
-structure TurtleParser : RDF_PARSER = struct
+structure TurtleStreamParser : RDF_STREAM_PARSER = struct
 
     open Rdf
     open TurtleCodepoints
 
     type base_iri = string
 
-    datatype parsed =
+    datatype stream_value =
+             END_OF_STREAM |
              PARSE_ERROR of string |
-             PARSED of {
+             PARSE_OUTPUT of {
                  prefixes : prefix list,
                  triples : triple list
-             }
+             } * (unit -> stream_value)
 
     (* individual tokens are read as codepoint sequences, but they're
        encoded back to utf8 strings when constructing nodes or iris *)
@@ -29,12 +30,11 @@ structure TurtleParser : RDF_PARSER = struct
         source : Source.t,                  (* contains mutable state *)
         file_iri : token,
         base_iri : token,
-        triples : triple list,
         prefixes : token TokenMap.map,      (* prefix -> expansion *)
-        blank_nodes : int TokenMap.map      (* token -> blank node id *)
+        blank_nodes : int TokenMap.map,     (* token -> blank node id *)
+        new_triples : triple list,
+        new_prefixes : prefix list
     }
-
-    (* todo: subsume source into parse_data ? *)
 
     type match_state = parse_data * token
     type parse_state = parse_data * node option
@@ -50,28 +50,38 @@ structure TurtleParser : RDF_PARSER = struct
            maybe should just write them inline *)
                                     
     fun add_triple (d : parse_data) (t : triple) =
-        { source = #source d,
+        {
+          source = #source d,
           file_iri = #file_iri d,
           base_iri = #base_iri d,
-          triples = t :: #triples d,
           prefixes = #prefixes d,
-          blank_nodes = #blank_nodes d }
+          blank_nodes = #blank_nodes d,
+          new_triples = t :: #new_triples d,
+          new_prefixes = #new_prefixes d
+        }
                      
     fun add_prefix (d : parse_data) (p, e) =
-        { source = #source d,
+        {
+          source = #source d,
           file_iri = #file_iri d,
           base_iri = #base_iri d,
-          triples = #triples d,
           prefixes = TokenMap.insert (#prefixes d, p, e),
-          blank_nodes = #blank_nodes d }
+          blank_nodes = #blank_nodes d,
+          new_triples = #new_triples d,
+          new_prefixes = (string_of_token p, string_of_token e) ::
+                         (#new_prefixes d)
+        }
                      
     fun add_bnode (d : parse_data) (b, id) =
-        { source = #source d,
+        {
+          source = #source d,
           file_iri = #file_iri d,
           base_iri = #base_iri d,
-          triples = #triples d,
           prefixes = #prefixes d,
-          blank_nodes = TokenMap.insert (#blank_nodes d, b, id) }
+          blank_nodes = TokenMap.insert (#blank_nodes d, b, id),
+          new_triples = #new_triples d,
+          new_prefixes = #new_prefixes d
+        }
 
     fun emit_with_subject (d : parse_data, subject, polist) =
         foldl (fn ((predicate, object), data) =>
@@ -537,9 +547,10 @@ structure TurtleParser : RDF_PARSER = struct
                   OK ({ source = #source d,
                         file_iri = base,
                         base_iri = base,
-                        triples = #triples d,
                         prefixes = #prefixes d,
-                        blank_nodes = #blank_nodes d
+                        blank_nodes = #blank_nodes d,
+                        new_triples = #new_triples d,
+                        new_prefixes = #new_prefixes d
                       }, NONE)
               end)
             
@@ -872,54 +883,97 @@ structure TurtleParser : RDF_PARSER = struct
                          (require_punctuation C_DOT (d, []);
                           OK (d, NONE))
 
-(* !!! todo: cut down mutually-recursive list of functions above so only the actually mutually-recursive ones are declared that way *)
-                             
-    fun parse_document d =
-        (*!!! must fix inconsistency mentioned above *)
-        if eof (d, []) then OK d
-        else
-            case parse_statement d of
-                OK (d, _) => parse_document d
-              | ERROR e => ERROR e
+ (* !!! todo: cut down mutually-recursive list of functions above so only the actually mutually-recursive ones are declared that way *)
 
-    fun without_file iri =
-        case String.fields (fn x => x = #"/") iri of
-            [] => ""
-          | bits => String.concatWith "/" (rev (tl (rev bits)))
-
-    fun arrange_result d (ERROR e) =
-        (*!!! todo: separate out this lookahead & arranging error message so this function only needs accept source once (with data, in OK outcome) *)
+    fun extended_error_message d e =
 	let val message = e ^ " at " ^ (location (d, []))
-	    val next_bit = case peek_n 8 (d, []) of [] => peek_n 4 (d, []) | p => p
+	    val next_bit =
+                case peek_n 8 (d, []) of
+                    [] => peek_n 4 (d, [])
+                  | p => p
 	in
 	    if next_bit = []
-	    then PARSE_ERROR message
-	    else PARSE_ERROR (message ^ " (before \"" ^
-			      (string_of_token next_bit) ^ "...\")")
+	    then message
+	    else message ^ " (before \"" ^ (string_of_token next_bit) ^ "...\")"
 	end
-      | arrange_result _ (OK d) =
-	PARSED {
-            prefixes = map (fn (a,b) => (string_of_token a, string_of_token b))
-                           (TokenMap.listItemsi (#prefixes d)),
-            triples = #triples d
-        }
-	       
+
+    fun parse_document d : stream_value =
+        let fun parse' d = fn () =>
+                              parse_document
+                                  {
+                                    source = #source d,
+                                    file_iri = #file_iri d,
+                                    base_iri = #base_iri d,
+                                    prefixes = #prefixes d,
+                                    blank_nodes = #blank_nodes d,
+                                    new_triples = [],
+                                    new_prefixes = []
+                                  }
+        in
+            case parse_statement d of
+                OK (d, _) => if eof (d, []) andalso
+                                #new_triples d = [] andalso
+                                #new_prefixes d = []
+                             then END_OF_STREAM
+                             else PARSE_OUTPUT ({ prefixes = #new_prefixes d,
+                                                  triples = #new_triples d
+                                                }, parse' d)
+              | ERROR e => PARSE_ERROR (extended_error_message d e)
+        end
+
     fun parse_stream iri stream =
-        let val source = Source.from_stream stream
+        let fun without_file iri =
+                case String.fields (fn x => x = #"/") iri of
+                    [] => ""
+                  | bits => String.concatWith "/" (rev (tl (rev bits)))
+
+            val source = Source.from_stream stream
             val d = {
                 source = source,
                 file_iri = token_of_string iri,
                 base_iri = token_of_string (without_file iri),
-                triples = [],
                 prefixes = TokenMap.empty,
-                blank_nodes = TokenMap.empty
+                blank_nodes = TokenMap.empty,
+                new_triples = [],
+                new_prefixes = []
             }
-            val parsed = parse_document d
         in
-            print "done\n";
-            arrange_result d parsed (*!!! see above *)
+            parse_document d
         end
+            
+end
 
+structure TurtleParser : RDF_PARSER = struct
+
+    type prefix = TurtleStreamParser.prefix
+    type triple = TurtleStreamParser.triple
+    type base_iri = TurtleStreamParser.base_iri
+
+    datatype parsed =
+             PARSE_ERROR of string |
+             PARSED of {
+                 prefixes : prefix list,
+                 triples : triple list
+             }
+
+    fun parse_stream iri stream : parsed =
+        let fun parse' acc f =
+                case f () of
+                    TurtleStreamParser.END_OF_STREAM => PARSED acc
+                  | TurtleStreamParser.PARSE_ERROR err => PARSE_ERROR err
+                  | TurtleStreamParser.PARSE_OUTPUT ({ prefixes, triples }, f') =>
+                    parse' {
+                        prefixes = prefixes @ (#prefixes acc),
+                        triples = triples @ (#triples acc)
+                    } f'
+        in
+            case parse' { prefixes = [], triples = [] }
+                        (fn () => TurtleStreamParser.parse_stream iri stream) of
+                PARSED { prefixes, triples } => PARSED { prefixes = rev prefixes,
+                                                         triples = rev triples }
+              | PARSE_ERROR e => PARSE_ERROR e
+        end
+        
     fun parse_string iri string =
         let val stream = TextIO.openString string
             val result = parse_stream iri stream
@@ -935,7 +989,6 @@ structure TurtleParser : RDF_PARSER = struct
             TextIO.closeIn stream;
             result
         end
-                                                 
+
 end
-                                              
-                
+                                          
