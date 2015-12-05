@@ -28,7 +28,6 @@ structure TurtleStreamParser : RDF_STREAM_PARSER = struct
 
     type parse_data = {
         source : Source.t,                  (* contains mutable state *)
-        file_iri : token,
         base_iri : token,
         prefixes : token TokenMap.map,      (* prefix -> expansion *)
         blank_nodes : int TokenMap.map,     (* token -> blank node id *)
@@ -52,7 +51,6 @@ structure TurtleStreamParser : RDF_STREAM_PARSER = struct
     fun add_triple (d : parse_data) (t : triple) =
         {
           source = #source d,
-          file_iri = #file_iri d,
           base_iri = #base_iri d,
           prefixes = #prefixes d,
           blank_nodes = #blank_nodes d,
@@ -63,7 +61,6 @@ structure TurtleStreamParser : RDF_STREAM_PARSER = struct
     fun add_prefix (d : parse_data) (p, e) =
         {
           source = #source d,
-          file_iri = #file_iri d,
           base_iri = #base_iri d,
           prefixes = TokenMap.insert (#prefixes d, p, e),
           blank_nodes = #blank_nodes d,
@@ -75,7 +72,6 @@ structure TurtleStreamParser : RDF_STREAM_PARSER = struct
     fun add_bnode (d : parse_data) (b, id) =
         {
           source = #source d,
-          file_iri = #file_iri d,
           base_iri = #base_iri d,
           prefixes = #prefixes d,
           blank_nodes = TokenMap.insert (#blank_nodes d, b, id),
@@ -163,7 +159,6 @@ structure TurtleStreamParser : RDF_STREAM_PARSER = struct
 
     fun resolve_iri (data, token) =
         let val bi = #base_iri data
-            val fi = #file_iri data
             fun like_absolute_iri [] = false
               | like_absolute_iri (first::rest) = 
                 if CodepointSet.contains alpha first
@@ -179,7 +174,7 @@ structure TurtleStreamParser : RDF_STREAM_PARSER = struct
                      [] => bi
                    | first::rest =>
                      if first = from_ascii #"#"
-                     then fi @ token
+                     then bi @ token
                      else if first = from_ascii #"/" then bi @ rest
                      else if like_absolute_iri token then token
                      else bi @ token)
@@ -545,7 +540,6 @@ structure TurtleStreamParser : RDF_STREAM_PARSER = struct
               let val base = token_of_string (resolve_iri (d, token))
               in
                   OK ({ source = #source d,
-                        file_iri = base,
                         base_iri = base,
                         prefixes = #prefixes d,
                         blank_nodes = #blank_nodes d,
@@ -902,7 +896,6 @@ structure TurtleStreamParser : RDF_STREAM_PARSER = struct
                               parse_document
                                   {
                                     source = #source d,
-                                    file_iri = #file_iri d,
                                     base_iri = #base_iri d,
                                     prefixes = #prefixes d,
                                     blank_nodes = #blank_nodes d,
@@ -930,8 +923,7 @@ structure TurtleStreamParser : RDF_STREAM_PARSER = struct
             val source = Source.from_stream stream
             val d = {
                 source = source,
-                file_iri = token_of_string iri,
-                base_iri = token_of_string (without_file iri),
+                base_iri = token_of_string iri,
                 prefixes = TokenMap.empty,
                 blank_nodes = TokenMap.empty,
                 new_triples = [],
