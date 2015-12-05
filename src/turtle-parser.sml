@@ -963,8 +963,8 @@ structure TurtleParser : RDF_PARSER = struct
                   | TurtleStreamParser.PARSE_ERROR err => PARSE_ERROR err
                   | TurtleStreamParser.PARSE_OUTPUT ({ prefixes, triples }, f') =>
                     parse' {
-                        prefixes = prefixes @ (#prefixes acc),
-                        triples = triples @ (#triples acc)
+                        prefixes = List.revAppend(prefixes, #prefixes acc),
+                        triples = List.revAppend(triples, #triples acc)
                     } f'
         in
             case parse' { prefixes = [], triples = [] }
