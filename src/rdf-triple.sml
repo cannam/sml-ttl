@@ -1,12 +1,14 @@
 
 structure Rdf = struct
 
+    type iri = Iri.t
+
     datatype node =
-             IRI of string |
+             IRI of iri |
              BLANK of int |
              LITERAL of {
 		 value : string,
-		 dtype : string,
+		 dtype : iri,
 		 lang  : string
              }
 
@@ -14,13 +16,14 @@ structure Rdf = struct
 
     type prefix = string * string
 
-    fun string_of_node (IRI iri) = "<" ^ iri ^ ">"
+    fun string_of_node (IRI iri) = "<" ^ (Iri.toString iri) ^ ">"
       | string_of_node (BLANK n) = "_" ^ (Int.toString n)
-      | string_of_node (LITERAL lit) = "\"" ^ (#value lit) ^ "\"" ^
-                                       (if #dtype lit = "" then ""
-					else "^^" ^ (#dtype lit)) ^
-                                       (if #lang lit = "" then ""
-					else "@" ^ (#lang lit))
+      | string_of_node (LITERAL lit) =
+        "\"" ^ (#value lit) ^ "\"" ^
+        (if Iri.equals (#dtype lit, Iri.empty_iri) then ""
+	 else "^^" ^ (Iri.toString (#dtype lit))) ^
+        (if #lang lit = "" then ""
+	 else "@" ^ (#lang lit))
 
     fun string_of_triple (a,b,c) =
 	"(" ^ (string_of_node a) ^

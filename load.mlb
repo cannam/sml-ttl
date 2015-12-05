@@ -10,6 +10,8 @@ src/sml-utf8/UTF8.sig
 src/sml-utf8/Utf8.sml
 src/codepointset.sml
 src/source.sml
+src/iri.sig
+src/iri.sml
 src/rdf-triple.sml
 src/rdf-standard-iris.sml
 src/rdf-parser.sig
