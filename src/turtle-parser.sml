@@ -308,24 +308,24 @@ structure TurtleStreamParser : RDF_STREAM_PARSER = struct
 
     (* May return an empty token *)
     fun match_token cps (s as (d, tok)) : match_result =
-        let fun match' acc =
-                if eof s then acc
+        let fun match' () =
+                if eof s then []
                 else
                     if CodepointSet.contains cps (peek s)
-                    then match' ((read s) :: acc)
-                    else acc
+                    then (read s) :: (match' ())
+                    else []
         in
-            OK (d, rev (match' (rev tok)))
+            OK (d, tok @ (match' ()))
         end
 
     (* May return an empty token *)
     fun match_token_excl cps (s as (d, tok)) : match_result =
-        let fun match' acc =
+        let fun match' () =
                 if eof s orelse CodepointSet.contains cps (peek s)
-                then acc
-                else match' ((read s) :: acc)
+                then []
+                else (read s) :: (match' ())
         in
-            OK (d, rev (match' (rev tok)))
+            OK (d, tok @ (match' ()))
         end
 
     (* Read something structured like a prefixed name. The caller is
