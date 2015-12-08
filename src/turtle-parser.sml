@@ -1,7 +1,7 @@
 
 structure TurtleStreamParser : RDF_STREAM_PARSER = struct
 
-    open Rdf
+    open RdfTriple
     open TurtleCodepoints
 
     type base_iri = string
@@ -105,14 +105,7 @@ structure TurtleStreamParser : RDF_STREAM_PARSER = struct
         }
     val true_token = token_of_string "true"
     val false_token = token_of_string "false"
-
-    val bnode_counter = ref 0
-    fun new_blank_node () =
-	let val id = !bnode_counter in
-	    bnode_counter := id + 1;
-	    BLANK id
-	end
-				      
+			      
     fun blank_node_for (d: parse_data, token) =
 	case TokenMap.find (#blank_nodes d, token) of
 	    SOME id => (d, BLANK id)

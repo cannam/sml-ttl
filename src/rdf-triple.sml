@@ -1,5 +1,5 @@
 
-structure Rdf = struct
+signature RDF_NODE = sig
 
     datatype node =
              IRI of string |
@@ -10,6 +10,35 @@ structure Rdf = struct
 		 lang  : string
              }
 
+    val new_blank_node : unit -> node
+
+end
+			 
+structure RdfNode :> RDF_NODE = struct
+
+    datatype node =
+             IRI of string |
+             BLANK of int |
+             LITERAL of {
+		 value : string,
+		 dtype : string,
+		 lang  : string
+             }
+
+    val bnode_counter = ref 0
+		
+    fun new_blank_node () =
+	let val id = !bnode_counter in
+	    bnode_counter := id + 1;
+	    BLANK id
+	end
+    
+end
+		    
+structure RdfTriple = struct
+
+    open RdfNode
+			    
     type triple = node * node * node
 
     type prefix = string * string

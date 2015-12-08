@@ -1,5 +1,5 @@
 
-open Rdf
+open RdfTriple
 	 
 fun usage () =
     let open TextIO in
