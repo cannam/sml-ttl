@@ -588,8 +588,30 @@ structure TurtleStreamParser : RDF_STREAM_PARSER = struct
                                             "after @, not \"" ^ other ^ "\""))
 	      | other => ERROR "expected @prefix, @base, PREFIX, or BASE"
         end
-	                   
-    and parse_collection d : parse_result = ERROR "parse_collection not implemented yet"
+	    
+    (* [15] collection ::= '(' object* ')' *)
+    and parse_collection d : parse_result =
+	let fun read_objects acc d =
+                case (discard_whitespace (d, []);
+		      peek_ttl (d, [])) of
+		    C_CLOSE_PAREN =>
+		    (discard (d, []);
+		     if null acc
+		     then OK (d, SOME (IRI RdfStandardIRIs.iri_rdf_nil))
+		     else let val c = RdfCollection.collection_of_nodes acc
+			      val d = foldl (fn (t, data) => add_triple data t) d c
+			  in
+			      OK (d, SOME (#1 (hd c)))
+			  end)
+		  | _ => case parse_object d of
+			     ERROR e => ERROR e
+			   | OK (d, SOME obj) => read_objects (acc @ [obj]) d
+			   | OK (d, NONE) => ERROR "object expected"
+	in
+	    match_parse_seq d [
+		require_ttl C_OPEN_PAREN
+	    ] (fn (d, _) => read_objects [] d)
+        end
 
     and parse_blank_node d : parse_result =
 	match_parse_seq d [

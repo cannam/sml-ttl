@@ -12,6 +12,7 @@ src/codepointset.sml
 src/source.sml
 src/rdf-triple.sml
 src/rdf-standard-iris.sml
+src/rdf-collection.sml
 src/rdf-parser.sig
 src/turtle-codepoints.sml
 src/turtle-parser.sml
