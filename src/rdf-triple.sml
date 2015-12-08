@@ -12,6 +12,8 @@ signature RDF_NODE = sig
 
     val new_blank_node : unit -> node
 
+    val compare : node * node -> order
+				     
 end
 			 
 structure RdfNode :> RDF_NODE = struct
@@ -32,6 +34,17 @@ structure RdfNode :> RDF_NODE = struct
 	    bnode_counter := id + 1;
 	    BLANK id
 	end
+
+    fun compare (IRI i1, IRI i2) = String.compare (i1, i2) 
+      | compare (BLANK b1, BLANK b2) = Int.compare (b1, b2)
+      | compare (LITERAL l1, LITERAL l2) =
+	if #dtype l1 <> #dtype l2 then String.compare (#dtype l1, #dtype l2)
+	else if #lang l1 <> #lang l2 then String.compare (#lang l1, #lang l2)
+	else String.compare (#value l1, #value l2)
+      | compare (IRI _, _) = LESS
+      | compare (BLANK _, IRI _) = GREATER
+      | compare (BLANK _, _) = LESS
+      | compare (LITERAL _, _) = GREATER
     
 end
 		    

@@ -16,5 +16,6 @@ src/rdf-collection.sml
 src/rdf-parser.sig
 src/turtle-codepoints.sml
 src/turtle-parser.sml
+src/triple-store.sig
 src/test.sml
 src/main.sml
