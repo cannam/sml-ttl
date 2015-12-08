@@ -41,13 +41,8 @@ structure Index :> INDEX = struct
                                         type ord_key = node
                                         val compare = RdfNode.compare
                                         end)
-
-    structure NodeSet = RedBlackSetFn (struct
-					type ord_key = node
-					val compare = RdfNode.compare
-					end)
 				      
-    type t = index_order * NodeSet.set NodeMap.map NodeMap.map
+    type t = index_order * triple NodeMap.map NodeMap.map NodeMap.map
 
     fun new ix = (ix, NodeMap.empty)
 
@@ -62,17 +57,14 @@ structure Index :> INDEX = struct
     fun find_map (map, key) =
 	getOpt (NodeMap.find (map, key), NodeMap.empty)
 
-    fun find_set (map, key) =
-	getOpt (NodeMap.find (map, key), NodeSet.empty)
-					       
     fun add ((ix, map), triple) =
 	let val (a, b, c) = decompose (ix, triple)
 	    val m2 = find_map (map, a)
-	    val s  = find_set (m2, b)
+	    val m3 = find_map (m2, b)
 	in
 	    (ix, NodeMap.insert (map, a,
 				 NodeMap.insert (m2, b,
-						 NodeSet.add (s, c))))
+						 NodeMap.insert (m3, c, triple))))
 	end
 
     fun contains ((ix, map), triple) =
@@ -82,28 +74,32 @@ structure Index :> INDEX = struct
 		NONE => false
 	      | SOME m2 => case NodeMap.find (m2, b) of
 			       NONE => false
-			     | SOME s => NodeSet.member (s, c)
+			     | SOME m3 => isSome (NodeMap.find (m3, c))
 	end					     
 
     fun remove ((ix, map), triple) = (* NB inefficient if triple is not in index *)
 	let val (a, b, c) = decompose (ix, triple)
 	    val m2 = find_map (map, a)
-	    val s  = find_set (m2, b)
+	    val m3 = find_map (m2, b)
+	    val (cmap, _) = NodeMap.remove (m3, c)
+			    handle NotFound => (m3, triple)
 	in
 	    (ix, NodeMap.insert (map, a,
-				 NodeMap.insert (m2, b,
-						 NodeSet.delete (s, c))))
+				 NodeMap.insert (m2, b, cmap)))
 	end
 
-    fun match ((ix, map), pattern) =
+    fun match ((ix, m) : t, pattern) : triple list =
 	let val (a, b, c) = decompose (ix, pattern)
-	    fun find_in (x, map) =
-		case x of WILDCARD => NodeMap.listItemsi map
-			| KNOWN node => case NodeMap.find (map, node) of
-					    SOME m => [(node, m)]
+	    fun find_in (x, mm) =
+		case x of WILDCARD => NodeMap.listItems mm
+			| KNOWN node => case NodeMap.find (mm, node) of
+					    SOME value => [value]
 					  | NONE => []
+	    fun concatMap f l = List.concat (List.map f l)
 	in
-	    
+	    concatMap (fn bmap => concatMap (fn cmap => find_in (c, cmap))
+					    (find_in (b, bmap)))
+		      (find_in (a, m))
 	end
 	    
 end
