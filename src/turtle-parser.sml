@@ -214,11 +214,11 @@ structure TurtleStreamParser : RDF_STREAM_PARSER = struct
 
      require -> reads 1 or more of something, throws it away, fails if not present
 
-     match -> reads something, appends it to token part of parse_state
+     match -> reads something, appends it to token part of match_state
               tuple, fails if not matched
 
-     parse -> reads something, possibly stashes it in parse_data, fails if not
-              matched
+     parse -> reads something, possibly stashes it in parse_data
+              and/or returns in parse_state, fails if not matched
      *)
 
     fun discard (d, t) = (Source.discard (#source d); (d, t))
@@ -516,9 +516,8 @@ structure TurtleStreamParser : RDF_STREAM_PARSER = struct
             ]
         end
             
-    (* The parse_* functions take parser data as well as source, and 
-       return both, as well as the parsed node or whatever (or error) *)
-
+    (* helper for piping match function output into parse function
+       input *)
     fun match_parse_seq d match_seq parse_fn =
         case (sequence (d, []) match_seq) of
             ERROR e => ERROR e
@@ -541,7 +540,7 @@ structure TurtleStreamParser : RDF_STREAM_PARSER = struct
                       }, NONE)
               end)
             
-    and parse_prefix d : parse_result =
+    fun parse_prefix d : parse_result =
         match_parse_seq d [
 	    require_whitespace,
             match_prefixed_name_namespace,
@@ -552,7 +551,7 @@ structure TurtleStreamParser : RDF_STREAM_PARSER = struct
 		  require_punctuation C_DOT
 	      ] (fn (d, iri) => OK (add_prefix d (prefix, iri), NONE)))
 	
-    and parse_sparql_base d : parse_result =
+    fun parse_sparql_base d : parse_result =
         match_parse_seq d [
             match_prefixed_name_candidate
         ] (fn (d, token) =>
@@ -562,7 +561,7 @@ structure TurtleStreamParser : RDF_STREAM_PARSER = struct
               else
                   ERROR "expected \"BASE\"")
 	
-    and parse_sparql_prefix d : parse_result =
+    fun parse_sparql_prefix d : parse_result =
         match_parse_seq d [
             match_prefixed_name_candidate
         ] (fn (d, token) => 
@@ -572,7 +571,7 @@ structure TurtleStreamParser : RDF_STREAM_PARSER = struct
               else
                   ERROR "expected \"PREFIX\"")
         
-    and parse_directive d : parse_result =
+    fun parse_directive d : parse_result =
         let val s = (d, []) in
 	    case peek_ttl s of
 	        C_LETTER_B => parse_sparql_prefix d
@@ -590,7 +589,7 @@ structure TurtleStreamParser : RDF_STREAM_PARSER = struct
         end
 	    
     (* [15] collection ::= '(' object* ')' *)
-    and parse_collection d : parse_result =
+    fun parse_collection d : parse_result =
 	let fun read_objects acc d =
                 case (discard_whitespace (d, []);
 		      peek_ttl (d, [])) of
@@ -891,8 +890,6 @@ structure TurtleStreamParser : RDF_STREAM_PARSER = struct
                        | OK d =>
                          (require_punctuation C_DOT (d, []);
                           OK (d, NONE))
-
- (* !!! todo: cut down mutually-recursive list of functions above so only the actually mutually-recursive ones are declared that way *)
 
     fun extended_error_message d e =
 	let val message = e ^ " at " ^ (location (d, []))
