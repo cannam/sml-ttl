@@ -947,52 +947,5 @@ structure TurtleStreamParser : RDF_STREAM_PARSER = struct
             
 end
 
-structure TurtleParser : RDF_PARSER = struct
+structure TurtleParser = RdfParserFn(TurtleStreamParser)
 
-    type prefix = TurtleStreamParser.prefix
-    type triple = TurtleStreamParser.triple
-    type base_iri = TurtleStreamParser.base_iri
-
-    datatype parsed =
-             PARSE_ERROR of string |
-             PARSED of {
-                 prefixes : prefix list,
-                 triples : triple list
-             }
-
-    fun parse_stream iri stream : parsed =
-        let fun parse' acc f =
-                case f () of
-                    TurtleStreamParser.END_OF_STREAM => PARSED acc
-                  | TurtleStreamParser.PARSE_ERROR err => PARSE_ERROR err
-                  | TurtleStreamParser.PARSE_OUTPUT ({ prefixes, triples }, f') =>
-                    parse' {
-                        prefixes = List.revAppend(prefixes, #prefixes acc),
-                        triples = List.revAppend(triples, #triples acc)
-                    } f'
-        in
-            case parse' { prefixes = [], triples = [] }
-                        (fn () => TurtleStreamParser.parse_stream iri stream) of
-                PARSED { prefixes, triples } => PARSED { prefixes = rev prefixes,
-                                                         triples = rev triples }
-              | PARSE_ERROR e => PARSE_ERROR e
-        end
-        
-    fun parse_string iri string =
-        let val stream = TextIO.openString string
-            val result = parse_stream iri stream
-        in
-            TextIO.closeIn stream;
-            result
-        end
-
-    fun parse_file iri filename =
-        let val stream = TextIO.openIn filename
-            val result = parse_stream iri stream
-        in
-            TextIO.closeIn stream;
-            result
-        end
-
-end
-                                          
