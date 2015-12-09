@@ -10,8 +10,15 @@ structure Index :> INDEX = struct
     type triple = node * node * node
     type pattern = patnode * patnode * patnode
 
-    datatype index_order = SPO | POS | OPS
+    datatype index_order = SPO | POS | OPS | SOP | PSO | OSP
 
+    fun name SPO = "spo" 
+      | name POS = "pos"
+      | name OPS = "ops"
+      | name SOP = "sop"
+      | name PSO = "pso"
+      | name OSP = "osp"
+							     
     structure NodeMap = RedBlackMapFn (struct
                                         type ord_key = node
                                         val compare = RdfNode.compare
@@ -24,10 +31,16 @@ structure Index :> INDEX = struct
     fun decompose (SPO, (subj,pred,obj)) = (subj,pred,obj)
       | decompose (POS, (subj,pred,obj)) = (pred,obj,subj)
       | decompose (OPS, (subj,pred,obj)) = (obj,pred,subj)
+      | decompose (SOP, (subj,pred,obj)) = (subj,obj,pred)
+      | decompose (PSO, (subj,pred,obj)) = (pred,subj,obj)
+      | decompose (OSP, (subj,pred,obj)) = (obj,subj,pred)
 
     fun recompose (SPO, (subj,pred,obj)) = (subj,pred,obj)
       | recompose (POS, (pred,obj,subj)) = (subj,pred,obj)
       | recompose (OPS, (obj,pred,subj)) = (subj,pred,obj)
+      | recompose (SOP, (subj,obj,pred)) = (subj,pred,obj)
+      | recompose (PSO, (pred,subj,obj)) = (subj,pred,obj)
+      | recompose (OSP, (obj,subj,pred)) = (subj,pred,obj)
 
     fun find_map (map, key) =
 	getOpt (NodeMap.find (map, key), NodeMap.empty)
@@ -72,6 +85,7 @@ structure Index :> INDEX = struct
 					  | NONE => []
 	    fun concatMap f l = List.concat (List.map f l)
 	in
+	    print ("for match using index: " ^ (name ix) ^ "\n");
 	    concatMap (fn bmap => concatMap (fn cmap => find_in (c, cmap))
 					    (find_in (b, bmap)))
 		      (find_in (a, m))
@@ -200,4 +214,54 @@ structure TripleStore :> TRIPLE_STORE = struct
 	end
 
 end
+					    
+functor TripleStoreLoaderFn (P: RDF_STREAM_PARSER) : STORE_LOADER = struct
+
+    structure Parser = P
+    structure Store = TripleStore
+			  
+    datatype result = LOAD_ERROR of string | OK of Store.t
+			  
+    type base_iri = string
+
+    fun load_stream store iri stream : result =
+	let fun parse' acc f =
+		case f () of
+		    P.END_OF_STREAM => OK acc
+		  | P.PARSE_ERROR err => LOAD_ERROR err
+		  | P.PARSE_OUTPUT ({ prefixes, triples }, f') =>
+		    parse'
+			(foldl (fn (triple, s) => Store.add (s, triple))
+			       (foldl (fn ((pfx, exp), s) =>
+					  Store.add_prefix (s, pfx, exp))
+				      store prefixes)
+			       triples)
+			f'
+	in
+	    parse' Store.empty (fn () => P.parse_stream iri stream)
+	end
+								  
+    fun load_string store iri string =
+        let val stream = TextIO.openString string
+            val result = load_stream store iri stream
+        in
+            TextIO.closeIn stream;
+            result
+        end
+
+    fun load_file store iri filename =
+        let val stream = TextIO.openIn filename
+            val result = load_stream store iri stream
+        in
+            TextIO.closeIn stream;
+            result
+        end
+
+    val load_stream_as_new_store = load_stream Store.empty
+    val load_string_as_new_store = load_string Store.empty
+    val load_file_as_new_store = load_file Store.empty
+			
+end
+
+structure TurtleLoader = TripleStoreLoaderFn(TurtleStreamParser)
 					    

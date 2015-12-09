@@ -1,8 +1,8 @@
 			 
 signature RDF_PARSER = sig
 
-    type prefix
-    type triple
+    type prefix = RdfTriple.prefix
+    type triple = RdfTriple.triple
     
     datatype parsed =
              PARSE_ERROR of string |
@@ -21,8 +21,8 @@ end
 
 signature RDF_STREAM_PARSER = sig
 
-    type prefix
-    type triple
+    type prefix = RdfTriple.prefix
+    type triple = RdfTriple.triple
 
     datatype stream_value =
              END_OF_STREAM |

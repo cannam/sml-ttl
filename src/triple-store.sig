@@ -12,7 +12,7 @@ signature INDEX = sig
     type triple = node * node * node
     type pattern = patnode * patnode * patnode
 
-    datatype index_order = SPO | POS | OPS
+    datatype index_order = SPO | POS | OPS | SOP | PSO | OSP
 
     val new : index_order -> t
     val add : t * triple -> t
@@ -52,4 +52,23 @@ signature TRIPLE_STORE = sig
     val abbreviate : t * string -> string
 	     
 end
+			  
+signature STORE_LOADER = sig
 
+    structure Parser : RDF_STREAM_PARSER
+    structure Store : TRIPLE_STORE
+
+    datatype result = LOAD_ERROR of string | OK of Store.t
+			  
+    type base_iri = string
+                     
+    val load_stream : Store.t -> base_iri -> TextIO.instream -> result
+    val load_string : Store.t -> base_iri -> string -> result
+    val load_file : Store.t -> base_iri -> string -> result
+                     
+    val load_stream_as_new_store : base_iri -> TextIO.instream -> result
+    val load_string_as_new_store : base_iri -> string -> result
+    val load_file_as_new_store : base_iri -> string -> result
+
+end
+			     
