@@ -18,5 +18,6 @@ src/rdf-parser.sig
 src/turtle-codepoints.sml
 src/turtle-parser.sml
 src/triple-store.sig
+src/triple-store.sml
 src/test.sml
 src/main.sml
