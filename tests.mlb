@@ -16,6 +16,9 @@ src/rdf-standard-iris.sml
 src/rdf-collection.sml
 src/rdf-parser.sig
 src/rdf-parser-fn.sml
+src/rdf-serialiser.sig
+src/ntriples-codepoints.sml
+src/ntriples-serialiser.sml
 src/turtle-codepoints.sml
 src/turtle-parser.sml
 src/triple-store.sig
