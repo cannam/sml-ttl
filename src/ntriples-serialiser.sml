@@ -9,7 +9,7 @@ structure NTriplesSerialiser :> RDF_STREAM_SERIALISER = struct
 
     type t = TextIO.outstream
 
-    fun create_for_stream t = t
+    fun new t = t
 
     fun flat_map f l = List.concat (List.map f l)
 

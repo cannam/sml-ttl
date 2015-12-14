@@ -926,7 +926,7 @@ structure TurtleStreamParser : RDF_STREAM_PARSER = struct
               | ERROR e => PARSE_ERROR (extended_error_message d e)
         end
 
-    fun parse_stream iri stream =
+    fun parse iri stream =
         let fun without_file iri =
                 case String.fields (fn x => x = #"/") iri of
                     [] => ""

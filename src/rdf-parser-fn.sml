@@ -12,7 +12,7 @@ functor RdfParserFn (P: RDF_STREAM_PARSER) : RDF_PARSER = struct
                  triples : triple list
              }
 
-    fun parse_stream iri stream : parsed =
+    fun parse iri stream : parsed =
         let fun parse' acc f =
                 case f () of
                     P.END_OF_STREAM => PARSED acc
@@ -24,26 +24,10 @@ functor RdfParserFn (P: RDF_STREAM_PARSER) : RDF_PARSER = struct
                     } f'
         in
             case parse' { prefixes = [], triples = [] }
-                        (fn () => P.parse_stream iri stream) of
+                        (fn () => P.parse iri stream) of
                 PARSED { prefixes, triples } => PARSED { prefixes = rev prefixes,
                                                          triples = rev triples }
               | PARSE_ERROR e => PARSE_ERROR e
-        end
-        
-    fun parse_string iri string =
-        let val stream = TextIO.openString string
-            val result = parse_stream iri stream
-        in
-            TextIO.closeIn stream;
-            result
-        end
-
-    fun parse_file iri filename =
-        let val stream = TextIO.openIn filename
-            val result = parse_stream iri stream
-        in
-            TextIO.closeIn stream;
-            result
         end
 
 end

@@ -78,7 +78,7 @@ signature STORE_SAVER = sig
     structure Store : TRIPLE_STORE
 
     val save_to_stream : Store.t -> TextIO.outstream -> unit
-    val save_to_string : Store.t -> string
+(*!!!     val save_to_string : Store.t -> string*)
     val save_to_file : Store.t -> string -> unit
 
 end

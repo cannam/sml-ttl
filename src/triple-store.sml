@@ -238,7 +238,7 @@ functor TripleStoreLoaderFn (P: RDF_STREAM_PARSER) : STORE_LOADER = struct
 			       triples)
 			f'
 	in
-	    parse' Store.empty (fn () => P.parse_stream iri stream)
+	    parse' Store.empty (fn () => P.parse iri stream)
 	end
 								  
     fun load_string store iri string =
@@ -263,5 +263,35 @@ functor TripleStoreLoaderFn (P: RDF_STREAM_PARSER) : STORE_LOADER = struct
 			
 end
 
+functor TripleStoreSaverFn (S: RDF_STREAM_SERIALISER) : STORE_SAVER = struct
+
+    (* !!! this is simple but wasteful, because it duplicates the
+    store's triples into a triple list and serialises that using the
+    non-stream serialiser created here. It should be doing it
+    properly, but that requires being able to fold over triples in the
+    store, which the store doesn't support yet *)
+    
+    structure Serialiser = RdfSerialiserFn(S)
+    structure Store = TripleStore
+
+    fun save_to_stream store stream =
+        let val data = (Store.enumerate_prefixes store,
+                        Store.enumerate store)
+        in
+            (*!!! arg order is reversed from this function *)
+            Serialiser.serialise stream data
+        end
+
+    fun save_to_file store filename =
+        let val stream = TextIO.openOut filename
+            val _ = save_to_stream store stream
+        in
+            TextIO.closeOut stream
+        end
+			  
+end
+                                                                        
 structure TurtleLoader = TripleStoreLoaderFn(TurtleStreamParser)
+					    
+structure NTriplesSaver = TripleStoreSaverFn(NTriplesSerialiser)
 					    

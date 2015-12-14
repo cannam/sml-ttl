@@ -10,14 +10,14 @@ fun usage () =
     end
 
 fun load_file filename =
-    let open TurtleParser
-    in
-        case parse_file "file:///blah" filename of
-            PARSE_ERROR e => raise Fail e
-          | PARSED p =>
-            (app (fn t => print ((string_of_triple t) ^ "\n")) (#triples p) ;
+    case TurtleLoader.load_file_as_new_store "some_iri" filename of
+        TurtleLoader.LOAD_ERROR e => raise Fail e
+      | TurtleLoader.OK store =>
+        (print ("Loaded " ^ (Int.toString (List.length (TripleStore.enumerate store))) ^ " triple(s):\n");
+         NTriplesSaver.save_to_stream store TextIO.stdOut)
+(*            (app (fn t => print ((string_of_triple t) ^ "\n")) (#triples p) ;
              print ("Loaded " ^ (Int.toString (length (#triples p))) ^ " triple(s)\n"))
-    end
+        *)
         
 fun main () =
     (case CommandLine.arguments () of
