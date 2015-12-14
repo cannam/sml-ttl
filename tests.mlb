@@ -17,6 +17,7 @@ src/rdf-collection.sml
 src/rdf-parser.sig
 src/rdf-parser-fn.sml
 src/rdf-serialiser.sig
+src/rdf-serialiser-fn.sml
 src/ntriples-codepoints.sml
 src/ntriples-serialiser.sml
 src/turtle-codepoints.sml
