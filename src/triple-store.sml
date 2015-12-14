@@ -234,7 +234,7 @@ functor TripleStoreLoaderFn (P: RDF_STREAM_PARSER) : STORE_LOADER = struct
 			(foldl (fn (triple, s) => Store.add (s, triple))
 			       (foldl (fn ((pfx, exp), s) =>
 					  Store.add_prefix (s, pfx, exp))
-				      store prefixes)
+				      acc prefixes)
 			       triples)
 			f'
 	in
