@@ -12,7 +12,8 @@ fun usage () =
 fun report_time text start =
     TextIO.output (TextIO.stdErr, 
                    text ^ ": " ^
-                   (Real.toString (Time.toReal (Time.now () - start))) ^ " sec\n")
+                   (Real.toString (Time.toReal
+                                       (Time.- (Time.now (), start)))) ^ " sec\n")
         
 fun load_file filename =
     let val start = Time.now () in 
