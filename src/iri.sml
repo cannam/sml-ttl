@@ -26,7 +26,7 @@ structure Iri :> IRI = struct
                                           end)
 
     val forward_map = ref StringMap.empty
-    val reverse_map = IntHashTable.mkTable (500, Fail "hash table failure") (*!!!*)
+    val reverse_map = IntHashTable.mkTable (2000, Fail "hash table failure")
     val next_id = ref 0
 
     fun fromString s =
