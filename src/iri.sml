@@ -45,8 +45,7 @@ structure Iri :> IRI = struct
             SOME str => str
           | NONE => raise Fail ("Unknown IRI id: " ^ (Int.toString id))
 
-    fun equals (id1, id2) =
-        id1 = id2
+    fun equals (id1, id2) = id1 = id2
 
     val compare = Int.compare
 

@@ -49,9 +49,7 @@ structure RdfNode :> RDF_NODE = struct
              case Iri.compare (#dtype l1, #dtype l2) of
                  GREATER => GREATER
                | LESS => LESS
-               | EQUAL => 
-	         if #lang l1 <> #lang l2 then String.compare (#lang l1, #lang l2)
-	         else EQUAL)
+               | EQUAL => String.compare (#lang l1, #lang l2))
       | compare (IRI _, _) = LESS
       | compare (BLANK _, IRI _) = GREATER
       | compare (BLANK _, _) = LESS
