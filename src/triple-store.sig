@@ -18,8 +18,7 @@ signature INDEX = sig
     val add : t * triple -> t
     val contains : t * triple -> bool
     val remove : t * triple -> t
-    val enumerate : t -> triple list
-    val match : t * pattern -> triple list
+    val fold_match : (triple * 'a -> 'a) -> 'a -> (t * pattern) -> 'a
     val score : t * pattern -> int
     
 end
@@ -42,8 +41,10 @@ signature TRIPLE_STORE = sig
     val add : t * triple -> t
     val contains : t * triple -> bool
     val remove : t * triple -> t
-    val enumerate : t -> triple list
     val match : t * pattern -> triple list
+    val fold_match : (triple * 'a -> 'a) -> 'a -> (t * pattern) -> 'a
+    val foldl : (triple * 'a -> 'a) -> 'a -> t -> 'a
+    val enumerate : t -> triple list
 
     val add_prefix : t * string * string -> t
     val contains_prefix : t * string -> bool
@@ -56,7 +57,6 @@ end
 			  
 signature STORE_LOADER = sig
 
-    structure Parser : RDF_STREAM_PARSER
     structure Store : TRIPLE_STORE
 
     datatype result = LOAD_ERROR of string | OK of Store.t
@@ -75,11 +75,9 @@ end
 
 signature STORE_SAVER = sig
 
-    structure Serialiser : RDF_SERIALISER
     structure Store : TRIPLE_STORE
 
     val save_to_stream : Store.t -> TextIO.outstream -> unit
-(*!!!     val save_to_string : Store.t -> string*)
     val save_to_file : Store.t -> string -> unit
 
 end
