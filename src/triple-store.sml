@@ -112,6 +112,7 @@ structure TripleStore :> TRIPLE_STORE = struct
 
     type triple = node * node * node
     type pattern = patnode * patnode * patnode
+    type iri = Iri.t
 
     structure StringMap = RedBlackMapFn (struct
                                           type ord_key = string
@@ -187,14 +188,15 @@ structure TripleStore :> TRIPLE_STORE = struct
     fun enumerate_prefixes ({ prefixes, ... } : t) =
 	StringMap.listItemsi (#1 prefixes)
 
-    fun expand (store, "a") = Iri.toString RdfStandardIRIs.iri_rdf_type
+    fun expand (store, "a") = RdfStandardIRIs.iri_rdf_type
       | expand ({ prefixes, ... } : t, curie) =
-	case String.fields (fn x => x = #":") curie of
-	    [] => curie
-	  | prefix::rest =>
-	    case StringMap.find (#1 prefixes, prefix) of
-		NONE => curie
-	      | SOME expansion => expansion ^ (String.concatWith ":" rest)
+        Iri.fromString
+	    (case String.fields (fn x => x = #":") curie of
+	         [] => curie
+	       | prefix::rest =>
+	         case StringMap.find (#1 prefixes, prefix) of
+		     NONE => curie
+	           | SOME expansion => expansion ^ (String.concatWith ":" rest))
 
     fun abbreviate ({ prefixes, ... } : t, iri) = 
 	let val (_, reverse) = prefixes
@@ -206,11 +208,14 @@ structure TripleStore :> TRIPLE_STORE = struct
 		      | SOME pfx => (len, pfx)
 		end
 	in
-	    if iri = Iri.toString RdfStandardIRIs.iri_rdf_type then "a"
+	    if Iri.equals (iri, RdfStandardIRIs.iri_rdf_type) then "a"
 	    else
-		case prefix_of iri of
-		    (0, _) => iri
-		  | (len, pfx) => pfx ^ ":" ^ (String.extract (iri, len, NONE))
+                let val iristr = Iri.toString iri in
+		    case prefix_of iristr of
+		        (0, _) => iristr
+		      | (len, pfx) =>
+                        pfx ^ ":" ^ (String.extract (iristr, len, NONE))
+                end
 	end
 
 end
