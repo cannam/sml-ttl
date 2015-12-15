@@ -35,7 +35,29 @@ structure RdfNode :> RDF_NODE = struct
 	    BLANK id
 	end
 
-    fun compare (IRI i1, IRI i2) = String.compare (i1, i2) 
+    fun compare_backwards (s1, s2) =
+        (* we don't need lexicographic ordering for IRI strings;
+           because they often have common prefixes, comparing from
+           their ends is often faster. !!! When printing and serialising,
+           though, it is a bit odd for IRIs to be sorted in order from
+           shortest to longest - it may be better to use IRI interning
+           for the cases where it really matters (i.e. store indexes)
+           and a normal string comparison here *)
+        let val n1 = String.size s1
+            val n2 = String.size s2
+            fun compare' ~1 = EQUAL
+              | compare' n = 
+                case Char.compare (String.sub (s1, n), String.sub (s2, n)) of
+                    LESS => LESS
+                  | GREATER => GREATER
+                  | EQUAL => compare' (n - 1)
+        in
+            if n1 < n2 then LESS
+            else if n1 > n2 then GREATER
+            else compare' (n1 - 1)
+        end
+            
+    fun compare (IRI i1, IRI i2) = compare_backwards (i1, i2) 
       | compare (BLANK b1, BLANK b2) = Int.compare (b1, b2)
       | compare (LITERAL l1, LITERAL l2) =
         (case String.compare (#value l1, #value l2) of
