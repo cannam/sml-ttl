@@ -1,5 +1,5 @@
 
-open Rdf
+open RdfTriple
 
 fun check () =
     let open TurtleCodepoints
@@ -18,7 +18,7 @@ fun check () =
 	else ()
     end
     handle Fail x => print ("exception caught: " ^ x ^ "\n")
-
+(*
 fun parse () =
     let open TurtleParser
         val instr = "@prefix : <http://blather/blah#> .  \n  <a> a :c .\n :c <something> \"this\".\n <b> :has_friends [ :name 'Chris' ; :id '40213' ]."
@@ -29,7 +29,7 @@ fun parse () =
             (print "parsed the following triple(s):\n";
              app (fn t => print ((string_of_triple t) ^ "\n")) (#triples p))
     end
-        
+*)        
 fun main () =
     (print "pname_local_escapable = \n";
      print (CodepointSet.to_string TurtleCodepoints.pname_local_escapable);
@@ -37,7 +37,7 @@ fun main () =
      print "iri_escaped = \n";
      print (CodepointSet.to_string TurtleCodepoints.iri_escaped);
      print "\n";
-     parse ();
+(*     parse (); *)
      check ());
 
 

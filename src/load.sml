@@ -1,5 +1,5 @@
 
-open Rdf
+open RdfTriple
 	 
 fun usage () =
     let open TextIO in
@@ -9,14 +9,23 @@ fun usage () =
         raise Fail "Incorrect arguments specified"
     end
 
+fun report_time text start =
+    TextIO.output (TextIO.stdErr, 
+                   text ^ ": " ^
+                   (Real.toString (Time.toReal
+                                       (Time.- (Time.now (), start)))) ^ " sec\n")
+        
 fun load_file filename =
-    let open TurtleParser
-    in
-        case parse_file "file:///blah" filename of
-            PARSE_ERROR e => raise Fail e
-          | PARSED p =>
-            (*            app (fn t => print ((string_of_triple t) ^ "\n")) (#triples p) *)
-            print ("Loaded " ^ (Int.toString (length (#triples p))) ^ " triple(s)\n")
+    let val start = Time.now () in 
+        case TurtleLoader.load_file_as_new_store "some_iri" filename of
+            TurtleLoader.LOAD_ERROR e => raise Fail e
+          | TurtleLoader.OK store =>
+            (report_time "Load complete" start;
+             print ("Loaded " ^ (Int.toString (List.length (TripleStore.enumerate store))) ^ " triple(s):\n");
+             NTriplesSaver.save_to_stream store TextIO.stdOut)
+(*            (app (fn t => print ((string_of_triple t) ^ "\n")) (#triples p) ;
+             print ("Loaded " ^ (Int.toString (length (#triples p))) ^ " triple(s)\n"))
+        *)
     end
         
 fun main () =

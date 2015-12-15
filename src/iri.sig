@@ -9,9 +9,10 @@ signature IRI = sig
     val toString : t -> string
 
     val equals : t * t -> bool
-    val compare : t * t -> order
+    val compare : t * t -> order  (* _not_ lexicographic comparison *)
 
     val empty_iri : t
+    val is_empty : t -> bool
                                
 end
                     

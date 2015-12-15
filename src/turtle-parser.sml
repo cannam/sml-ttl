@@ -1,7 +1,7 @@
 
 structure TurtleStreamParser : RDF_STREAM_PARSER = struct
 
-    open Rdf
+    open RdfTriple
     open TurtleCodepoints
 
     type base_iri = string
@@ -108,14 +108,7 @@ structure TurtleStreamParser : RDF_STREAM_PARSER = struct
         }
     val true_token = token_of_string "true"
     val false_token = token_of_string "false"
-
-    val bnode_counter = ref 0
-    fun new_blank_node () =
-	let val id = !bnode_counter in
-	    bnode_counter := id + 1;
-	    BLANK id
-	end
-				      
+			      
     fun blank_node_for (d: parse_data, token) =
 	case TokenMap.find (#blank_nodes d, token) of
 	    SOME id => (d, BLANK id)
@@ -224,11 +217,11 @@ structure TurtleStreamParser : RDF_STREAM_PARSER = struct
 
      require -> reads 1 or more of something, throws it away, fails if not present
 
-     match -> reads something, appends it to token part of parse_state
+     match -> reads something, appends it to token part of match_state
               tuple, fails if not matched
 
-     parse -> reads something, possibly stashes it in parse_data, fails if not
-              matched
+     parse -> reads something, possibly stashes it in parse_data
+              and/or returns in parse_state, fails if not matched
      *)
 
     fun discard (d, t) = (Source.discard (#source d); (d, t))
@@ -526,9 +519,8 @@ structure TurtleStreamParser : RDF_STREAM_PARSER = struct
             ]
         end
             
-    (* The parse_* functions take parser data as well as source, and 
-       return both, as well as the parsed node or whatever (or error) *)
-
+    (* helper for piping match function output into parse function
+       input *)
     fun match_parse_seq d match_seq parse_fn =
         case (sequence (d, []) match_seq) of
             ERROR e => ERROR e
@@ -551,7 +543,7 @@ structure TurtleStreamParser : RDF_STREAM_PARSER = struct
                       }, NONE)
               end)
             
-    and parse_prefix d : parse_result =
+    fun parse_prefix d : parse_result =
         match_parse_seq d [
 	    require_whitespace,
             match_prefixed_name_namespace,
@@ -562,7 +554,7 @@ structure TurtleStreamParser : RDF_STREAM_PARSER = struct
 		  require_punctuation C_DOT
 	      ] (fn (d, iri) => OK (add_prefix d (prefix, iri), NONE)))
 	
-    and parse_sparql_base d : parse_result =
+    fun parse_sparql_base d : parse_result =
         match_parse_seq d [
             match_prefixed_name_candidate
         ] (fn (d, token) =>
@@ -572,7 +564,7 @@ structure TurtleStreamParser : RDF_STREAM_PARSER = struct
               else
                   ERROR "expected \"BASE\"")
 	
-    and parse_sparql_prefix d : parse_result =
+    fun parse_sparql_prefix d : parse_result =
         match_parse_seq d [
             match_prefixed_name_candidate
         ] (fn (d, token) => 
@@ -582,7 +574,7 @@ structure TurtleStreamParser : RDF_STREAM_PARSER = struct
               else
                   ERROR "expected \"PREFIX\"")
         
-    and parse_directive d : parse_result =
+    fun parse_directive d : parse_result =
         let val s = (d, []) in
 	    case peek_ttl s of
 	        C_LETTER_B => parse_sparql_prefix d
@@ -598,8 +590,30 @@ structure TurtleStreamParser : RDF_STREAM_PARSER = struct
                                             "after @, not \"" ^ other ^ "\""))
 	      | other => ERROR "expected @prefix, @base, PREFIX, or BASE"
         end
-	                   
-    and parse_collection d : parse_result = ERROR "parse_collection not implemented yet"
+	    
+    (* [15] collection ::= '(' object* ')' *)
+    fun parse_collection d : parse_result =
+	let fun read_objects acc d =
+                case (discard_whitespace (d, []);
+		      peek_ttl (d, [])) of
+		    C_CLOSE_PAREN =>
+		    (discard (d, []);
+		     if null acc
+		     then OK (d, SOME (IRI RdfStandardIRIs.iri_rdf_nil))
+		     else let val c = RdfCollection.collection_of_nodes acc
+			      val d = foldl (fn (t, data) => add_triple data t) d c
+			  in
+			      OK (d, SOME (#1 (hd c)))
+			  end)
+		  | _ => case parse_object d of
+			     ERROR e => ERROR e
+			   | OK (d, SOME obj) => read_objects (acc @ [obj]) d
+			   | OK (d, NONE) => ERROR "object expected"
+	in
+	    match_parse_seq d [
+		require_ttl C_OPEN_PAREN
+	    ] (fn (d, _) => read_objects [] d)
+        end
 
     and parse_blank_node d : parse_result =
 	match_parse_seq d [
@@ -880,8 +894,6 @@ structure TurtleStreamParser : RDF_STREAM_PARSER = struct
                          (require_punctuation C_DOT (d, []);
                           OK (d, NONE))
 
- (* !!! todo: cut down mutually-recursive list of functions above so only the actually mutually-recursive ones are declared that way *)
-
     fun extended_error_message d e =
 	let val message = e ^ " at " ^ (location (d, []))
 	    val next_bit =
@@ -917,7 +929,7 @@ structure TurtleStreamParser : RDF_STREAM_PARSER = struct
               | ERROR e => PARSE_ERROR (extended_error_message d e)
         end
 
-    fun parse_stream iri stream =
+    fun parse iri stream =
         let fun without_file iri =
                 case String.fields (fn x => x = #"/") iri of
                     [] => ""
@@ -938,52 +950,5 @@ structure TurtleStreamParser : RDF_STREAM_PARSER = struct
             
 end
 
-structure TurtleParser : RDF_PARSER = struct
+structure TurtleParser = RdfParserFn(TurtleStreamParser)
 
-    type prefix = TurtleStreamParser.prefix
-    type triple = TurtleStreamParser.triple
-    type base_iri = TurtleStreamParser.base_iri
-
-    datatype parsed =
-             PARSE_ERROR of string |
-             PARSED of {
-                 prefixes : prefix list,
-                 triples : triple list
-             }
-
-    fun parse_stream iri stream : parsed =
-        let fun parse' acc f =
-                case f () of
-                    TurtleStreamParser.END_OF_STREAM => PARSED acc
-                  | TurtleStreamParser.PARSE_ERROR err => PARSE_ERROR err
-                  | TurtleStreamParser.PARSE_OUTPUT ({ prefixes, triples }, f') =>
-                    parse' {
-                        prefixes = List.revAppend(prefixes, #prefixes acc),
-                        triples = List.revAppend(triples, #triples acc)
-                    } f'
-        in
-            case parse' { prefixes = [], triples = [] }
-                        (fn () => TurtleStreamParser.parse_stream iri stream) of
-                PARSED { prefixes, triples } => PARSED { prefixes = rev prefixes,
-                                                         triples = rev triples }
-              | PARSE_ERROR e => PARSE_ERROR e
-        end
-        
-    fun parse_string iri string =
-        let val stream = TextIO.openString string
-            val result = parse_stream iri stream
-        in
-            TextIO.closeIn stream;
-            result
-        end
-
-    fun parse_file iri filename =
-        let val stream = TextIO.openIn filename
-            val result = parse_stream iri stream
-        in
-            TextIO.closeIn stream;
-            result
-        end
-
-end
-                                          

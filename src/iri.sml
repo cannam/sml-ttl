@@ -31,6 +31,8 @@ structure Iri :> IRI = struct
     val compare = Int.compare
 
     val empty_iri = fromString ""
+
+    fun is_empty id = (id = empty_iri)
                       
 end
 
