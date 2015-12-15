@@ -11,8 +11,6 @@ structure NTriplesSerialiser :> RDF_STREAM_SERIALISER = struct
 
     fun new t = t
 
-    fun flat_map f l = List.concat (List.map f l)
-
     fun hex_string_of w min =
         let fun padded h =
                 let val len = String.size h in
@@ -31,16 +29,37 @@ structure NTriplesSerialiser :> RDF_STREAM_SERIALISER = struct
              else "\\u" ^ (hex_string_of w 4))
                                         
     fun percent_encode w = Utf8.explodeString ("%" ^ (hex_string_of w 0))
-                                     
-    fun encode_iri iri =
-        Utf8.implodeString
-            (flat_map (fn w => if CodepointSet.contains
-                                      NTriplesCodepoints.ok_in_iris w then [w]
-                               else if w > 0wx00ff then u_encode w
-                               else percent_encode w)
-                      (Utf8.explodeString iri))
+
+    fun percent_or_u_encode w =
+        if w > 0wx00ff then u_encode w
+        else percent_encode w
+                                              
+    fun ascii_encode 0wx09 = Utf8.explodeString "\\t"
+      | ascii_encode 0wx0A = Utf8.explodeString "\\n"
+      | ascii_encode 0wx0D = Utf8.explodeString "\\r"
+      | ascii_encode 0wx22 = Utf8.explodeString "\\\""
+      | ascii_encode 0wx5C = Utf8.explodeString "\\\\"
+      | ascii_encode w = u_encode w
+
+    fun encode_as_token acceptable encoder str =
+        let fun encode' [] = []
+              | encode' (w::ws) = 
+                if CodepointSet.contains acceptable w
+                then w :: encode' ws
+                else (encoder w) @ encode' ws
+        in
+            Utf8.implodeString (encode' (Utf8.explodeString str))
+        end
                                   
-    fun encode_literal_value blah = blah (* !!! use NTriplesCodepoints.ok_in_strings *)
+    fun encode_iri iri =
+        encode_as_token NTriplesCodepoints.ok_in_iris
+                        percent_or_u_encode
+                        iri
+            
+    fun encode_literal_value value =
+        encode_as_token NTriplesCodepoints.ok_in_strings
+                        ascii_encode
+                        value
 				  
     fun string_of_node (IRI iri) = "<" ^ (encode_iri iri) ^ ">"
       | string_of_node (BLANK n) = "_:blank" ^ (Int.toString n)
