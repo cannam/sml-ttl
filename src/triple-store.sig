@@ -36,6 +36,7 @@ signature TRIPLE_STORE = sig
 
     type triple = node * node * node
     type pattern = patnode * patnode * patnode
+    type iri = Iri.t
 
     val empty : t
     val add : t * triple -> t
@@ -48,8 +49,8 @@ signature TRIPLE_STORE = sig
     val contains_prefix : t * string -> bool
     val remove_prefix : t * string -> t
     val enumerate_prefixes : t -> (string * string) list
-    val expand : t * string -> string
-    val abbreviate : t * string -> string
+    val expand : t * string -> iri
+    val abbreviate : t * iri -> string
 	     
 end
 			  

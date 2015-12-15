@@ -21,6 +21,9 @@ structure TurtleStreamParser : RDF_STREAM_PARSER = struct
     val token_of_string = Utf8.explode o Utf8.fromString
     val string_of_token = Utf8.toString o Utf8.implode
 
+    val iri_of_token = Iri.fromString o string_of_token
+    val token_of_iri = token_of_string o Iri.toString
+
     structure TokenMap = RedBlackMapFn (struct
                                          type ord_key = token
                                          val compare = List.collate Word.compare
@@ -162,7 +165,7 @@ structure TurtleStreamParser : RDF_STREAM_PARSER = struct
                        | _ => false
                 else false
         in
-	    string_of_token
+            iri_of_token
                 (case token of
                      [] => bi
                    | first::rest =>
@@ -199,7 +202,7 @@ structure TurtleStreamParser : RDF_STREAM_PARSER = struct
                 
         in
             case split_at (token, from_ascii #":") of
-                NONE => OK (d, SOME (IRI (string_of_token token)))
+                NONE => OK (d, SOME (IRI (iri_of_token token)))
               | SOME (pre, post) =>
                 if like_pname_local_part post
                 then prefix_expand' (pre, post)
@@ -529,7 +532,7 @@ structure TurtleStreamParser : RDF_STREAM_PARSER = struct
             match_iriref,
 	    require_punctuation C_DOT
         ] (fn (d, token) =>
-              let val base = token_of_string (resolve_iri (d, token))
+              let val base = token_of_iri (resolve_iri (d, token))
               in
                   OK ({ source = #source d,
                         base_iri = base,
@@ -698,7 +701,7 @@ structure TurtleStreamParser : RDF_STREAM_PARSER = struct
                         OK (d, SOME (LITERAL {
 					  value = string_of_token body,
 					  lang = string_of_token tag,
-					  dtype = ""
+					  dtype = Iri.empty_iri
 		    })))
                 | C_CARET =>
                   (case parse_datatype d of
@@ -713,7 +716,7 @@ structure TurtleStreamParser : RDF_STREAM_PARSER = struct
                 | other => OK (d, SOME (LITERAL {
 					     value = string_of_token body,
 					     lang = "",
-					     dtype = ""
+					     dtype = Iri.empty_iri
 			      })))
 	
     and parse_numeric_literal d =
@@ -917,8 +920,8 @@ structure TurtleStreamParser : RDF_STREAM_PARSER = struct
         in
             case parse_statement d of
                 OK (d, _) => if eof (d, []) andalso
-                                #new_triples d = [] andalso
-                                #new_prefixes d = []
+                                null (#new_triples d) andalso
+                                null (#new_prefixes d)
                              then END_OF_STREAM
                              else PARSE_OUTPUT ({ prefixes = #new_prefixes d,
                                                   triples = #new_triples d

@@ -54,7 +54,7 @@ structure NTriplesSerialiser :> RDF_STREAM_SERIALISER = struct
     fun encode_iri iri =
         encode_as_token NTriplesCodepoints.ok_in_iris
                         percent_or_u_encode
-                        iri
+                        (Iri.toString iri)
             
     fun encode_literal_value value =
         encode_as_token NTriplesCodepoints.ok_in_strings
@@ -66,7 +66,7 @@ structure NTriplesSerialiser :> RDF_STREAM_SERIALISER = struct
       | string_of_node (LITERAL lit) =
 	"\"" ^ (encode_literal_value (#value lit)) ^ "\"" ^
         (if #lang lit = "" then "" else "@" ^ (#lang lit)) ^
-        (if #dtype lit = "" then ""
+        (if Iri.is_empty (#dtype lit) then ""
 	 else "^^" ^ (string_of_node (IRI (#dtype lit))))
 	    
     fun serialise (t, PREFIX prefix) = t  (* ntriples doesn't include prefixes *)
