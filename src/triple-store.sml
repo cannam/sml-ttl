@@ -1,4 +1,28 @@
 
+signature INDEX = sig
+
+    type t
+
+    datatype node = datatype RdfNode.node
+				    
+    datatype patnode =
+	     WILDCARD |
+	     KNOWN of node
+
+    type triple = node * node * node
+    type pattern = patnode * patnode * patnode
+
+    datatype index_order = SPO | POS | OPS | SOP | PSO | OSP
+
+    val new : index_order -> t
+    val add : t * triple -> t
+    val contains : t * triple -> bool
+    val remove : t * triple -> t
+    val fold_match : (triple * 'a -> 'a) -> 'a -> (t * pattern) -> 'a
+    val score : t * pattern -> int
+    
+end
+
 structure Index :> INDEX = struct
 
     datatype node = datatype RdfNode.node
@@ -157,9 +181,10 @@ structure TripleStore :> TRIPLE_STORE = struct
 	map_indexes (fn ix => Index.remove (ix, triple)) store
 
     fun fold_match f acc (store, pattern) =
-        Index.fold_match f acc (any_index store, pattern)
+        Index.fold_match f acc (choose_index (store, pattern), pattern)
 
-    fun foldl f acc t = fold_match f acc (t, (WILDCARD, WILDCARD, WILDCARD))
+    fun foldl f acc store =
+        Index.fold_match f acc (any_index store, (WILDCARD, WILDCARD, WILDCARD))
                          
     val match = fold_match (op::) []
 
@@ -221,14 +246,20 @@ structure TripleStore :> TRIPLE_STORE = struct
 	end
 
 end
-					    
-functor TripleStoreStreamLoaderFn (P: RDF_STREAM_PARSER) : STORE_LOADER = struct
+
+structure StoreLoadBase : STORE_LOAD_BASE = struct
 
     structure Store = TripleStore
 			  
     datatype result = LOAD_ERROR of string | OK of Store.t
 			  
     type base_iri = string
+
+end
+                                            
+functor TripleStoreStreamLoaderFn (P: RDF_STREAM_PARSER) : STORE_FORMAT_LOADER = struct
+
+    open StoreLoadBase
 
     fun load_stream store iri stream : result =
 	let fun parse' acc f =
@@ -269,7 +300,7 @@ functor TripleStoreStreamLoaderFn (P: RDF_STREAM_PARSER) : STORE_LOADER = struct
 			
 end
 
-functor TripleStoreStreamSaverFn (S: RDF_STREAM_SERIALISER) : STORE_SAVER = struct
+functor TripleStoreStreamSaverFn (S: RDF_STREAM_SERIALISER) : STORE_FORMAT_SAVER = struct
 
     structure Store = TripleStore
 
@@ -292,8 +323,50 @@ functor TripleStoreStreamSaverFn (S: RDF_STREAM_SERIALISER) : STORE_SAVER = stru
         end
 			  
 end
-                                                                        
+
 structure TurtleLoader = TripleStoreStreamLoaderFn(TurtleStreamParser)
 					    
 structure NTriplesSaver = TripleStoreStreamSaverFn(NTriplesSerialiser)
-					    
+
+structure TripleStoreFileLoader : STORE_LOADER = struct
+
+    open StoreLoadBase
+
+    fun load_file store iri filename =
+        let val extension =
+                case String.tokens (fn x => x = #".") filename of
+                    [] => ""
+                  | bits => hd (rev bits)
+        in
+            (case extension of
+                 "ttl" => TurtleLoader.load_file 
+               | "n3" => TurtleLoader.load_file
+               | "ntriples" => TurtleLoader.load_file
+               | other => raise Fail ("Unknown or unsupported file extension \""
+                                      ^ extension ^ "\""))
+                store iri filename
+        end
+
+    val load_file_as_new_store = load_file Store.empty
+
+end
+
+structure TripleStoreFileSaver : STORE_SAVER = struct
+
+    structure Store = TripleStore
+
+    fun save_to_file store filename =
+        let val extension =
+                case String.tokens (fn x => x = #".") filename of
+                    [] => ""
+                  | bits => hd (rev bits)
+        in
+            (case extension of
+                 "ntriples" => NTriplesSaver.save_to_file
+               | other => raise Fail ("Unknown or unsupported file extension \""
+                                      ^ extension ^ "\""))
+                store filename
+        end
+                                  
+end
+
