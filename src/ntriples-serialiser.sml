@@ -42,13 +42,13 @@ structure NTriplesSerialiser :> RDF_STREAM_SERIALISER = struct
       | ascii_encode w = u_encode w
 
     fun encode_as_token acceptable encoder token =
-        let fun encode' [] = []
-              | encode' (w::ws) = 
+        let fun encode (w, acc) =
                 if CodepointSet.contains acceptable w
-                then w :: encode' ws
-                else (encoder w) @ encode' ws
+                then w :: acc
+                else (encoder w) @ acc
         in
-            SimpleWideString.implodeToUtf8 (encode' (SimpleWideString.explode token))
+            SimpleWideString.implodeToUtf8
+                (SimpleWideString.foldr encode [] token)
         end
                                   
     fun encode_iri iri =
