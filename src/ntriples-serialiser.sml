@@ -41,25 +41,25 @@ structure NTriplesSerialiser :> RDF_STREAM_SERIALISER = struct
       | ascii_encode 0wx5C = Utf8.explodeString "\\\\"
       | ascii_encode w = u_encode w
 
-    fun encode_as_token acceptable encoder str =
+    fun encode_as_token acceptable encoder token =
         let fun encode' [] = []
               | encode' (w::ws) = 
                 if CodepointSet.contains acceptable w
                 then w :: encode' ws
                 else (encoder w) @ encode' ws
         in
-            Utf8.implodeString (encode' (Utf8.explodeString str))
+            Utf8.implodeString (encode' token)
         end
                                   
     fun encode_iri iri =
         encode_as_token NTriplesCodepoints.ok_in_iris
                         percent_or_u_encode
-                        (Iri.toString iri)
+                        (Iri.toCodepoints iri)
             
     fun encode_literal_value value =
         encode_as_token NTriplesCodepoints.ok_in_strings
                         ascii_encode
-                        value
+                        (Utf8.explodeString value)
 				  
     fun string_of_node (IRI iri) = "<" ^ (encode_iri iri) ^ ">"
       | string_of_node (BLANK n) = "_:blank" ^ (Int.toString n)

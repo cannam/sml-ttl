@@ -20,36 +20,40 @@ structure Iri :> IRI = struct
             else compare' (n1 - 1)
         end
                  
-    structure StringMap = RedBlackMapFn (struct
-                                          type ord_key = string
-                                          val compare = compare_backwards
-                                          end)
+    structure IriMap = RedBlackMapFn (struct
+                                       type ord_key = word list
+                                       val compare = List.collate Word.compare
+                                       end)
 
-    val forward_map = ref StringMap.empty
+    val forward_map = ref IriMap.empty
     val reverse_map = IntHashTable.mkTable (2000, Fail "hash table failure")
     val next_id = ref 0
 
-    fun fromString s =
-        case StringMap.find (!forward_map, s) of
+    fun fromCodepoints ww =
+        case IriMap.find (!forward_map, ww) of
             SOME id => id
           | NONE =>
             let val id = !next_id in
-                forward_map := StringMap.insert (!forward_map, s, id);
-                IntHashTable.insert reverse_map (id, s);
+                forward_map := IriMap.insert (!forward_map, ww, id);
+                IntHashTable.insert reverse_map (id, ww);
                 next_id := id + 1;
                 id
             end
 
-    fun toString id =
+    fun toCodepoints id =
         case IntHashTable.find reverse_map id of
-            SOME str => str
+            SOME ww => ww
           | NONE => raise Fail ("Unknown IRI id: " ^ (Int.toString id))
+
+    fun fromString s = fromCodepoints (Utf8.explodeString s)
+
+    fun toString id = Utf8.implodeString (toCodepoints id)
 
     fun equals (id1, id2) = id1 = id2
 
     val compare = Int.compare
 
-    val empty_iri = fromString ""
+    val empty_iri = fromCodepoints []
 
     fun is_empty id = (id = empty_iri)
                       
