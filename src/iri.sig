@@ -8,8 +8,8 @@ signature IRI = sig
     val fromString : string -> t
     val toString : t -> string
 
-    val fromCodepoints : word list -> t
-    val toCodepoints : t -> word list
+    val fromCodepoints : Utf8.t -> t
+    val toCodepoints : t -> Utf8.t
                             
     val equals : t * t -> bool
     val compare : t * t -> order  (* _not_ lexicographic comparison *)

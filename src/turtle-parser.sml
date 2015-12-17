@@ -21,8 +21,8 @@ structure TurtleStreamParser : RDF_STREAM_PARSER = struct
     val token_of_string = Utf8.explode o Utf8.fromString
     val string_of_token = Utf8.toString o Utf8.implode
 
-    val iri_of_token = Iri.fromCodepoints
-    val token_of_iri = Iri.toCodepoints
+    val iri_of_token = Iri.fromCodepoints o Utf8.implode
+    val token_of_iri = Utf8.explode o Iri.toCodepoints
 
     structure TokenMap = RedBlackMapFn (struct
                                          type ord_key = token

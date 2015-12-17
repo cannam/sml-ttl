@@ -48,7 +48,7 @@ structure NTriplesSerialiser :> RDF_STREAM_SERIALISER = struct
                 then w :: encode' ws
                 else (encoder w) @ encode' ws
         in
-            Utf8.implodeString (encode' token)
+            Utf8.implodeString (encode' (Utf8.explode token))
         end
                                   
     fun encode_iri iri =
@@ -59,7 +59,7 @@ structure NTriplesSerialiser :> RDF_STREAM_SERIALISER = struct
     fun encode_literal_value value =
         encode_as_token NTriplesCodepoints.ok_in_strings
                         ascii_encode
-                        (Utf8.explodeString value)
+                        (Utf8.fromString value)
 				  
     fun string_of_node (IRI iri) = "<" ^ (encode_iri iri) ^ ">"
       | string_of_node (BLANK n) = "_:blank" ^ (Int.toString n)
