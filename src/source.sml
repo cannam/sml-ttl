@@ -20,7 +20,7 @@ structure Source :> SOURCE = struct
 
     type t = {
         stream : TextIO.instream,
-        line : SimpleWideString.t ref,
+        line : WdString.t ref,
         lineno : int ref,
         colno : int ref
     }
@@ -28,9 +28,9 @@ structure Source :> SOURCE = struct
     fun load_line r =
         (case TextIO.inputLine (#stream r) of
              NONE =>
-             (#line r) := SimpleWideString.empty
+             (#line r) := WdString.empty
            | SOME str =>
-             ((#line r) := SimpleWideString.fromUtf8 str;
+             ((#line r) := WdString.fromUtf8 str;
               (#lineno r) := !(#lineno r) + 1;
               (#colno r) := 0);
          r)
@@ -38,26 +38,26 @@ structure Source :> SOURCE = struct
     fun from_stream str =
         load_line {
             stream = str,
-            line = ref SimpleWideString.empty,
+            line = ref WdString.empty,
             lineno = ref 0,
             colno = ref 0
         }
 
     fun in_range (r : t) =
-        !(#colno r) < SimpleWideString.size (!(#line r))
+        !(#colno r) < WdString.size (!(#line r))
                   
     fun peek (r : t) =
         if in_range r
-        then SimpleWideString.sub (!(#line r), !(#colno r))
+        then WdString.sub (!(#line r), !(#colno r))
         else nl
 
     fun peek_n n (r : t) =
         let val line = !(#line r)
-            val len = SimpleWideString.size line
+            val len = WdString.size line
             fun peek' 0 c = []
               | peek' n c = 
                 (if c < len
-                 then SimpleWideString.sub (line, c)
+                 then WdString.sub (line, c)
                  else nl) :: (peek' (n-1) (c+1))
         in
             peek' n (!(#colno r))
@@ -65,7 +65,7 @@ structure Source :> SOURCE = struct
 
     fun read (r : t) =
         if in_range r
-        then let val w = SimpleWideString.sub (!(#line r), !(#colno r))
+        then let val w = WdString.sub (!(#line r), !(#colno r))
              in
                  ((#colno r) := !(#colno r) + 1;
                   if not (in_range r) then (load_line r; w)

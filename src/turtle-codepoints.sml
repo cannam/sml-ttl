@@ -254,7 +254,7 @@ structure TurtleCodepoints = struct
                               (List.map
                                    (fn (w, _) =>
                                        "\"" ^
-                                       (SimpleWideString.implodeToUtf8 [w]) ^
+                                       (WdString.implodeToUtf8 [w]) ^
                                        "\"")
                                    pairs)
         

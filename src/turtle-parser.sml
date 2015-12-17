@@ -18,11 +18,11 @@ structure TurtleStreamParser : RDF_STREAM_PARSER = struct
        encoded back to utf8 strings when constructing nodes or iris *)
     type token = word list
 
-    val token_of_string = SimpleWideString.explodeUtf8
-    val string_of_token = SimpleWideString.implodeToUtf8
+    val token_of_string = WdString.explodeUtf8
+    val string_of_token = WdString.implodeToUtf8
 
-    val iri_of_token = Iri.fromWideString o SimpleWideString.implode
-    val token_of_iri = SimpleWideString.explode o Iri.toWideString
+    val iri_of_token = Iri.fromWideString o WdString.implode
+    val token_of_iri = WdString.explode o Iri.toWideString
 
     structure TokenMap = RedBlackMapFn (struct
                                          type ord_key = token

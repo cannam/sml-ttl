@@ -23,22 +23,22 @@ structure NTriplesSerialiser :> RDF_STREAM_SERIALISER = struct
         end
                                    
     fun u_encode w =
-        SimpleWideString.explodeUtf8
+        WdString.explodeUtf8
             (if w > 0wxffff
              then "\\U" ^ (hex_string_of w 8)
              else "\\u" ^ (hex_string_of w 4))
                                         
-    fun percent_encode w = SimpleWideString.explodeUtf8 ("%" ^ (hex_string_of w 0))
+    fun percent_encode w = WdString.explodeUtf8 ("%" ^ (hex_string_of w 0))
 
     fun percent_or_u_encode w =
         if w > 0wx00ff then u_encode w
         else percent_encode w
                                               
-    fun ascii_encode 0wx09 = SimpleWideString.explodeUtf8 "\\t"
-      | ascii_encode 0wx0A = SimpleWideString.explodeUtf8 "\\n"
-      | ascii_encode 0wx0D = SimpleWideString.explodeUtf8 "\\r"
-      | ascii_encode 0wx22 = SimpleWideString.explodeUtf8 "\\\""
-      | ascii_encode 0wx5C = SimpleWideString.explodeUtf8 "\\\\"
+    fun ascii_encode 0wx09 = WdString.explodeUtf8 "\\t"
+      | ascii_encode 0wx0A = WdString.explodeUtf8 "\\n"
+      | ascii_encode 0wx0D = WdString.explodeUtf8 "\\r"
+      | ascii_encode 0wx22 = WdString.explodeUtf8 "\\\""
+      | ascii_encode 0wx5C = WdString.explodeUtf8 "\\\\"
       | ascii_encode w = u_encode w
 
     fun encode_as_token acceptable encoder token =
@@ -47,8 +47,8 @@ structure NTriplesSerialiser :> RDF_STREAM_SERIALISER = struct
                 then w :: acc
                 else (encoder w) @ acc
         in
-            SimpleWideString.implodeToUtf8
-                (SimpleWideString.foldr encode [] token)
+            WdString.implodeToUtf8
+                (WdString.foldr encode [] token)
         end
                                   
     fun encode_iri iri =
@@ -59,7 +59,7 @@ structure NTriplesSerialiser :> RDF_STREAM_SERIALISER = struct
     fun encode_literal_value value =
         encode_as_token NTriplesCodepoints.ok_in_strings
                         ascii_encode
-                        (SimpleWideString.fromUtf8 value)
+                        (WdString.fromUtf8 value)
 				  
     fun string_of_node (IRI iri) = "<" ^ (encode_iri iri) ^ ">"
       | string_of_node (BLANK n) = "_:blank" ^ (Int.toString n)
