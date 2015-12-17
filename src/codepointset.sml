@@ -61,7 +61,7 @@ structure CodepointSet :> CODEPOINT_SET = struct
         CP.member (cp, w)
 
     fun to_string (cp, _) =
-        SimpleWideString.implodeUtf8 (CP.listItems cp)
+        SimpleWideString.implodeToUtf8 (CP.listItems cp)
 
     fun to_text (cp, _) =
         String.concatWith "," (map Word.toString (CP.listItems cp))

@@ -48,7 +48,7 @@ structure NTriplesSerialiser :> RDF_STREAM_SERIALISER = struct
                 then w :: encode' ws
                 else (encoder w) @ encode' ws
         in
-            SimpleWideString.implodeUtf8 (encode' (SimpleWideString.explode token))
+            SimpleWideString.implodeToUtf8 (encode' (SimpleWideString.explode token))
         end
                                   
     fun encode_iri iri =

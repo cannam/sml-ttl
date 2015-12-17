@@ -19,7 +19,7 @@ structure TurtleStreamParser : RDF_STREAM_PARSER = struct
     type token = word list
 
     val token_of_string = SimpleWideString.explodeUtf8
-    val string_of_token = SimpleWideString.implodeUtf8
+    val string_of_token = SimpleWideString.implodeToUtf8
 
     val iri_of_token = Iri.fromWideString o SimpleWideString.implode
     val token_of_iri = SimpleWideString.explode o Iri.toWideString
