@@ -20,7 +20,7 @@ structure Source :> SOURCE = struct
 
     type t = {
         stream : TextIO.instream,
-        line : word list ref,
+        line : SimpleWideString.t ref,
         lineno : int ref,
         colno : int ref
     }
@@ -28,46 +28,61 @@ structure Source :> SOURCE = struct
     fun load_line r =
         (case TextIO.inputLine (#stream r) of
              NONE =>
-             (#line r) := []
+             (#line r) := SimpleWideString.empty
            | SOME str =>
-             ((#line r) := Utf8.explode (Utf8.fromString str);
+             ((#line r) := SimpleWideString.fromUtf8 str;
               (#lineno r) := !(#lineno r) + 1;
-              (#colno r) := 1);
+              (#colno r) := 0);
          r)
 
     fun from_stream str =
-        load_line { stream = str, line = ref [], lineno = ref 0, colno = ref 0 }
+        load_line {
+            stream = str,
+            line = ref SimpleWideString.empty,
+            lineno = ref 0,
+            colno = ref 0
+        }
 
+    fun in_range (r : t) =
+        !(#colno r) < SimpleWideString.size (!(#line r))
+                  
     fun peek (r : t) =
-        case !(#line r) of
-            first::rest => first
-          | [] => nl
+        if in_range r
+        then SimpleWideString.sub (!(#line r), !(#colno r))
+        else nl
 
     fun peek_n n (r : t) =
-        List.take (!(#line r), n)
-        handle Subscript => []
+        let val line = !(#line r)
+            val len = SimpleWideString.size line
+            fun peek' 0 c = []
+              | peek' n c = 
+                (if c < len
+                 then SimpleWideString.sub (line, c)
+                 else nl) :: (peek' (n-1) (c+1))
+        in
+            peek' n (!(#colno r))
+        end
 
     fun read (r : t) =
-        case !(#line r) of
-            first::next::rest =>
-            ((#line r) := next::rest;
-             (#colno r) := !(#colno r) + 1;
-             first)
-          | first::[] => (load_line r; first)
-          | [] => nl
+        if in_range r
+        then let val w = SimpleWideString.sub (!(#line r), !(#colno r))
+             in
+                 ((#colno r) := !(#colno r) + 1;
+                  if not (in_range r) then (load_line r; w)
+                  else w)
+             end
+        else nl
 
     fun read_n 0 (r : t) = []
       | read_n n (r : t) =
          read r :: (read_n (n-1) r)
 
-    fun discard r =
-        let val _ = read r in () end
+    fun discard r = ignore (read r)
 
     fun location (r : t) =
         "line " ^ (Int.toString (!(#lineno r))) ^
-        ", column " ^ (Int.toString (!(#colno r)))
+        ", column " ^ (Int.toString (!(#colno r) + 1))
 
-    fun eof (r : t) =
-	(!(#line r) = [])
+    fun eof (r : t) = not (in_range r)
 	    
 end

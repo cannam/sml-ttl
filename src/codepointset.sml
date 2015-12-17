@@ -32,7 +32,7 @@ structure CodepointSet :> CODEPOINT_SET = struct
         Word.fromInt (Char.ord c)
 	             
     fun from_string str =
-        (foldl CP.add' CP.empty (Utf8.explode (Utf8.fromString str)), "")
+        (foldl CP.add' CP.empty (SimpleWideString.explodeUtf8 str), "")
 
     fun from_word w =
         (CP.add (CP.empty, w), "")
@@ -61,7 +61,7 @@ structure CodepointSet :> CODEPOINT_SET = struct
         CP.member (cp, w)
 
     fun to_string (cp, _) =
-        Utf8.toString (Utf8.implode (CP.listItems cp))
+        SimpleWideString.implodeToUtf8 (CP.listItems cp)
 
     fun to_text (cp, _) =
         String.concatWith "," (map Word.toString (CP.listItems cp))

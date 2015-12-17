@@ -23,43 +23,43 @@ structure NTriplesSerialiser :> RDF_STREAM_SERIALISER = struct
         end
                                    
     fun u_encode w =
-        Utf8.explodeString
+        SimpleWideString.explodeUtf8
             (if w > 0wxffff
              then "\\U" ^ (hex_string_of w 8)
              else "\\u" ^ (hex_string_of w 4))
                                         
-    fun percent_encode w = Utf8.explodeString ("%" ^ (hex_string_of w 0))
+    fun percent_encode w = SimpleWideString.explodeUtf8 ("%" ^ (hex_string_of w 0))
 
     fun percent_or_u_encode w =
         if w > 0wx00ff then u_encode w
         else percent_encode w
                                               
-    fun ascii_encode 0wx09 = Utf8.explodeString "\\t"
-      | ascii_encode 0wx0A = Utf8.explodeString "\\n"
-      | ascii_encode 0wx0D = Utf8.explodeString "\\r"
-      | ascii_encode 0wx22 = Utf8.explodeString "\\\""
-      | ascii_encode 0wx5C = Utf8.explodeString "\\\\"
+    fun ascii_encode 0wx09 = SimpleWideString.explodeUtf8 "\\t"
+      | ascii_encode 0wx0A = SimpleWideString.explodeUtf8 "\\n"
+      | ascii_encode 0wx0D = SimpleWideString.explodeUtf8 "\\r"
+      | ascii_encode 0wx22 = SimpleWideString.explodeUtf8 "\\\""
+      | ascii_encode 0wx5C = SimpleWideString.explodeUtf8 "\\\\"
       | ascii_encode w = u_encode w
 
-    fun encode_as_token acceptable encoder str =
-        let fun encode' [] = []
-              | encode' (w::ws) = 
+    fun encode_as_token acceptable encoder token =
+        let fun encode (w, acc) =
                 if CodepointSet.contains acceptable w
-                then w :: encode' ws
-                else (encoder w) @ encode' ws
+                then w :: acc
+                else (encoder w) @ acc
         in
-            Utf8.implodeString (encode' (Utf8.explodeString str))
+            SimpleWideString.implodeToUtf8
+                (SimpleWideString.foldr encode [] token)
         end
                                   
     fun encode_iri iri =
         encode_as_token NTriplesCodepoints.ok_in_iris
                         percent_or_u_encode
-                        (Iri.toString iri)
+                        (Iri.toWideString iri)
             
     fun encode_literal_value value =
         encode_as_token NTriplesCodepoints.ok_in_strings
                         ascii_encode
-                        value
+                        (SimpleWideString.fromUtf8 value)
 				  
     fun string_of_node (IRI iri) = "<" ^ (encode_iri iri) ^ ">"
       | string_of_node (BLANK n) = "_:blank" ^ (Int.toString n)
