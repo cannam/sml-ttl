@@ -1,4 +1,28 @@
 
+signature INDEX = sig
+
+    type t
+
+    datatype node = datatype RdfNode.node
+				    
+    datatype patnode =
+	     WILDCARD |
+	     KNOWN of node
+
+    type triple = node * node * node
+    type pattern = patnode * patnode * patnode
+
+    datatype index_order = SPO | POS | OPS | SOP | PSO | OSP
+
+    val new : index_order -> t
+    val add : t * triple -> t
+    val contains : t * triple -> bool
+    val remove : t * triple -> t
+    val fold_match : (triple * 'a -> 'a) -> 'a -> (t * pattern) -> 'a
+    val score : t * pattern -> int
+    
+end
+
 structure Index :> INDEX = struct
 
     datatype node = datatype RdfNode.node
@@ -23,7 +47,7 @@ structure Index :> INDEX = struct
                                         type ord_key = node
                                         val compare = RdfNode.compare
                                         end)
-				      
+
     type t = index_order * triple NodeMap.map NodeMap.map NodeMap.map
 
     fun new ix = (ix, NodeMap.empty)
@@ -42,30 +66,30 @@ structure Index :> INDEX = struct
       | recompose (PSO, (pred,subj,obj)) = (subj,pred,obj)
       | recompose (OSP, (obj,subj,pred)) = (subj,pred,obj)
 
-    fun find_map (map, key) =
-	getOpt (NodeMap.find (map, key), NodeMap.empty)
+    fun find_map (m, key) =
+        getOpt (NodeMap.find (m, key), NodeMap.empty)
 
-    fun add ((ix, map), triple) =
+    fun add ((ix, m) : t, triple) =
 	let val (a, b, c) = decompose (ix, triple)
-	    val m2 = find_map (map, a)
+	    val m2 = find_map (m, a)
 	    val m3 = find_map (m2, b)
-	in
-	    (ix, NodeMap.insert (map, a,
-				 NodeMap.insert (m2, b,
-						 NodeMap.insert (m3, c, triple))))
+	in 
+	    (ix, NodeMap.insert (m, a,
+		                 NodeMap.insert (m2, b,
+                                                 NodeMap.insert (m3, c, triple))))
 	end
 
-    fun contains ((ix, map), triple) =
+    fun contains ((ix, m) : t, triple) =
 	let val (a, b, c) = decompose (ix, triple)
 	in
-	    case NodeMap.find (map, a) of
+	    case NodeMap.find (m, a) of
 		NONE => false
 	      | SOME m2 => case NodeMap.find (m2, b) of
 			       NONE => false
 			     | SOME m3 => isSome (NodeMap.find (m3, c))
 	end					     
 
-    fun remove ((ix, map), triple) = (* NB inefficient if triple is not in index *)
+    fun remove ((ix, map), triple) =
 	let val (a, b, c) = decompose (ix, triple)
 	    val m2 = find_map (map, a)
 	    val m3 = find_map (m2, b)
@@ -76,22 +100,21 @@ structure Index :> INDEX = struct
 				 NodeMap.insert (m2, b, cmap)))
 	end
 
-    fun match ((ix, m) : t, pattern) : triple list =
-	let val (a, b, c) = decompose (ix, pattern)
-	    fun find_in (x, mm) =
-		case x of WILDCARD => NodeMap.listItems mm
-			| KNOWN node => case NodeMap.find (mm, node) of
-					    SOME value => [value]
-					  | NONE => []
-	    fun concatMap f l = List.concat (List.map f l)
-	in
-	    print ("for match using index: " ^ (name ix) ^ "\n");
-	    concatMap (fn bmap => concatMap (fn cmap => find_in (c, cmap))
-					    (find_in (b, bmap)))
-		      (find_in (a, m))
-	end
+    fun matching (p, m) =
+        case p of WILDCARD => NodeMap.listItems m
+                | KNOWN node => case NodeMap.find (m, node) of
+                                    SOME value => [value]
+                                  | NONE => []
 
-    fun enumerate t = match (t, (WILDCARD, WILDCARD, WILDCARD))
+    fun fold_match f acc ((ix, m) : t, pattern) =
+	let val (a, b, c) = decompose (ix, pattern)
+        in
+            foldl (fn (am, aa) =>
+                      foldl (fn (bm, ba) =>
+                                foldl f ba (matching (c, bm)))
+                            aa (matching (b, am)))
+                  acc (matching (a, m))
+        end
 	    
     fun score ((ix, map), pattern) = (* lower score is better *)
 	let val (a, b, _) = decompose (ix, pattern)
@@ -105,7 +128,7 @@ structure Index :> INDEX = struct
 	    
 end
 			       
-structure TripleStore :> TRIPLE_STORE = struct
+structure Store :> STORE = struct
 
     datatype node = datatype RdfNode.node
     datatype patnode = datatype Index.patnode
@@ -157,11 +180,15 @@ structure TripleStore :> TRIPLE_STORE = struct
     fun remove (store, triple) =
 	map_indexes (fn ix => Index.remove (ix, triple)) store
 
-    fun enumerate store =
-	Index.enumerate (any_index store)
+    fun fold_match f acc (store, pattern) =
+        Index.fold_match f acc (choose_index (store, pattern), pattern)
 
-    fun match (store, pattern) =
-	Index.match (choose_index (store, pattern), pattern)
+    fun foldl f acc store =
+        Index.fold_match f acc (any_index store, (WILDCARD, WILDCARD, WILDCARD))
+                         
+    val match = fold_match (op::) []
+
+    val enumerate = foldl (op::) []
 
     fun add_prefix ({ prefixes, indexes } : t, prefix, expansion) =
 	{ indexes = indexes,
@@ -219,15 +246,20 @@ structure TripleStore :> TRIPLE_STORE = struct
 	end
 
 end
-					    
-functor TripleStoreLoaderFn (P: RDF_STREAM_PARSER) : STORE_LOADER = struct
 
-    structure Parser = P
-    structure Store = TripleStore
+structure StoreLoadBase : STORE_LOAD_BASE = struct
+
+    structure Store = Store
 			  
     datatype result = LOAD_ERROR of string | OK of Store.t
 			  
     type base_iri = string
+
+end
+                                            
+functor StoreStreamLoaderFn (P: RDF_STREAM_PARSER) : STORE_FORMAT_LOADER = struct
+
+    open StoreLoadBase
 
     fun load_stream store iri stream : result =
 	let fun parse' acc f =
@@ -268,25 +300,21 @@ functor TripleStoreLoaderFn (P: RDF_STREAM_PARSER) : STORE_LOADER = struct
 			
 end
 
-functor TripleStoreSaverFn (S: RDF_STREAM_SERIALISER) : STORE_SAVER = struct
+functor StoreStreamSaverFn (S: RDF_STREAM_SERIALISER) : STORE_FORMAT_SAVER = struct
 
-    (* !!! this is simple but wasteful, because it duplicates the
-    store's triples into a triple list and serialises that using the
-    non-stream serialiser created here. It should be doing it
-    properly, but that requires being able to fold over triples in the
-    store, which the store doesn't support yet *)
-    
-    structure Serialiser = RdfSerialiserFn(S)
-    structure Store = TripleStore
+    structure Store = Store
 
     fun save_to_stream store stream =
-        let val data = (Store.enumerate_prefixes store,
-                        Store.enumerate store)
+        let val serialiser = S.new stream
         in
-            (*!!! arg order is reversed from this function *)
-            Serialiser.serialise stream data
+            Store.foldl (fn (t, s) => S.serialise (s, S.TRIPLE t))
+                        (List.foldl (fn (p, s) => S.serialise (s, S.PREFIX p))
+                                    serialiser
+                                    (Store.enumerate_prefixes store))
+                        store;
+            ()
         end
-
+            
     fun save_to_file store filename =
         let val stream = TextIO.openOut filename
             val _ = save_to_stream store stream
@@ -295,8 +323,50 @@ functor TripleStoreSaverFn (S: RDF_STREAM_SERIALISER) : STORE_SAVER = struct
         end
 			  
 end
-                                                                        
-structure TurtleLoader = TripleStoreLoaderFn(TurtleStreamParser)
+
+structure TurtleLoader = StoreStreamLoaderFn(TurtleStreamParser)
 					    
-structure NTriplesSaver = TripleStoreSaverFn(NTriplesSerialiser)
-					    
+structure NTriplesSaver = StoreStreamSaverFn(NTriplesSerialiser)
+
+structure StoreFileLoader : STORE_LOADER = struct
+
+    open StoreLoadBase
+
+    fun load_file store iri filename =
+        let val extension =
+                case String.tokens (fn x => x = #".") filename of
+                    [] => ""
+                  | bits => hd (rev bits)
+        in
+            (case extension of
+                 "ttl" => TurtleLoader.load_file 
+               | "n3" => TurtleLoader.load_file
+               | "ntriples" => TurtleLoader.load_file
+               | other => raise Fail ("Unknown or unsupported file extension \""
+                                      ^ extension ^ "\""))
+                store iri filename
+        end
+
+    val load_file_as_new_store = load_file Store.empty
+
+end
+
+structure StoreFileSaver : STORE_SAVER = struct
+
+    structure Store = Store
+
+    fun save_to_file store filename =
+        let val extension =
+                case String.tokens (fn x => x = #".") filename of
+                    [] => ""
+                  | bits => hd (rev bits)
+        in
+            (case extension of
+                 "ntriples" => NTriplesSaver.save_to_file
+               | other => raise Fail ("Unknown or unsupported file extension \""
+                                      ^ extension ^ "\""))
+                store filename
+        end
+                                  
+end
+

@@ -17,11 +17,14 @@ fun report_time text start =
         
 fun load_file filename =
     let val start = Time.now () in 
-        case TurtleLoader.load_file_as_new_store "some_iri" filename of
-            TurtleLoader.LOAD_ERROR e => raise Fail e
-          | TurtleLoader.OK store =>
+        (*        case TurtleLoader.load_file_as_new_store "some_iri" filename of *)
+        case StoreFileLoader.load_file_as_new_store "some_iri" filename of
+(*            TurtleLoader.LOAD_ERROR e => raise Fail e
+          | TurtleLoader.OK store => *)
+            StoreFileLoader.LOAD_ERROR e => raise Fail e
+          | StoreFileLoader.OK store =>
             (report_time "Load complete" start;
-             print ("Loaded " ^ (Int.toString (List.length (TripleStore.enumerate store))) ^ " triple(s):\n");
+             print ("Loaded " ^ (Int.toString (List.length (Store.enumerate store))) ^ " triple(s):\n");
              NTriplesSaver.save_to_stream store TextIO.stdOut)
 (*            (app (fn t => print ((string_of_triple t) ^ "\n")) (#triples p) ;
              print ("Loaded " ^ (Int.toString (length (#triples p))) ^ " triple(s)\n"))
