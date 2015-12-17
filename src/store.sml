@@ -128,7 +128,7 @@ structure Index :> INDEX = struct
 	    
 end
 			       
-structure TripleStore :> TRIPLE_STORE = struct
+structure Store :> STORE = struct
 
     datatype node = datatype RdfNode.node
     datatype patnode = datatype Index.patnode
@@ -249,7 +249,7 @@ end
 
 structure StoreLoadBase : STORE_LOAD_BASE = struct
 
-    structure Store = TripleStore
+    structure Store = Store
 			  
     datatype result = LOAD_ERROR of string | OK of Store.t
 			  
@@ -257,7 +257,7 @@ structure StoreLoadBase : STORE_LOAD_BASE = struct
 
 end
                                             
-functor TripleStoreStreamLoaderFn (P: RDF_STREAM_PARSER) : STORE_FORMAT_LOADER = struct
+functor StoreStreamLoaderFn (P: RDF_STREAM_PARSER) : STORE_FORMAT_LOADER = struct
 
     open StoreLoadBase
 
@@ -300,9 +300,9 @@ functor TripleStoreStreamLoaderFn (P: RDF_STREAM_PARSER) : STORE_FORMAT_LOADER =
 			
 end
 
-functor TripleStoreStreamSaverFn (S: RDF_STREAM_SERIALISER) : STORE_FORMAT_SAVER = struct
+functor StoreStreamSaverFn (S: RDF_STREAM_SERIALISER) : STORE_FORMAT_SAVER = struct
 
-    structure Store = TripleStore
+    structure Store = Store
 
     fun save_to_stream store stream =
         let val serialiser = S.new stream
@@ -324,11 +324,11 @@ functor TripleStoreStreamSaverFn (S: RDF_STREAM_SERIALISER) : STORE_FORMAT_SAVER
 			  
 end
 
-structure TurtleLoader = TripleStoreStreamLoaderFn(TurtleStreamParser)
+structure TurtleLoader = StoreStreamLoaderFn(TurtleStreamParser)
 					    
-structure NTriplesSaver = TripleStoreStreamSaverFn(NTriplesSerialiser)
+structure NTriplesSaver = StoreStreamSaverFn(NTriplesSerialiser)
 
-structure TripleStoreFileLoader : STORE_LOADER = struct
+structure StoreFileLoader : STORE_LOADER = struct
 
     open StoreLoadBase
 
@@ -351,9 +351,9 @@ structure TripleStoreFileLoader : STORE_LOADER = struct
 
 end
 
-structure TripleStoreFileSaver : STORE_SAVER = struct
+structure StoreFileSaver : STORE_SAVER = struct
 
-    structure Store = TripleStore
+    structure Store = Store
 
     fun save_to_file store filename =
         let val extension =

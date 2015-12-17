@@ -30,7 +30,7 @@ src/ntriples-codepoints.sml
 src/ntriples-serialiser.sml
 src/turtle-codepoints.sml
 src/turtle-parser.sml
-src/triple-store.sig
-src/triple-store.sml
+src/store.sig
+src/store.sml
 src/test.sml
 src/main.sml

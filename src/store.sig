@@ -1,5 +1,5 @@
 		      
-signature TRIPLE_STORE = sig
+signature STORE = sig
 
     type t
 
@@ -33,7 +33,7 @@ end
 
 signature STORE_LOAD_BASE = sig
 
-    structure Store : TRIPLE_STORE
+    structure Store : STORE
 			  
     type base_iri = string
 
@@ -77,7 +77,7 @@ signature STORE_SAVER = sig
        based on filename, e.g. suffix. These therefore can only save
        to files, not arbitrary text streams. *)
     
-    structure Store : TRIPLE_STORE
+    structure Store : STORE
 
     (* !!! todo: base iri *)
                      
@@ -90,7 +90,7 @@ signature STORE_FORMAT_SAVER = sig
     (* Signature for savers that already know, or assume, what format
        is being saved to. *)
 
-    structure Store : TRIPLE_STORE
+    structure Store : STORE
 
     val save_to_file : Store.t -> string -> unit
     val save_to_stream : Store.t -> TextIO.outstream -> unit
