@@ -158,7 +158,6 @@ end
 
 structure PrefixTable :> PREFIX_TABLE = struct
 
-    (* !!! how many times do we use this? probably it should be defined outside any other structure *)
     structure StringMap = RedBlackMapFn (struct
                                           type ord_key = string
                                           val compare = String.compare
@@ -264,10 +263,12 @@ structure Store :> STORE = struct
 	map_indexes (fn ix => Index.remove (ix, triple)) store
 
     fun fold_match f acc ({ prefixes, indexes } : t, pattern) =
-        Index.fold_match f acc (IndexPicker.pick_index (indexes, pattern), pattern)
+        Index.fold_match f acc
+                         (IndexPicker.pick_index (indexes, pattern), pattern)
 
     fun foldl f acc store =
-        Index.fold_match f acc (any_index store, (WILDCARD, WILDCARD, WILDCARD))
+        Index.fold_match f acc
+                         (any_index store, (WILDCARD, WILDCARD, WILDCARD))
                          
     val match = fold_match (op::) []
 
