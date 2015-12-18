@@ -127,96 +127,78 @@ structure Index :> INDEX = struct
 	end
 	    
 end
-			       
-structure Store :> STORE = struct
 
-    datatype node = datatype RdfNode.node
-    datatype patnode = datatype Index.patnode
+structure IndexPicker = struct
+			   
+    open IntRedBlackMap
 
-    type triple = node * node * node
-    type pattern = patnode * patnode * patnode
+    fun pick_index (indexes, pattern) =
+	hd (listItems
+		(List.foldl (fn (ix, m) =>
+			        insert (m, Index.score (ix, pattern), ix))
+		            empty indexes))
+
+end
+
+signature PREFIX_TABLE = sig
+
+    type t
     type iri = Iri.t
 
+    val empty : t
+    val add : t * string * string -> t
+    val contains : t * string -> bool
+    val remove : t * string -> t
+    val enumerate : t -> (string * string) list
+
+    val expand : t * string -> iri
+    val abbreviate : t * iri -> string
+
+end
+
+structure PrefixTable :> PREFIX_TABLE = struct
+
+    (* !!! how many times do we use this? probably it should be defined outside any other structure *)
     structure StringMap = RedBlackMapFn (struct
                                           type ord_key = string
                                           val compare = String.compare
                                           end)
-					   
-    type t = {
-	prefixes : string StringMap.map * string StringMap.map, (* fwd, reverse *)
-	indexes : Index.t list
-    }
 
-    val empty =
-	let open StringMap RdfStandardIRIs in {
-	    prefixes =
+    type t = string StringMap.map * string StringMap.map (* fwd, reverse *)
+    type iri = Iri.t
+                                           
+    val empty = 
+        let open StringMap RdfStandardIRIs
+        in
 	    (insert (insert (empty, "rdf", prefix_rdf), "xsd", prefix_xsd),
-	     insert (insert (empty, prefix_rdf, "rdf"), prefix_xsd, "xsd")),
-	    indexes = [ Index.new Index.SPO,
-			Index.new Index.POS,
-			Index.new Index.OPS ]
-	}
-	end
+	     insert (insert (empty, prefix_rdf, "rdf"), prefix_xsd, "xsd"))
+        end
 
-    structure IntMap = IntRedBlackMap
-
-    fun any_index ({ indexes, ... } : t) = hd indexes (* when any index is ok *)
-			   
-    fun choose_index ({ indexes, ... } : t, pattern) =
-	hd (IntMap.listItems
-		(foldl (fn (ix, m) =>
-			   IntMap.insert (m, Index.score (ix, pattern), ix))
-		       IntMap.empty indexes))
-
-    fun contains (store, triple) =
-	Index.contains (any_index store, triple)
-
-    fun map_indexes f ({ prefixes, indexes } : t) =
-	{ prefixes = prefixes, indexes = map f indexes }
-	  
-    fun add (store, triple) =
-	map_indexes (fn ix => Index.add (ix, triple)) store 
-
-    fun remove (store, triple) =
-	map_indexes (fn ix => Index.remove (ix, triple)) store
-
-    fun fold_match f acc (store, pattern) =
-        Index.fold_match f acc (choose_index (store, pattern), pattern)
-
-    fun foldl f acc store =
-        Index.fold_match f acc (any_index store, (WILDCARD, WILDCARD, WILDCARD))
-                         
-    val match = fold_match (op::) []
-
-    val enumerate = foldl (op::) []
-
-    fun add_prefix ({ prefixes, indexes } : t, prefix, expansion) =
-	{ indexes = indexes,
-	  prefixes = (StringMap.insert (#1 prefixes, prefix, expansion),
-		      StringMap.insert (#2 prefixes, expansion, prefix)) }
+    fun add (prefixes : t, prefix, expansion) =
+	(StringMap.insert (#1 prefixes, prefix, expansion),
+	 StringMap.insert (#2 prefixes, expansion, prefix))
 
     fun remove_from (map, key) =
 	case StringMap.remove (map, key) of (map', _) => map'
 							 handle NotFound => map
 	    
-    fun remove_prefix (store as { prefixes, indexes } : t, prefix) =
+    fun remove (prefixes : t, prefix) =
 	case prefixes of
 	    (forward, reverse) =>
 	    case StringMap.find (forward, prefix) of
-		NONE => store
+		NONE => prefixes
 	      | SOME expansion =>
-		{ indexes = indexes,
-		  prefixes = (remove_from (forward, prefix),
-			      remove_from (reverse, expansion)) }
+		  (remove_from (forward, prefix),
+		   remove_from (reverse, expansion))
 
-    fun contains_prefix ({ prefixes, ... } : t, prefix) =
+    fun contains (prefixes : t, prefix) =
 	isSome (StringMap.find (#1 prefixes, prefix))
 		    
-    fun enumerate_prefixes ({ prefixes, ... } : t) =
+    fun enumerate (prefixes : t) =
 	StringMap.listItemsi (#1 prefixes)
 
-    fun expand (store, "a") = RdfStandardIRIs.iri_rdf_type
-      | expand ({ prefixes, ... } : t, curie) =
+    fun expand (prefixes, "a") = RdfStandardIRIs.iri_rdf_type
+      | expand (prefixes : t, curie) =
         Iri.fromString
 	    (case String.fields (fn x => x = #":") curie of
 	         [] => curie
@@ -225,9 +207,8 @@ structure Store :> STORE = struct
 		     NONE => curie
 	           | SOME expansion => expansion ^ (String.concatWith ":" rest))
 
-    fun abbreviate ({ prefixes, ... } : t, iri) = 
-	let val (_, reverse) = prefixes
-	    fun prefix_of "" = (0, "")
+    fun abbreviate ((_, reverse) : t, iri) = 
+	let fun prefix_of "" = (0, "")
 	      | prefix_of name =
 		let val len = String.size name in
 		    case StringMap.find (reverse, name) of
@@ -244,6 +225,73 @@ structure Store :> STORE = struct
                         pfx ^ ":" ^ (String.extract (iristr, len, NONE))
                 end
 	end
+
+end
+                             
+structure Store :> STORE = struct
+
+    datatype node = datatype RdfNode.node
+    datatype patnode = datatype Index.patnode
+
+    type triple = node * node * node
+    type pattern = patnode * patnode * patnode
+    type iri = Iri.t
+					   
+    type t = {
+	prefixes : PrefixTable.t,
+	indexes : Index.t list
+    }
+
+    val empty = {
+	prefixes = PrefixTable.empty,
+	indexes = [ Index.new Index.SPO,
+		    Index.new Index.POS,
+		    Index.new Index.OPS ]
+    }
+
+    fun any_index ({ indexes, ... } : t) = hd indexes (* when any index is ok *)
+
+    fun contains (store, triple) =
+	Index.contains (any_index store, triple)
+
+    fun map_indexes f ({ prefixes, indexes } : t) =
+	{ prefixes = prefixes, indexes = map f indexes }
+	  
+    fun add (store, triple) =
+	map_indexes (fn ix => Index.add (ix, triple)) store 
+
+    fun remove (store, triple) =
+	map_indexes (fn ix => Index.remove (ix, triple)) store
+
+    fun fold_match f acc ({ prefixes, indexes } : t, pattern) =
+        Index.fold_match f acc (IndexPicker.pick_index (indexes, pattern), pattern)
+
+    fun foldl f acc store =
+        Index.fold_match f acc (any_index store, (WILDCARD, WILDCARD, WILDCARD))
+                         
+    val match = fold_match (op::) []
+
+    val enumerate = foldl (op::) []
+
+    fun add_prefix ({ prefixes, indexes } : t, prefix, expansion) =
+        { prefixes = PrefixTable.add (prefixes, prefix, expansion),
+          indexes = indexes }
+	    
+    fun remove_prefix (store as { prefixes, indexes } : t, prefix) =
+        { prefixes = PrefixTable.remove (prefixes, prefix),
+          indexes = indexes }
+
+    fun contains_prefix ({ prefixes, ... } : t, prefix) =
+        PrefixTable.contains (prefixes, prefix)
+		    
+    fun enumerate_prefixes ({ prefixes, ... } : t) =
+        PrefixTable.enumerate prefixes
+
+    fun expand ({ prefixes, ... } : t, curie) =
+        PrefixTable.expand (prefixes, curie)
+
+    fun abbreviate ({ prefixes, ... } : t, iri) =
+        PrefixTable.abbreviate (prefixes, iri)
 
 end
 
