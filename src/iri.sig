@@ -3,7 +3,7 @@
 
 signature IRI = sig
 
-    type t
+    eqtype t
 
     val fromString : string -> t
     val toString : t -> string

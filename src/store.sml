@@ -166,12 +166,7 @@ structure PrefixTable :> PREFIX_TABLE = struct
     type t = string StringMap.map * string StringMap.map (* fwd, reverse *)
     type iri = Iri.t
                                            
-    val empty = 
-        let open StringMap RdfStandardIRIs
-        in
-	    (insert (insert (empty, "rdf", prefix_rdf), "xsd", prefix_xsd),
-	     insert (insert (empty, prefix_rdf, "rdf"), prefix_xsd, "xsd"))
-        end
+    val empty = (StringMap.empty, StringMap.empty)
 
     fun add (prefixes : t, prefix, expansion) =
 	(StringMap.insert (#1 prefixes, prefix, expansion),
@@ -242,7 +237,10 @@ structure Store :> STORE = struct
     }
 
     val empty = {
-	prefixes = PrefixTable.empty,
+	prefixes = let open PrefixTable RdfStandardIRIs
+                   in
+	               add (add (empty, "rdf", prefix_rdf), "xsd", prefix_xsd)
+                   end,
 	indexes = [ Index.new Index.SPO,
 		    Index.new Index.POS,
 		    Index.new Index.OPS ]

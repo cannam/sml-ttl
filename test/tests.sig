@@ -1,15 +1,15 @@
 
 structure TestTypes = struct
 
-    type test = { test_name : string, test : unit -> bool }
-    type test_suite = { suite_name : string, tests : test list }
+    type test = string * (unit -> bool)
+    type test_suite = string * test list
 
 end
 
 signature TESTS = sig
 
-    type test = { test_name : string, test : unit -> bool }
-    type test_suite = { suite_name : string, tests : test list }
+    type test = string * (unit -> bool)
+    type test_suite = string * test list
                    
     val tests : test_suite
 
