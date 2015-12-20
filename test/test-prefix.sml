@@ -26,15 +26,16 @@ functor TestPrefixFn (P: PREFIX_TABLE) : TESTS = struct
              ("6", "bbc"),
              ("7", "bbf")]
              
-    val realish_table =
+    val real_table =
         make_table 
             [("fruit", "http://example.com/fruit/"),
              ("fruitloop", "http://example.com/fruit/loop/"),
              ("veg", "http://example.com/vegetable/"),
              ("", "empty")]
 
-    fun id x = x
-            
+    fun abbr_unreal s = P.abbreviate (unreal_table, Iri.fromString s)
+    fun abbr_real s = P.abbreviate (real_table, Iri.fromString s)
+                   
     val tests =
         ("prefix",
          [
@@ -56,37 +57,37 @@ functor TestPrefixFn (P: PREFIX_TABLE) : TESTS = struct
             fn () =>
                check_all
                    Iri.toString
-                   [(P.expand (realish_table, "veg:aubergine"),
+                   [(P.expand (real_table, "veg:aubergine"),
                      Iri.fromString "http://example.com/vegetable/aubergine"),
-                    (P.expand (realish_table, "fruit:banana:thing"),
+                    (P.expand (real_table, "fruit:banana:thing"),
                      Iri.fromString "http://example.com/fruit/banana:thing"),
-                    (P.expand (realish_table, "fruitloop:banana"),
+                    (P.expand (real_table, "fruitloop:banana"),
                      Iri.fromString "http://example.com/fruit/loop/banana")]
            ),
            ("abbreviate",
             fn () =>
                check_all
                    String.toString
-                   [(P.abbreviate (unreal_table, Iri.fromString "a"), "1:"),
-                    (P.abbreviate (unreal_table, Iri.fromString "aa"), "1:a"),
-                    (P.abbreviate (unreal_table, Iri.fromString "abc"), "5:"),
-                    (P.abbreviate (unreal_table, Iri.fromString "abd"), "2:d"),
-                    (P.abbreviate (unreal_table, Iri.fromString "bbb"), "bbb"),
-                    (P.abbreviate (unreal_table, Iri.fromString "bbd"), "bbd"),
-                    (P.abbreviate (unreal_table, Iri.fromString "aba"), "3:"),
-                    (P.abbreviate (unreal_table, Iri.fromString "abad"), "3:d")]
+                   [(abbr_unreal "a", "1:"),
+                    (abbr_unreal "aa", "1:a"),
+                    (abbr_unreal "abc", "5:"),
+                    (abbr_unreal "abd", "2:d"),
+                    (abbr_unreal "bbb", "bbb"),
+                    (abbr_unreal "bbd", "bbd"),
+                    (abbr_unreal "aba", "3:"),
+                    (abbr_unreal "abad", "3:d")]
            ),
            ("abbreviate-lifelike",
             fn () =>
                check_all
                    String.toString
-                   [(P.abbreviate (realish_table, Iri.fromString "http://example.com/vegetable/aubergine"), "veg:aubergine"),
-                    (P.abbreviate (realish_table, Iri.fromString "http://example.com/fruit/banana:thing"), "fruit:banana:thing"),
-                    (P.abbreviate (realish_table, Iri.fromString "http://example.com/fruit/loop/banana"), "fruitloop:banana"),
-                    (P.abbreviate (realish_table, Iri.fromString "http://example.com/fruit/loop:banana"), "fruit:loop:banana"),
-                    (P.abbreviate (realish_table, Iri.fromString "http://example.com/fruit/"), "fruit:"),
-                    (P.abbreviate (realish_table, Iri.fromString "fruit"), "fruit"),
-                    (P.abbreviate (realish_table, Iri.fromString "emptyfruit"), ":fruit")]
+                   [(abbr_real "http://example.com/vegetable/aubergine", "veg:aubergine"),
+                    (abbr_real "http://example.com/fruit/banana:thing", "fruit:banana:thing"),
+                    (abbr_real "http://example.com/fruit/loop/banana", "fruitloop:banana"),
+                    (abbr_real "http://example.com/fruit/loop:banana", "fruit:loop:banana"),
+                    (abbr_real "http://example.com/fruit/", "fruit:"),
+                    (abbr_real "fruit", "fruit"),
+                    (abbr_real "emptyfruit", ":fruit")]
            )
          ]
         )
