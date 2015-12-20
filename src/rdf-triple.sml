@@ -65,6 +65,9 @@ structure RdfTriple = struct
 
     type prefix = string * string
 
+    fun string_of_prefix (pre, exp) =
+        "\"" ^ pre ^ "\" -> \"" ^ exp ^ "\""
+                               
     (* This is debug streaming, not guaranteed to match a standard format *)
     fun string_of_node (IRI iri) = "<" ^ (Iri.toString iri) ^ ">"
       | string_of_node (BLANK n) = "_:blank" ^ (Int.toString n)

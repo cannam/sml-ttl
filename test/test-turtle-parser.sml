@@ -13,11 +13,11 @@ functor TestTurtleParserFn (P: RDF_PARSER) : TESTS = struct
         else true
 
     fun string_of_parse_result (P.PARSE_ERROR err) = ("(error: " ^ err ^ ")")
-      | string_of_parse_result (P.PARSED { prefixes, triples }) = 
-        ((Int.toString (length prefixes)) ^
-         " prefix(es) and " ^ (Int.toString (length triples)) ^
-         " triple(s)")
-
+      | string_of_parse_result (P.PARSED { prefixes, triples }) =
+        "prefixes [" ^ (String.concatWith ", " (map string_of_prefix prefixes)) ^
+        "], triples [" ^ (String.concatWith ", " (map string_of_triple triples)) ^
+        "]"
+            
     fun check_parse_failed _ (P.PARSE_ERROR err) = true
       | check_parse_failed str res = 
         (print ("--- Parsing erroneously succeeded with input \"" ^ str
@@ -88,12 +88,16 @@ functor TestTurtleParserFn (P: RDF_PARSER) : TESTS = struct
                                             "@prefix : <>. :\\\\  :b :c .",
                                             "@prefix : <>. :\\< :b :c ." ]),
           ("local-colon",
-           fn () =>
-              check_iri_triple_parse "@prefix : <>. :a: :b :c."
-                                     {
-                                       prefixes = [ ("", "") ],
-                                       triples  = [ iri_triple ("a:", "b", "c") ]
-                                     }
+           fn () => check_iri_triple_parse
+                        "@prefix : <>. :a: :b :c."
+                        { prefixes = [ ("", "") ],
+                          triples  = [ iri_triple ("a:", "b", "c") ] }
+          ),
+          ("local-dot",
+           fn () => check_iri_triple_parse
+                        "@prefix : <>. :a.b :b..c :c.d."
+                        { prefixes = [ ("", "") ],
+                          triples  = [ iri_triple ("a.b", "b..c", "c.d") ] }
           )
         ]
             @ good_file_tests 

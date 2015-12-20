@@ -23,6 +23,10 @@ functor TestPrefixFn (P: PREFIX_TABLE) : TESTS = struct
              ("veg", "http://example.com/vegetable/"),
              ("", "empty")]
 
+    val nil_table =
+        make_table
+            [("", "")]
+            
     fun abbr_unreal s = P.abbreviate (unreal_table, Iri.fromString s)
     fun abbr_real s = P.abbreviate (real_table, Iri.fromString s)
                    
@@ -54,7 +58,11 @@ functor TestPrefixFn (P: PREFIX_TABLE) : TESTS = struct
                     (P.expand (real_table, "fruitloop:banana"),
                      Iri.fromString "http://example.com/fruit/loop/banana"),
                     (P.expand (real_table, ":banana"),
-                     Iri.fromString "emptybanana")]
+                     Iri.fromString "emptybanana"),
+                    (P.expand (nil_table, "a.b"),
+                     Iri.fromString "a.b"),
+                    (P.expand (nil_table, ":a.b"),
+                     Iri.fromString "a.b")]
            ),
            ("abbreviate",
             fn () =>
