@@ -56,9 +56,9 @@ structure Source :> SOURCE = struct
             val len = WdString.size line
             fun peek' 0 c = []
               | peek' n c = 
-                (if c < len
-                 then WdString.sub (line, c)
-                 else nl) :: (peek' (n-1) (c+1))
+                if c < len
+                then WdString.sub (line, c) :: peek' (n-1) (c+1)
+                else []
         in
             peek' n (!(#colno r))
         end
