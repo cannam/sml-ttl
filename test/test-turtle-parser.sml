@@ -1,7 +1,7 @@
 
 functor TestTurtleParserFn (P: RDF_PARSER) : TESTS = struct
 
-    open TestSupport
+    open TestSupport RdfTriple
 
     fun check_triples str (P.PARSE_ERROR err) =
         (print ("--- Error in parsing \"" ^ str ^ "\": " ^ err ^ "\n");
@@ -12,14 +12,18 @@ functor TestTurtleParserFn (P: RDF_PARSER) : TESTS = struct
              false)
         else true
 
+    fun string_of_parse_result (P.PARSE_ERROR err) = ("(error: " ^ err ^ ")")
+      | string_of_parse_result (P.PARSED { prefixes, triples }) = 
+        ((Int.toString (length prefixes)) ^
+         " prefix(es) and " ^ (Int.toString (length triples)) ^
+         " triple(s)")
+
     fun check_parse_failed _ (P.PARSE_ERROR err) = true
-      | check_parse_failed str (P.PARSED { prefixes, triples }) = 
+      | check_parse_failed str res = 
         (print ("--- Parsing erroneously succeeded with input \"" ^ str
-                ^ "\"\n    producing " ^ (Int.toString (length prefixes)) ^
-                " prefix(es) and " ^ (Int.toString (length triples)) ^
-                " triple(s)\n");
+                ^ "\"\n    producing " ^ (string_of_parse_result res) ^ "\n");
          false)
-             
+            
     fun good_string str =
         check_triples str (P.parse "" (TextIO.openString str))
 
@@ -48,7 +52,16 @@ functor TestTurtleParserFn (P: RDF_PARSER) : TESTS = struct
             [ "bnode-nested-2", "bnode-nested", "bnode", "boolean",
               "collections", "example1", "example2", "example3", "goblin",
               "iris", "numbers", "quoted" ]
-                 
+
+    fun iri_triple (a,b,c) = (IRI (Iri.fromString a),
+                              IRI (Iri.fromString b),
+                              IRI (Iri.fromString c))
+
+    fun check_iri_triple_parse str p =
+        check_all string_of_parse_result
+                  [ (P.parse "" (TextIO.openString str),
+                     P.PARSED p) ]
+                                 
     val tests = (
         "turtle-parser",
         [
@@ -73,7 +86,15 @@ functor TestTurtleParserFn (P: RDF_PARSER) : TESTS = struct
                                             "@prefix : <>. :\\: :b :c .",
                                             "@prefix : <>. :\\  :b :c .",
                                             "@prefix : <>. :\\\\  :b :c .",
-                                            "@prefix : <>. :\\< :b :c ." ])
+                                            "@prefix : <>. :\\< :b :c ." ]),
+          ("local-colon",
+           fn () =>
+              check_iri_triple_parse "@prefix : <>. :a: :b :c."
+                                     {
+                                       prefixes = [ ("", "") ],
+                                       triples  = [ iri_triple ("a:", "b", "c") ]
+                                     }
+          )
         ]
             @ good_file_tests 
         )
