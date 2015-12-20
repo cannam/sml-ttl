@@ -31,7 +31,24 @@ functor TestTurtleParserFn (P: RDF_PARSER) : TESTS = struct
                 
     fun bad_strings strs =
         List.all (fn x => x) (map bad_string strs)
-             
+
+    fun good_file f =
+        let val s = TextIO.openIn f
+            val result = check_triples f (P.parse "" s)
+        in
+            TextIO.closeIn s;
+            result
+        end
+                 
+    val test_file_dir = "test/other"
+                 
+    val good_file_tests =
+        map (fn f =>
+                (f, fn () => good_file (test_file_dir ^ "/" ^ f ^ ".ttl")))
+            [ "bnode-nested-2", "bnode-nested", "bnode", "boolean",
+              "collections", "example1", "example2", "example3", "goblin",
+              "iris", "numbers", "quoted" ]
+                 
     val tests = (
         "turtle-parser",
         [
@@ -58,6 +75,7 @@ functor TestTurtleParserFn (P: RDF_PARSER) : TESTS = struct
                                             "@prefix : <>. :\\\\  :b :c .",
                                             "@prefix : <>. :\\< :b :c ." ])
         ]
+            @ good_file_tests 
         )
 
 end
