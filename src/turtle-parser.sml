@@ -323,7 +323,7 @@ structure TurtleStreamParser : RDF_STREAM_PARSER = struct
        expected to test whether the result is properly formed depending
        on context. *)
     fun match_prefixed_name_candidate s : match_result =
-	let fun match' s acc =
+	let fun match' s =
 		case match_token_excl pname_definitely_excluded s of
 		    ERROR e => ERROR e
 		  | OK (s as (d, [])) => ERROR "token expected"
@@ -334,13 +334,13 @@ structure TurtleStreamParser : RDF_STREAM_PARSER = struct
                             dot::next::[] =>
                             if CodepointSet.contains pname_after_dot next
                             then let val c = read s (* the dot *) in
-				     match' s (acc @ token @ [c])
+				     match' (d, token @ [c])
                                  end
-                            else OK (d, acc @ token)
-                          | anything_else => OK (d, acc @ token)
-		    else OK (d, acc @ token)
+                            else OK (d, token)
+                          | anything_else => OK (d, token)
+		    else OK (d, token)
 	in
-	    match' s []
+	    match' s
 	end
 
     fun match_percent_escape s : match_result =
