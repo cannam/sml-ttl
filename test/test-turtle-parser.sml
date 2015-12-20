@@ -98,6 +98,32 @@ functor TestTurtleParserFn (P: RDF_PARSER) : TESTS = struct
                         "@prefix : <>. :a.b :b..c :c.d."
                         { prefixes = [ ("", "") ],
                           triples  = [ iri_triple ("a.b", "b..c", "c.d") ] }
+          ),
+          ("prefix-dot",
+           fn () => check_iri_triple_parse
+                        "@prefix a.b: <a>. a.b:a a.b:b.c a.b:c:d ."
+                        { prefixes = [ ("a.b", "a") ],
+                          triples  = [ iri_triple ("aa", "ab.c", "ac:d") ] }
+          ),
+          ("local-u-escape",
+           fn () => check_iri_triple_parse
+                        "@prefix : <>.:\u0061bc :a\u0062c :ab\u0063."
+                        { prefixes = [ ( "", "" ) ],
+                          triples  = [ iri_triple ("abc", "abc", "abc") ] }
+          ),
+          ("local-pc-escape",
+           (*!!! this probably should fail - recheck spec & fix yertle *)
+           fn () => check_iri_triple_parse
+                        "@prefix : <>.:%61bc :a%62c :ab%63."
+                        { prefixes = [ ( "", "" ) ],
+                          triples  = [ iri_triple ("abc", "abc", "abc") ] }
+          ),
+          ("local-slash-escape",
+           (*!!! this probably should fail - recheck spec & fix yertle *)
+           fn () => check_iri_triple_parse
+                        "@prefix : <>.:\\& :a\\#c :ab\\(."
+                        { prefixes = [ ( "", "" ) ],
+                          triples  = [ iri_triple ("&", "a#c", "ab(") ] }
           )
         ]
             @ good_file_tests 
