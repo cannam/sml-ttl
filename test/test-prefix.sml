@@ -1,17 +1,7 @@
 
 functor TestPrefixFn (P: PREFIX_TABLE) : TESTS = struct
 
-    open TestTypes
-
-    fun check_all converter pairs =
-        case List.filter (op<>) pairs of
-            [] => true
-          | unequal =>
-            (app (fn (a,b) =>
-                     print ("*** Expected \"" ^ (converter b)
-                            ^ "\", obtained \"" ^ (converter a) ^ "\"\n"))
-                 unequal;
-             false)
+    open TestSupport
              
     fun make_table pairs =
         foldl (fn ((p, e), t) => P.add (t, p, e)) P.empty pairs
@@ -62,7 +52,9 @@ functor TestPrefixFn (P: PREFIX_TABLE) : TESTS = struct
                     (P.expand (real_table, "fruit:banana:thing"),
                      Iri.fromString "http://example.com/fruit/banana:thing"),
                     (P.expand (real_table, "fruitloop:banana"),
-                     Iri.fromString "http://example.com/fruit/loop/banana")]
+                     Iri.fromString "http://example.com/fruit/loop/banana"),
+                    (P.expand (real_table, ":banana"),
+                     Iri.fromString "emptybanana")]
            ),
            ("abbreviate",
             fn () =>

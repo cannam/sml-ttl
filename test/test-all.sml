@@ -22,7 +22,8 @@ fun run_test_suite (suite_name, tests) =
         end
 
 val all_tests = [
-    TestPrefix.tests
+    TestPrefix.tests,
+    TestTurtleParser.tests
 ]
 
 fun main () =

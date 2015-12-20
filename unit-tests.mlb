@@ -33,6 +33,8 @@ src/turtle-parser.sml
 src/store.sig
 src/store.sml
 test/tests.sig
+test/test-support.sml
 test/test-prefix.sml
+test/test-turtle-parser.sml
 test/test-all.sml
 src/main.sml
