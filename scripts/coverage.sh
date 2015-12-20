@@ -6,13 +6,15 @@ arg="$1"
 
 set -u
 
-mlton -profile count -profile-branch true -profile-val true tests.mlb
-./tests >/dev/null
+PROGRAM=unit-tests
+
+mlton -profile count -profile-branch true -profile-val true "$PROGRAM.mlb"
+./"$PROGRAM" >/dev/null
 
 tmpfile=/tmp/"$$"_cov
 trap "rm -f $tmpfile" 0
 
-mlprof -raw true -show-line true tests mlmon.out |
+mlprof -raw true -show-line true "$PROGRAM" mlmon.out |
     grep 'src/.*sml: [0-9]' |
     sed 's,^.* src/,src/,' |
     sed 's/: / /' |
@@ -31,6 +33,8 @@ summarise_for() {
 	percent=$(((100 * $yes) / $total))
 	if [ "$percent" = 100 ]; then
 	    echo " 100%  $what"
+	elif [ "$percent" -lt 10 ]; then
+	    echo "   $percent%  $what"
 	else 
 	    echo "  $percent%  $what"
 	fi
