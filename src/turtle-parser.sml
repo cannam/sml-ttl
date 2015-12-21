@@ -227,7 +227,7 @@ structure TurtleStreamParser : RDF_STREAM_PARSER = struct
                 else ERROR ("unexpected character \"" ^
                             (string_of_token [first]) ^ 
                             "\" in local part of name")
-                                 
+
             and prefix_expand' (pre, post) =
                 (* We don't check the prefix for well-formedness,
                    because if it isn't well-formed, it won't match
@@ -241,12 +241,12 @@ structure TurtleStreamParser : RDF_STREAM_PARSER = struct
                   | SOME ex =>
                     case unescape_local post of
                         ERROR err => ERROR err
-                      | OK reversed => 
+                      | OK reversed =>
                         OK (d, SOME (IRI (resolve_iri (d, ex @ (rev reversed)))))
                 
         in
             case split_at (token, from_ascii #":") of
-                NONE => OK (d, SOME (IRI (iri_of_token token)))
+                NONE => ERROR "prefixed name expected"
               | SOME (pre, post) => prefix_expand' (pre, post)
         end
 
@@ -309,8 +309,7 @@ structure TurtleStreamParser : RDF_STREAM_PARSER = struct
 
     fun require_ttl c s =
         if eof s then ERROR "unexpected end of input"
-        else if CharMap.find (significant_char_map,
-                                         peek s) = SOME c
+        else if CharMap.find (significant_char_map, peek s) = SOME c
         then OK (discard s)
         else ERROR (mismatch_message_ttl c (peek s))
 
@@ -695,7 +694,7 @@ structure TurtleStreamParser : RDF_STREAM_PARSER = struct
               else if token = false_token
 	      then OK (d, SOME (new_boolean_literal false))
               else prefix_expand (d, token))
-                               
+
     and parse_iriref d : parse_result =
         match_parse_seq d [
             match_iriref
@@ -946,8 +945,9 @@ structure TurtleStreamParser : RDF_STREAM_PARSER = struct
                          ERROR e => ERROR e
                (* !!! inconsistency: this returns only one value, parse_directive returns three (with NONE) *)
                        | OK d =>
-                         (require_punctuation C_DOT (d, []);
-                          OK (d, NONE))
+                         case require_punctuation C_DOT (d, []) of
+                             ERROR e => ERROR e
+                           | OK _ => OK (d, NONE)
 
     fun extended_error_message d e =
 	let val message = e ^ " at " ^ (location (d, []))

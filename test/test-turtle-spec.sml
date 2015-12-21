@@ -99,7 +99,7 @@ functor TestTurtleSpecFn (P: RDF_PARSER) : TESTS = struct
                       (string_of_node (#1 triple)))
             else
                 (if #comment metadata = "" then #name metadata
-                 else (#name metadata) ^ ": " ^ (#comment metadata),
+                 else (#name metadata) ^ ": \"" ^ (#comment metadata) ^ "\"",
                  (fn () => eval_test metadata tt))
         end
                                                           
