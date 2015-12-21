@@ -14,6 +14,10 @@ structure TurtleCodepoints = struct
 	                alpha_lower
 	          ])
 
+    val digit =
+        with_name "digit"
+                  (from_ascii_range #"0" #"9")
+                  
     val exponent =
         with_name "exponent"
                   (from_string "eE")
@@ -25,7 +29,7 @@ structure TurtleCodepoints = struct
     val number_after_point =
         with_name "numeric character"
 	          (union [
-	                from_ascii_range #"0" #"9",
+	                digit,
                         exponent
                   ])
 
@@ -39,7 +43,7 @@ structure TurtleCodepoints = struct
     val hex =
         with_name "hex digit"
 	          (union [
-	                from_ascii_range #"0" #"9",
+                        digit,
 	                from_ascii_range #"A" #"F",
 	                from_ascii_range #"a" #"f" 
 	            ])
@@ -91,13 +95,21 @@ structure TurtleCodepoints = struct
         with_name "prefixed-name character"
 	          (union [
 	                base_pname_char_uscore,
-	                from_ascii_range #"0" #"9",
+                        digit,
 	                from_word 0wx00B7,
 	                from_range 0wx0300 0wx036F,
 	                from_range 0wx203F 0wx2040,
 	                from_string "-"
 	            ])
 
+    val pname_char_initial_local =
+        with_name "initial char in prefixed-name local part"
+                  (union [
+                        base_pname_char_uscore,
+                        digit,
+                        from_string ":"
+                  ])
+                  
     val pname_char_or_dot =
         with_name "prefixed-name character or dot"
 		  (union [
@@ -105,11 +117,33 @@ structure TurtleCodepoints = struct
 			from_string "."
 		    ])
 
+    val pname_char_or_colon =
+        with_name "prefixed-name character or colon"
+		  (union [
+			pname_char,
+			from_string ":"
+		    ])
+
+    val pname_char_colon_or_dot =
+        with_name "prefixed-name character, colon, or dot"
+		  (union [
+			pname_char,
+			from_string ".:"
+		    ])
+
+    val pname_char_backslash =
+        with_name "prefixed-name backslash escape"
+		  (from_string "\\")
+
+    val pname_char_percent =
+        with_name "prefixed-name percent escape"
+		  (from_string "%")
+
     val initial_bnode_char =
-        with_name "initial blank node character"
+        with_name "initial unescaped blank node character"
 	          (union [
 	                base_pname_char_uscore,
-	                from_ascii_range #"0" #"9"
+                        digit
 	          ])
 
     val iri_escaped =
@@ -123,9 +157,9 @@ structure TurtleCodepoints = struct
         with_name "local part escaped character"
                   (from_string "_~.!$&'()*+,;=/?#@%-")
 
-    val pname_definitely_excluded =
+    val pname_excluded =
 	with_name "prefixed-name excluded character"
-		  (from_string "#;,)].\n\t\r ")
+		  (from_string "#;,)].\\\n\t\r ")
 
     val pname_after_dot =
         with_name "prefixed-name candidate character following dot"

@@ -112,18 +112,28 @@ functor TestTurtleParserFn (P: RDF_PARSER) : TESTS = struct
                           triples  = [ iri_triple ("abc", "abc", "abc") ] }
           ),
           ("local-pc-escape",
-           (*!!! this probably should fail - recheck spec & fix yertle *)
+            (* "%-encoded sequences are in the character range for
+                IRIs and are explicitly allowed in local names. These
+                appear as a '%' followed by two hex characters and
+                represent that same sequence of three
+                characters. These sequences are not decoded during
+                processing." *)
            fn () => check_iri_triple_parse
                         "@prefix : <>.:%61bc :a%62c :ab%63."
                         { prefixes = [ ( "", "" ) ],
-                          triples  = [ iri_triple ("abc", "abc", "abc") ] }
+                          triples  = [ iri_triple ("%61bc", "a%62c", "ab%63") ] }
           ),
-          ("local-slash-escape",
-           (*!!! this probably should fail - recheck spec & fix yertle *)
+          ("local-slash-escape-easy", (* escaped chars are not confusing ones *)
            fn () => check_iri_triple_parse
-                        "@prefix : <>.:\\& :a\\#c :ab\\(."
+                        "@prefix : <>.:\\~bc :a\\?c :ab\\$."
                         { prefixes = [ ( "", "" ) ],
-                          triples  = [ iri_triple ("&", "a#c", "ab(") ] }
+                          triples  = [ iri_triple ("~bc", "a?c", "ab$") ] }
+          ),
+          ("local-slash-escape-tricky", (* escaped chars have other meanings *)
+           fn () => check_iri_triple_parse
+                        "@prefix : <>.:\\% :a\\#c :ab\\(."
+                        { prefixes = [ ( "", "" ) ],
+                          triples  = [ iri_triple ("%", "a#c", "ab(") ] }
           )
         ]
             @ good_file_tests 

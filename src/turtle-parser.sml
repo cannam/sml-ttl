@@ -176,38 +176,78 @@ structure TurtleStreamParser : RDF_STREAM_PARSER = struct
                      else bi @ token)
         end
 
-    fun unescape_local token = token (*!!!*)
-            
     fun prefix_expand (d, token) =
-        let fun like_pname_local_part token =
-                true (*!!! todo! *)
-                (* first check post matches rePNLocal:
-               one char that is either rePNCharsU, 0-9, :, or rePlx
-               zero+ chars that are rePNChars, ., :, rePlx
-               maybe one char that is rePNChars, :, rePlx
-               where rePlx is rePercent (i.e. % + 2 hex chars) or
-                   rePNLocalEsc (which is backslash + pname_local_escapable) *)
+        let fun unescape_local_tail acc [] = OK acc
+              | unescape_local_tail acc [single] =
+                if CodepointSet.contains pname_char_or_colon single
+                then OK (single::acc)
+                else ERROR ("invalid trailing character \"" ^
+                            (string_of_token [single]) ^
+                            "\" in local part of name")
+              | unescape_local_tail acc (first::rest) =
+                if CodepointSet.contains pname_char_colon_or_dot first
+                then unescape_local_tail (first::acc) rest
+                else if CodepointSet.contains pname_char_percent first
+                then unescape_local_percent acc first rest
+                else if CodepointSet.contains pname_char_backslash first
+                then unescape_local_backslash acc first rest
+                else ERROR ("unexpected character \"" ^
+                            (string_of_token [first]) ^
+                            "\" in local part of name")
 
-            fun prefix_expand' (pre, post) =
+            and unescape_local_percent acc _ [] = ERROR "hex digits expected"
+              | unescape_local_percent acc _ [a] = ERROR "two hex digits expected"
+              | unescape_local_percent acc pc (a::b::rest) =
+            (* "%-encoded sequences are in the character range for
+                IRIs and are explicitly allowed in local names. These
+                appear as a '%' followed by two hex characters and
+                represent that same sequence of three
+                characters. These sequences are not decoded during
+                processing." [see also match_percent_escape] *)
+                if CodepointSet.contains hex a andalso
+                   CodepointSet.contains hex b
+                then (* remember we're building the string in reverse *)
+                    unescape_local_tail (b::a::pc::acc) rest
+                else ERROR "hex digits expected after %" 
+
+            and unescape_local_backslash acc _ [] = ERROR "escaped char expected"
+              | unescape_local_backslash acc bs (first::rest) =
+                if CodepointSet.contains pname_local_escapable first
+                then unescape_local_tail (first::acc) rest
+                else ERROR "escapable character expected"
+                           
+            and unescape_local [] = ERROR "local part of name expected"
+              | unescape_local (first::rest) =
+                if CodepointSet.contains pname_char_initial_local first
+                then unescape_local_tail [first] rest
+                else if CodepointSet.contains pname_char_percent first
+                then unescape_local_percent [] first rest
+                else if CodepointSet.contains pname_char_backslash first
+                then unescape_local_backslash [] first rest
+                else ERROR ("unexpected character \"" ^
+                            (string_of_token [first]) ^ 
+                            "\" in local part of name")
+                                 
+            and prefix_expand' (pre, post) =
                 (* We don't check the prefix for well-formedness,
                    because if it isn't well-formed, it won't match
                    anything in our namespace map -- because we did
-                   check for well-formedness when making the map *)
+                   check for well-formedness when making the map.  We
+                   do check the local part (post) for well-formedness,
+                   while unescaping it. *)
                 case TokenMap.find (#prefixes d, pre) of
-                    SOME ex =>
-                    OK (d, SOME (IRI (resolve_iri
-					  (d, ex @ unescape_local post))))
-                  | NONE => ERROR ("unknown namespace prefix \"" ^
+                    NONE => ERROR ("unknown namespace prefix \"" ^
                                    (string_of_token pre) ^ "\"")
+                  | SOME ex =>
+                    case unescape_local post of
+                        ERROR err => ERROR err
+                      | OK reversed => 
+                        OK (d, SOME (IRI (resolve_iri (d, ex @ (rev reversed)))))
                 
         in
             case split_at (token, from_ascii #":") of
                 NONE => OK (d, SOME (IRI (iri_of_token token)))
-              | SOME (pre, post) =>
-                if like_pname_local_part post
-                then prefix_expand' (pre, post)
-                else ERROR ("malformed prefixed name \"" ^
-                            (string_of_token token) ^ "\"")
+              | SOME (pre, post) => prefix_expand' (pre, post)
         end
 
     (* 
@@ -324,28 +364,42 @@ structure TurtleStreamParser : RDF_STREAM_PARSER = struct
        on context. *)
     fun match_prefixed_name_candidate s : match_result =
 	let fun match' s =
-		case match_token_excl pname_definitely_excluded s of
+		case match_token_excl pname_excluded s of
 		    ERROR e => ERROR e
 		  | OK (s as (d, [])) => ERROR "token expected"
 		  | OK (s as (d, token)) =>
-		    if peek_ttl s = C_DOT
-		    then
-                        case peek_n 2 s of
-                            dot::next::[] =>
-                            if CodepointSet.contains pname_after_dot next
-                            then let val c = read s (* the dot *) in
-				     match' (d, token @ [c])
-                                 end
-                            else OK (d, token)
-                          | anything_else => OK (d, token)
-		    else OK (d, token)
+                    case peek_ttl s of
+                        C_DOT => 
+                        (case peek_n 2 s of
+                             dot::next::[] =>
+                             if CodepointSet.contains pname_after_dot next
+                             then let val c = read s (* the dot *) in
+				      match' (d, token @ [c])
+                                  end
+                             else OK (d, token)
+                           | anything_else => OK (d, token))
+                      | C_BACKSLASH =>
+                     (* preserve the backslash and the following
+                        character (even if it is in pname_excluded)
+                        and let the caller check that we have a valid
+                        escape sequence *)
+                        (case peek_n 2 s of
+                             slash::next::[] =>
+                             let val esc = read_n 2 s
+                             in match' (d, token @ esc)
+                             end
+                          | anything_else => ERROR "escaped character expected")
+                      | anything_else => OK (d, token)
 	in
 	    match' s
 	end
 
     fun match_percent_escape s : match_result =
-        (* Percent escapes are *not* supposed to be evaluated in an
-           IRI -- they should be passed through unmodified *)
+        (* "%-encoded sequences are in the character range for IRIs
+            and are explicitly allowed in local names. These appear as
+            a '%' followed by two hex characters and represent that
+            same sequence of three characters. These sequences are not
+            decoded during processing." [see also prefix_expand] *)
         sequence s [ match_ttl C_PERCENT,
                      match hex,
                      match hex ]
