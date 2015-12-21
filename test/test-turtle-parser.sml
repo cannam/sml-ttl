@@ -4,11 +4,11 @@ functor TestTurtleParserFn (P: RDF_PARSER) : TESTS = struct
     open TestSupport RdfTriple
 
     fun check_triples str (P.PARSE_ERROR err) =
-        (print ("--- Error in parsing \"" ^ str ^ "\": " ^ err ^ "\n");
+        (print ("\n--- Error in parsing \"" ^ str ^ "\": " ^ err ^ "\n");
          false)
       | check_triples str (P.PARSED { prefixes, triples }) =
         if null triples then
-            (print ("--- No triples obtained when parsing \"" ^ str ^ "\"\n");
+            (print ("\n--- No triples obtained when parsing \"" ^ str ^ "\"\n");
              false)
         else true
 
@@ -20,7 +20,7 @@ functor TestTurtleParserFn (P: RDF_PARSER) : TESTS = struct
             
     fun check_parse_failed _ (P.PARSE_ERROR err) = true
       | check_parse_failed str res = 
-        (print ("--- Parsing erroneously succeeded with input \"" ^ str
+        (print ("\n--- Parsing erroneously succeeded with input \"" ^ str
                 ^ "\"\n    producing " ^ (string_of_parse_result res) ^ "\n");
          false)
             

@@ -3,9 +3,11 @@ fun run_test_suite (suite_name, tests) =
     case
         List.mapPartial
             (fn (test_name, test) =>
-                if test () then NONE
-                else (print ("*** Test \"" ^ test_name ^ "\" failed\n");
-                      SOME test_name))
+(*                (print ("About to run test " ^ test_name ^ "\n"); *)
+                 if test () then NONE
+                 else (print ("*** Test \"" ^ test_name ^ "\" failed\n");
+                       SOME test_name))
+(*) *)
             tests
      of failed =>
         let val n = length tests
