@@ -56,7 +56,10 @@ functor TestTurtleSpecFn (P: RDF_PARSER) : TESTS = struct
             TextIO.closeIn s;
             result
         end
-                 
+
+    fun good_conversion (fin, fout) =
+        false
+            
     val setup_count = ref 0
     fun setup_failed_test text =
         (setup_count := (!setup_count) + 1;
@@ -91,7 +94,11 @@ functor TestTurtleSpecFn (P: RDF_PARSER) : TESTS = struct
               | eval_test { action, ... } NEGATIVE = 
                 bad_file (test_file action)
 
-              | eval_test _ _ = false
+              | eval_test { action, result, ... } EVAL =
+                good_conversion (test_file action, test_file result)
+                                            
+              | eval_test { action, ... } NEGATIVE_EVAL =
+                bad_file (test_file action)
                                             
             val metadata = metadata_for s triple
         in
