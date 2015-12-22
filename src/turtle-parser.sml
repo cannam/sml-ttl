@@ -433,6 +433,8 @@ structure TurtleStreamParser : RDF_STREAM_PARSER = struct
                          then let val (s, w) = unescape_unicode_escape s
                               in if w = 0wx0
                                  then ERROR "invalid Unicode escape"
+                                 else if CodepointSet.contains iri_escaped w
+                                 then ERROR "illegal Unicode escaped character"
                                  else match' (d, token @ [w])
                               end
                          else ERROR "expected Unicode escape")
