@@ -26,10 +26,13 @@ src/rdf-parser.sig
 src/rdf-parser-fn.sml
 src/rdf-serialiser.sig
 src/rdf-serialiser-fn.sml
+src/rdf-converter.sig
+src/rdf-converter-fn.sml
 src/ntriples-codepoints.sml
 src/ntriples-serialiser.sml
 src/turtle-codepoints.sml
 src/turtle-parser.sml
+src/rdf-converters.sml
 src/store.sig
 src/store.sml
 src/convert.sml

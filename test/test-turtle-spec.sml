@@ -9,7 +9,7 @@ functor TestTurtleSpecFn (P: RDF_PARSER) : TESTS = struct
     val test_file_dir = "test/spec"
     val out_file_dir = "test/out"
 
-    fun test_file filename = test_file_dir ^ "/" ^ filename ^ ".ttl"
+    fun test_file filename = test_file_dir ^ "/" ^ filename
                      
     val base_iri = "http://example/base/"
 
@@ -85,10 +85,12 @@ functor TestTurtleSpecFn (P: RDF_PARSER) : TESTS = struct
     datatype test_type = POSITIVE | NEGATIVE | EVAL | NEGATIVE_EVAL
 
     fun test s tt triple =
-        let fun eval_test { name, ... } POSITIVE =
-                good_file (test_file name)
-              | eval_test { name, ... } NEGATIVE = 
-                bad_file (test_file name)
+        let fun eval_test { action, ... } POSITIVE =
+                good_file (test_file action)
+
+              | eval_test { action, ... } NEGATIVE = 
+                bad_file (test_file action)
+
               | eval_test _ _ = false
                                             
             val metadata = metadata_for s triple
@@ -132,7 +134,7 @@ functor TestTurtleSpecFn (P: RDF_PARSER) : TESTS = struct
                        
     val tests = (
         "turtle-spec",
-        tests_from_manifest "manifest"
+        tests_from_manifest "manifest.ttl"
     )
                      
 end
