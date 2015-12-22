@@ -10,6 +10,7 @@ functor TestTurtleSpecFn (P: RDF_PARSER) : TESTS = struct
     val out_file_dir = "test/out"
 
     fun test_file filename = test_file_dir ^ "/" ^ filename
+    fun temp_file filename = out_file_dir ^ "/" ^ filename
                      
     val base_iri = "http://example/base/"
 
@@ -57,8 +58,50 @@ functor TestTurtleSpecFn (P: RDF_PARSER) : TESTS = struct
             result
         end
 
-    fun good_conversion (fin, fout) =
-        false
+    fun lines_of f =
+        let fun lines' s =
+                case TextIO.inputLine s of
+                    SOME l => l :: lines' s
+                  | NONE => []
+            val s = TextIO.openIn f
+            val lines = lines' s
+        in
+            TextIO.closeIn s;
+            lines
+        end
+
+    fun scrub_blanks lines =
+        lines (*!!!*)
+            
+    fun compare_ntriples f1 f2 =
+        let val tidy_lines =
+                (ListMergeSort.sort String.>) o scrub_blanks o lines_of
+            val (l1, l2) = (tidy_lines f1, tidy_lines f2)
+        in
+            if l1 = l2 then true
+            else
+                (print ("\n--- Eval test output \"" ^ f1 ^
+                       "\" differs from reference \"" ^ f2 ^ "\"\n");
+                 print "    Output after sorting:\n";
+                 print (String.concatWith "" (l1));
+                 print "    Expected:\n";
+                 print (String.concatWith "" (l2));
+                 false)
+        end
+            
+    fun good_conversion (fin, fout, reference) =
+        let val instream = TextIO.openIn fin
+            val outstream = TextIO.openOut fout
+            open TurtleNTriplesConverter
+            val result = convert "" instream outstream
+        in
+            TextIO.closeIn instream;
+            TextIO.closeOut outstream;
+            case result of
+                CONVERSION_ERROR e => (print ("\n--- Conversion failed: "^e^"\n");
+                                         false)
+              | CONVERTED => compare_ntriples fout reference
+        end
             
     val setup_count = ref 0
     fun setup_failed_test text =
@@ -93,12 +136,17 @@ functor TestTurtleSpecFn (P: RDF_PARSER) : TESTS = struct
 
               | eval_test { action, ... } NEGATIVE = 
                 bad_file (test_file action)
-
-              | eval_test { action, result, ... } EVAL =
-                good_conversion (test_file action, test_file result)
                                             
               | eval_test { action, ... } NEGATIVE_EVAL =
                 bad_file (test_file action)
+
+              | eval_test { action, result, ... } EVAL =
+                (good_conversion (test_file action,
+                                  temp_file result,
+                                  test_file result)
+                 handle IO.Io { name, ... } =>
+                        (print ("\n--- Failed to convert \"" ^ name ^ "\"\n");
+                         false))
                                             
             val metadata = metadata_for s triple
         in

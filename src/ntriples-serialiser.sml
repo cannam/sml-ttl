@@ -75,7 +75,7 @@ structure NTriplesSerialiser :> RDF_STREAM_SERIALISER = struct
 		      string_of_node b ^ " " ^
 		      string_of_node c
 	in
-	    TextIO.output (t, str ^ ".\n");
+	    TextIO.output (t, str ^ " .\n");
 	    t
 	end
 		 
