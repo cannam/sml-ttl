@@ -28,15 +28,15 @@ summarise_for() {
     no=$(fgrep "$what" "$tmpfile" | grep "no$" | wc -l)
     total=$(($yes + $no))
     if [ "$total" = "0" ]; then
-	echo "  --%  $what"
+	echo "  --%  $what (0/0)"
     else 
 	percent=$(((100 * $yes) / $total))
 	if [ "$percent" = 100 ]; then
-	    echo " 100%  $what"
+	    echo " 100%  $what ($yes/$total)"
 	elif [ "$percent" -lt 10 ]; then
-	    echo "   $percent%  $what"
+	    echo "   $percent%  $what ($yes/$total)"
 	else 
-	    echo "  $percent%  $what"
+	    echo "  $percent%  $what ($yes/$total)"
 	fi
     fi
 }
