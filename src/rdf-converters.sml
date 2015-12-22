@@ -5,3 +5,6 @@ structure TurtleNTriplesConverter =
                           structure Serialiser = NTriplesSerialiser
                           end)
 
+(* !!! + converters between file formats identified by extension *)
+
+                        

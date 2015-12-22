@@ -71,7 +71,16 @@ functor TestTurtleSpecFn (P: RDF_PARSER) : TESTS = struct
         end
 
     fun scrub_blanks lines =
-        lines (*!!!*)
+        let val blank_text = String.explode "{blank}"
+            fun scrub [] = []
+              | scrub (#"_"::rest) = scrub_in_blank rest
+              | scrub (first::rest) = first :: scrub rest
+            and scrub_in_blank [] = blank_text
+              | scrub_in_blank (#" "::rest) = blank_text @ (#" " :: scrub rest)
+              | scrub_in_blank (_::rest) = scrub_in_blank rest
+        in
+            map (String.implode o scrub o String.explode) lines
+        end
             
     fun compare_ntriples f1 f2 =
         let val tidy_lines =
