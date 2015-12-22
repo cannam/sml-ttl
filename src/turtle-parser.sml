@@ -785,8 +785,8 @@ structure TurtleStreamParser : RDF_STREAM_PARSER = struct
                                     CodepointSet.contains
                                         number_after_point b
                                  then
-				     (discard s;
-                                      case match_token number s of
+				     (discard s; (* the point *)
+                                      case match_token number (d, []) of
                                           OK (d, n1) => (n0 @ [point] @ n1)
 					| ERROR e => [])
                                  else n0

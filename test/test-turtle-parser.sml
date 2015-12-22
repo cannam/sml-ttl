@@ -138,7 +138,7 @@ functor TestTurtleParserFn (P: RDF_PARSER) : TESTS = struct
         ]
             @ good_file_tests 
         )
-
+(*!!! tests for numeric literals *)
 end
 
 structure TestTurtleParser = TestTurtleParserFn(TurtleParser)
