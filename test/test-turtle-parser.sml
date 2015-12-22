@@ -69,6 +69,7 @@ functor TestTurtleParserFn (P: RDF_PARSER) : TESTS = struct
           ("simple-with-a",     fn () => good_string "<a> a <c>."),
           ("simple-with-space", fn () => good_string "<a> a <c> . "),
           ("empty-prefixes",    fn () => good_string "@prefix : <>. :a :b :c."),
+          ("empty-prefix-sparql", fn () => good_string "prefix : <> :a :b :c."),
           ("nothing",           fn () => bad_string "."),
           ("no-dot",            fn () => bad_string "<a> a <b>"),
           ("ends-with-semi",    fn () => bad_string "<a> a <b>;"),

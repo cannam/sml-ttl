@@ -307,6 +307,8 @@ structure TurtleStreamParser : RDF_STREAM_PARSER = struct
                  else ERROR (mismatch_message cps c)
              end
 
+    fun require_nothing s = OK s
+                 
     fun require_ttl c s =
         if eof s then ERROR "unexpected end of input"
         else if CharMap.find (significant_char_map, peek s) = SOME c
@@ -582,11 +584,11 @@ structure TurtleStreamParser : RDF_STREAM_PARSER = struct
             ERROR e => ERROR e
           | OK (d, token) => parse_fn (d, token)
             
-    fun parse_base d : parse_result =
+    fun parse_base is_sparql d : parse_result =
         match_parse_seq d [
 	    require_whitespace,
             match_iriref,
-	    require_punctuation C_DOT
+            if is_sparql then require_nothing else require_punctuation C_DOT
         ] (fn (d, token) =>
               let val base = token_of_iri (resolve_iri (d, token))
               in
@@ -599,7 +601,7 @@ structure TurtleStreamParser : RDF_STREAM_PARSER = struct
                       }, NONE)
               end)
             
-    fun parse_prefix d : parse_result =
+    fun parse_prefix is_sparql d : parse_result =
         match_parse_seq d [
 	    require_whitespace,
             match_prefixed_name_namespace,
@@ -607,28 +609,31 @@ structure TurtleStreamParser : RDF_STREAM_PARSER = struct
         ] (fn (d, prefix) =>
               match_parse_seq d [
 		  match_iriref,
-		  require_punctuation C_DOT
+                  if is_sparql then require_nothing else require_punctuation C_DOT
 	      ] (fn (d, iri) => OK (add_prefix d (prefix, iri), NONE)))
-	
+
+    fun is_prefix_tag token =
+        "prefix" = String.implode (map Char.toLower
+                                       (String.explode
+                                            (string_of_token token)))
+    fun is_base_tag token =
+        "base" = String.implode (map Char.toLower
+                                     (String.explode
+                                          (string_of_token token)))
+                        
     fun parse_sparql_base d : parse_result =
         match_parse_seq d [
             match_prefixed_name_candidate
         ] (fn (d, token) =>
-              if token = token_of_string "base" orelse
-                 token = token_of_string "BASE" then
-                  parse_base d
-              else
-                  ERROR "expected \"BASE\"")
+              if is_base_tag token then parse_base true d
+              else ERROR "expected \"BASE\"")
 	
     fun parse_sparql_prefix d : parse_result =
         match_parse_seq d [
             match_prefixed_name_candidate
-        ] (fn (d, token) => 
-              if token = token_of_string "prefix" orelse
-                 token = token_of_string "PREFIX" then
-                  parse_prefix d
-              else
-                  ERROR "expected \"PREFIX\"")
+        ] (fn (d, token) =>
+              if is_prefix_tag token then parse_prefix true d
+              else ERROR "expected \"PREFIX\"")
         
     fun parse_directive d : parse_result =
         let val s = (d, []) in
@@ -640,8 +645,8 @@ structure TurtleStreamParser : RDF_STREAM_PARSER = struct
                     [ require_ttl C_AT, match_token alpha ]
                     (fn (d, token) => 
                         case string_of_token token of
-                            "prefix" => parse_prefix d
-                          | "base" => parse_base d
+                            "prefix" => parse_prefix false d
+                          | "base" => parse_base false d
 		          | other => ERROR ("expected \"prefix\" or \"base\" " ^
                                             "after @, not \"" ^ other ^ "\""))
 	      | other => ERROR "expected @prefix, @base, PREFIX, or BASE"
@@ -938,10 +943,14 @@ structure TurtleStreamParser : RDF_STREAM_PARSER = struct
     and parse_statement d =
         case discard_whitespace (d, []) of
             ERROR e => ERROR e
-          | OK (d, _) => 
-            if eof (d, []) then OK (d, NONE)
+          | OK (s as (d, _)) => 
+            if eof s then OK (d, NONE)
             else
-                if peek_ttl (d, []) = C_AT
+                if peek_ttl s = C_AT
+                   orelse
+                   (peek_ttl s = C_LETTER_P andalso is_prefix_tag (peek_n 6 s))
+                   orelse
+                   (peek_ttl s = C_LETTER_B andalso is_base_tag (peek_n 4 s))
                 then parse_directive d
                 else case parse_triples d of
                          ERROR e => ERROR e
