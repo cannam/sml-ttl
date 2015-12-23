@@ -98,11 +98,11 @@ functor TestTurtleSpecFn (P: RDF_PARSER) : TESTS = struct
                  false)
         end
             
-    fun good_conversion (fin, fout, reference) =
+    fun good_conversion (base, fin, fout, reference) =
         let val instream = TextIO.openIn fin
             val outstream = TextIO.openOut fout
             open TurtleNTriplesConverter
-            val result = convert "" instream outstream
+            val result = convert base instream outstream
         in
             TextIO.closeIn instream;
             TextIO.closeOut outstream;
@@ -150,7 +150,8 @@ functor TestTurtleSpecFn (P: RDF_PARSER) : TESTS = struct
                 bad_file (test_file action)
 
               | eval_test { action, result, ... } EVAL =
-                (good_conversion (test_file action,
+                (good_conversion (base_iri,
+                                  test_file action,
                                   temp_file result,
                                   test_file result)
                  handle IO.Io { name, ... } =>
