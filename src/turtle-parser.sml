@@ -865,7 +865,8 @@ structure TurtleStreamParser : RDF_STREAM_PARSER = struct
 		    ERROR e => ERROR e
 		  | OK (d, NONE) => ERROR "object node not found"
 		  | OK (d, SOME node) =>
-		    if peek_ttl (d, []) = C_COMMA
+		    if (discard_whitespace (d, []);
+                        peek_ttl (d, [])) = C_COMMA
 		    then (discard (d, []);
                           parse_object_list (d, node::nodes))
 		    else OK (d, rev (node::nodes))
