@@ -150,7 +150,7 @@ functor TestTurtleSpecFn (P: RDF_PARSER) : TESTS = struct
                 bad_file (test_file action)
 
               | eval_test { action, result, ... } EVAL =
-                (good_conversion (base_iri,
+                (good_conversion (base_iri ^ action,
                                   test_file action,
                                   temp_file result,
                                   test_file result)
