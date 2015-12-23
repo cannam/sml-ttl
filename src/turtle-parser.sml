@@ -31,7 +31,7 @@ structure TurtleStreamParser : RDF_STREAM_PARSER = struct
 
     type parse_data = {
         source : Source.t,                  (* contains mutable state *)
-        base_iri : token,
+        base : token * token,               (* without filename, filename only *)
         prefixes : token TokenMap.map,      (* prefix -> expansion *)
         blank_nodes : int TokenMap.map,     (* token -> blank node id *)
         new_triples : triple list,
@@ -54,7 +54,7 @@ structure TurtleStreamParser : RDF_STREAM_PARSER = struct
     fun add_triple (d : parse_data) (t : triple) =
         {
           source = #source d,
-          base_iri = #base_iri d,
+          base = #base d,
           prefixes = #prefixes d,
           blank_nodes = #blank_nodes d,
           new_triples = t :: #new_triples d,
@@ -64,7 +64,7 @@ structure TurtleStreamParser : RDF_STREAM_PARSER = struct
     fun add_prefix (d : parse_data) (p, e) =
         {
           source = #source d,
-          base_iri = #base_iri d,
+          base = #base d,
           prefixes = TokenMap.insert (#prefixes d, p, e),
           blank_nodes = #blank_nodes d,
           new_triples = #new_triples d,
@@ -75,7 +75,7 @@ structure TurtleStreamParser : RDF_STREAM_PARSER = struct
     fun add_bnode (d : parse_data) (b, id) =
         {
           source = #source d,
-          base_iri = #base_iri d,
+          base = #base d,
           prefixes = #prefixes d,
           blank_nodes = TokenMap.insert (#blank_nodes d, b, id),
           new_triples = #new_triples d,
@@ -154,7 +154,7 @@ structure TurtleStreamParser : RDF_STREAM_PARSER = struct
         end
 
     fun resolve_iri (data, token) =
-        let val bi = #base_iri data
+        let val (base_iri, file_part) = #base data
             fun like_absolute_iri [] = false
               | like_absolute_iri (first::rest) = 
                 if CodepointSet.contains alpha first
@@ -167,13 +167,13 @@ structure TurtleStreamParser : RDF_STREAM_PARSER = struct
         in
             iri_of_token
                 (case token of
-                     [] => bi
+                     [] => base_iri
                    | first::rest =>
                      if first = from_ascii #"#"
-                     then bi @ token
-                     else if first = from_ascii #"/" then bi @ rest
+                     then base_iri @ file_part @ token
+                     else if first = from_ascii #"/" then base_iri @ rest
                      else if like_absolute_iri token then token
-                     else bi @ token)
+                     else base_iri @ token)
         end
 
     fun prefix_expand (d, token) =
@@ -593,7 +593,7 @@ structure TurtleStreamParser : RDF_STREAM_PARSER = struct
               let val base = token_of_iri (resolve_iri (d, token))
               in
                   OK ({ source = #source d,
-                        base_iri = base,
+                        base = (base, []),
                         prefixes = #prefixes d,
                         blank_nodes = #blank_nodes d,
                         new_triples = #new_triples d,
@@ -977,7 +977,7 @@ structure TurtleStreamParser : RDF_STREAM_PARSER = struct
                               parse_document
                                   {
                                     source = #source d,
-                                    base_iri = #base_iri d,
+                                    base = #base d,
                                     prefixes = #prefixes d,
                                     blank_nodes = #blank_nodes d,
                                     new_triples = [],
@@ -995,24 +995,29 @@ structure TurtleStreamParser : RDF_STREAM_PARSER = struct
               | ERROR e => PARSE_ERROR (extended_error_message d e)
         end
 
-    fun parse iri stream =
-        let fun without_file iri =
-                case String.fields (fn x => x = #"/") iri of
-                    [] => ""
-                  | bits => String.concatWith "/" (rev (tl (rev bits)))
-
-            val source = Source.from_stream stream
-            val d = {
-                source = source,
-                base_iri = token_of_string iri,
-                prefixes = TokenMap.empty,
-                blank_nodes = TokenMap.empty,
-                new_triples = [],
-                new_prefixes = []
-            }
+    fun split_base iristring : (token * token) =
+        let fun slash_fields s = String.fields (fn x => x = #"/") iristring
+            and split' i = 
+                case slash_fields i of
+                    [] => ("", i)
+                  | [single] => (single, "")
+                  | bits =>
+                    ((String.concatWith "/" (rev (tl (rev bits)))) ^ "/",
+                     hd (rev bits))
+            val (base_iri, file_part) = split' iristring
         in
-            parse_document d
+            (token_of_string base_iri, token_of_string file_part)
         end
+            
+    fun parse iri stream =
+        parse_document {
+            source = Source.from_stream stream,
+            base = split_base iri,
+            prefixes = TokenMap.empty,
+            blank_nodes = TokenMap.empty,
+            new_triples = [],
+            new_prefixes = []
+        }
             
 end
 
