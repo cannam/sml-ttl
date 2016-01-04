@@ -28,6 +28,8 @@ src/rdf-parser.sig
 src/rdf-parser-fn.sml
 src/rdf-serialiser.sig
 src/rdf-serialiser-fn.sml
+src/prefix-table.sig
+src/prefix-table.sml
 src/ntriples-codepoints.sml
 src/ntriples-serialiser.sml
 src/turtle-codepoints.sml
@@ -35,8 +37,12 @@ src/turtle-parser.sml
 src/rdf-converter.sig
 src/rdf-converter-fn.sml
 src/rdf-converters.sml
+src/index.sig
+src/index.sml
 src/store.sig
 src/store.sml
+src/store-io.sig
+src/store-loader.sml
 test/tests.sig
 test/test-support.sml
 test/test-prefix.sml

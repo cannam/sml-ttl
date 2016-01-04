@@ -25,7 +25,7 @@ fun load_file filename =
           | StoreFileLoader.OK store =>
             (report_time "Load complete" start;
              print ("Loaded " ^ (Int.toString (List.length (Store.enumerate store))) ^ " triple(s):\n");
-             NTriplesSaver.save_to_stream store TextIO.stdOut)
+             NTriplesExporter.save_to_stream store TextIO.stdOut)
 (*            (app (fn t => print ((string_of_triple t) ^ "\n")) (#triples p) ;
              print ("Loaded " ^ (Int.toString (length (#triples p))) ^ " triple(s)\n"))
         *)

@@ -30,6 +30,10 @@ src/ntriples-codepoints.sml
 src/ntriples-serialiser.sml
 src/turtle-codepoints.sml
 src/turtle-parser.sml
+src/index.sig
+src/index.sml
+src/prefix-table.sig
+src/prefix-table.sml
 src/store.sig
 src/store.sml
 src/test.sml

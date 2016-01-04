@@ -12,6 +12,8 @@ $(SML_LIB)/smlnj-lib/Util/hash-table-rep.sml
 $(SML_LIB)/smlnj-lib/Util/mono-hash-table-sig.sml
 $(SML_LIB)/smlnj-lib/Util/hash-table-fn.sml
 $(SML_LIB)/smlnj-lib/Util/int-hash-table.sml
+$(SML_LIB)/smlnj-lib/Util/listsort-sig.sml
+$(SML_LIB)/smlnj-lib/Util/list-mergesort.sml
 src/sml-utf8/simple-wide-string.sig
 src/sml-utf8/simple-wide-string.sml
 src/codepointset.sml
@@ -22,6 +24,12 @@ src/iri.sml
 src/rdf-triple.sml
 src/rdf-standard-iris.sml
 src/rdf-collection.sml
+src/index.sig
+src/index.sml
+src/prefix-table.sig
+src/prefix-table.sml
+src/store.sig
+src/store.sml
 src/rdf-parser.sig
 src/rdf-parser-fn.sml
 src/rdf-serialiser.sig
@@ -30,7 +38,9 @@ src/ntriples-codepoints.sml
 src/ntriples-serialiser.sml
 src/turtle-codepoints.sml
 src/turtle-parser.sml
-src/store.sig
-src/store.sml
+src/store-io.sig
+src/store-loader.sml
+src/turtle-exporter.sml
+src/store-exporter.sml
 src/load.sml
 src/main.sml
