@@ -117,12 +117,12 @@ structure TurtleStreamParser : RDF_STREAM_PARSER = struct
 		BLANK id => (add_bnode d (token, id), BLANK id)
               | _ => raise Fail "new_blank_node returned non-blank node"
 
-    fun peek (d,_) = Source.peek (#source d)
-    fun peek_n n (d,_) = Source.peek_n n (#source d)
-    fun read (d,_) = Source.read (#source d)
-    fun read_n n (d,_) = Source.read_n n (#source d)
-    fun location (d,_) = Source.location (#source d)
-    fun eof (d,_) = Source.eof (#source d)
+    fun peek (d : parse_data, _) = Source.peek (#source d)
+    fun peek_n n (d : parse_data, _) = Source.peek_n n (#source d)
+    fun read (d : parse_data, _) = Source.read (#source d)
+    fun read_n n (d : parse_data, _) = Source.read_n n (#source d)
+    fun location (d : parse_data, _) = Source.location (#source d)
+    fun eof (d : parse_data, _) = Source.eof (#source d)
 
     fun looking_at cps st =
         not (eof st) andalso CodepointSet.contains cps (peek st)
@@ -153,7 +153,7 @@ structure TurtleStreamParser : RDF_STREAM_PARSER = struct
             split' (lst, [])
         end
 
-    fun resolve_iri (data, token) =
+    fun resolve_iri (data : parse_data, token) =
         let val (base_iri, file_part) = #base data
             fun like_absolute_iri [] = false
               | like_absolute_iri (first::rest) = 
@@ -264,7 +264,7 @@ structure TurtleStreamParser : RDF_STREAM_PARSER = struct
               and/or returns in parse_state, fails if not matched
      *)
 
-    fun discard (d, t) = (Source.discard (#source d); (d, t))
+    fun discard (d : parse_data, t) = (Source.discard (#source d); (d, t))
 
     fun discard_greedy cps s =
         if eof s then OK s

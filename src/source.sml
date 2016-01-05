@@ -25,7 +25,7 @@ structure Source :> SOURCE = struct
         colno : int ref
     }
 
-    fun load_line r =
+    fun load_line (r : t) =
         (case TextIO.inputLine (#stream r) of
              NONE =>
              (#line r) := WdString.empty
