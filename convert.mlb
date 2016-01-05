@@ -30,6 +30,7 @@ src/prefix-table.sig
 src/prefix-table.sml
 src/store.sig
 src/store.sml
+src/store-collection.sml
 src/rdf-parser.sig
 src/rdf-parser-fn.sml
 src/rdf-serialiser.sig
@@ -37,6 +38,7 @@ src/rdf-serialiser-fn.sml
 src/rdf-converter.sig
 src/rdf-converter-fn.sml
 src/ntriples-codepoints.sml
+src/ntriples-encoders.sml
 src/ntriples-serialiser.sml
 src/turtle-codepoints.sml
 src/turtle-parser.sml

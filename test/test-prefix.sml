@@ -29,7 +29,10 @@ functor TestPrefixFn (P: PREFIX_TABLE) : TESTS = struct
             
     fun abbr_unreal s = P.abbreviate (unreal_table, Iri.fromString s)
     fun abbr_real s = P.abbreviate (real_table, Iri.fromString s)
-                   
+
+    fun abbr_to_string (SOME s) = s
+      | abbr_to_string NONE = "(none)"
+                                   
     val tests =
         ("prefix",
          [
@@ -38,7 +41,7 @@ functor TestPrefixFn (P: PREFIX_TABLE) : TESTS = struct
            ("empty-expand",
             fn () => P.expand (P.empty, "a:b") = Iri.fromString "a:b"),
            ("empty-abbreviate",
-            fn () => P.abbreviate (P.empty, Iri.fromString "a:b") = "a:b"),
+            fn () => P.abbreviate (P.empty, Iri.fromString "a:b") = NONE),
            ("add",
             fn () => P.enumerate (P.add (P.empty, "a", "b")) = [("a","b")]),
            ("add-another",
@@ -67,27 +70,27 @@ functor TestPrefixFn (P: PREFIX_TABLE) : TESTS = struct
            ("abbreviate",
             fn () =>
                check_all
-                   String.toString
-                   [(abbr_unreal "a", "1:"),
-                    (abbr_unreal "aa", "1:a"),
-                    (abbr_unreal "abc", "5:"),
-                    (abbr_unreal "abd", "2:d"),
-                    (abbr_unreal "bbb", "bbb"),
-                    (abbr_unreal "bbd", "bbd"),
-                    (abbr_unreal "aba", "3:"),
-                    (abbr_unreal "abad", "3:d")]
+                   abbr_to_string
+                   [(abbr_unreal "a", SOME "1:"),
+                    (abbr_unreal "aa", SOME "1:a"),
+                    (abbr_unreal "abc", SOME "5:"),
+                    (abbr_unreal "abd", SOME "2:d"),
+                    (abbr_unreal "bbb", NONE),
+                    (abbr_unreal "bbd", NONE),
+                    (abbr_unreal "aba", SOME "3:"),
+                    (abbr_unreal "abad", SOME "3:d")]
            ),
            ("abbreviate-lifelike",
             fn () =>
                check_all
-                   String.toString
-                   [(abbr_real "http://example.com/vegetable/aubergine", "veg:aubergine"),
-                    (abbr_real "http://example.com/fruit/banana:thing", "fruit:banana:thing"),
-                    (abbr_real "http://example.com/fruit/loop/banana", "fruitloop:banana"),
-                    (abbr_real "http://example.com/fruit/loop:banana", "fruit:loop:banana"),
-                    (abbr_real "http://example.com/fruit/", "fruit:"),
-                    (abbr_real "fruit", "fruit"),
-                    (abbr_real "emptyfruit", ":fruit")]
+                   abbr_to_string
+                   [(abbr_real "http://example.com/vegetable/aubergine", SOME "veg:aubergine"),
+                    (abbr_real "http://example.com/fruit/banana:thing", SOME "fruit:banana:thing"),
+                    (abbr_real "http://example.com/fruit/loop/banana", SOME "fruitloop:banana"),
+                    (abbr_real "http://example.com/fruit/loop:banana", SOME "fruit:loop:banana"),
+                    (abbr_real "http://example.com/fruit/", SOME "fruit:"),
+                    (abbr_real "fruit", NONE),
+                    (abbr_real "emptyfruit", SOME ":fruit")]
            )
          ]
         )

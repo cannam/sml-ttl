@@ -56,13 +56,13 @@ structure PrefixTable :> PREFIX_TABLE = struct
 		      | SOME pfx => (len, pfx)
 		end
 	in
-	    if Iri.equals (iri, RdfStandardIRIs.iri_rdf_type) then "a"
+	    if Iri.equals (iri, RdfStandardIRIs.iri_rdf_type) then SOME "a"
 	    else
                 let val iristr = Iri.toString iri in
 		    case prefix_of iristr of
-		        (0, _) => iristr
+		        (0, _) => NONE
 		      | (len, pfx) =>
-                        pfx ^ ":" ^ (String.extract (iristr, len, NONE))
+                        SOME (pfx ^ ":" ^ (String.extract (iristr, len, NONE)))
                 end
 	end
 

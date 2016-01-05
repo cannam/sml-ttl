@@ -27,7 +27,7 @@ signature STORE = sig
     val remove_prefix : t * string -> t
     val enumerate_prefixes : t -> (string * string) list
     val expand : t * string -> iri
-    val abbreviate : t * iri -> string
+    val abbreviate : t * iri -> string option (* NONE if no prefix matches *)
 	     
 end
 

@@ -35,11 +35,13 @@ src/rdf-parser-fn.sml
 src/rdf-serialiser.sig
 src/rdf-serialiser-fn.sml
 src/ntriples-codepoints.sml
+src/ntriples-encoders.sml
 src/ntriples-serialiser.sml
 src/turtle-codepoints.sml
 src/turtle-parser.sml
 src/store-io.sig
 src/store-loader.sml
+src/store-collection.sml
 src/turtle-exporter.sml
 src/store-exporter.sml
 src/load.sml
