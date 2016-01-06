@@ -973,8 +973,8 @@ structure TurtleStreamParser : RDF_STREAM_PARSER = struct
 	    else message ^ " (before \"" ^ (string_of_token next_bit) ^ "...\")"
 	end
 
-    fun parse_document d : stream_value =
-        let fun parse' d = fn () =>
+    fun parse_document (d : parse_data) : stream_value =
+        let fun parse' (d : parse_data) = fn () =>
                               parse_document
                                   {
                                     source = #source d,

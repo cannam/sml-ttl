@@ -108,7 +108,7 @@ functor TestTurtleParserFn (P: RDF_PARSER) : TESTS = struct
           ),
           ("local-u-escape",
            fn () => check_iri_triple_parse
-                        "@prefix : <>.:\u0061bc :a\u0062c :ab\u0063."
+                        "@prefix : <>.:\\u0061bc :a\\u0062c :ab\\u0063."
                         { prefixes = [ ( "", "" ) ],
                           triples  = [ iri_triple ("abc", "abc", "abc") ] }
           ),

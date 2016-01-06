@@ -117,8 +117,15 @@ functor TestTurtleSpecFn (P: RDF_PARSER) : TESTS = struct
         (setup_count := (!setup_count) + 1;
          ("setup-failed-" ^ (Int.toString (!setup_count)),
           fn () => (print ("\n--- Test setup failed: " ^ text ^ "\n"); false)))
-            
-    fun metadata_for s (test_node, _, _) =
+
+    type testmeta = {
+        name : string,
+        comment : string,
+        action : string,
+        result : string
+    }
+
+    fun metadata_for s (test_node, _, _) : testmeta =
         let fun text_of [(_, _, S.LITERAL obj)] = #value obj
               | text_of [(_, _, S.IRI iri)] = Iri.toString iri
               | text_of anything_else = ""
@@ -140,16 +147,16 @@ functor TestTurtleSpecFn (P: RDF_PARSER) : TESTS = struct
     datatype test_type = POSITIVE | NEGATIVE | EVAL | NEGATIVE_EVAL
 
     fun test s tt triple =
-        let fun eval_test { action, ... } POSITIVE =
+        let fun eval_test ({ action, ... } : testmeta) POSITIVE =
                 good_file (test_file action)
 
-              | eval_test { action, ... } NEGATIVE = 
+              | eval_test ({ action, ... } : testmeta) NEGATIVE = 
                 bad_file (test_file action)
                                             
-              | eval_test { action, ... } NEGATIVE_EVAL =
+              | eval_test ({ action, ... } : testmeta) NEGATIVE_EVAL =
                 bad_file (test_file action)
 
-              | eval_test { action, result, ... } EVAL =
+              | eval_test ({ action, result, ... } : testmeta) EVAL =
                 (good_conversion (base_iri ^ action,
                                   test_file action,
                                   temp_file result,

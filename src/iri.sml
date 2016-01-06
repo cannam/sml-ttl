@@ -26,9 +26,13 @@ structure Iri :> IRI = struct
                                        val compare = compare_backwards
                                        end)
 
-    val forward_map = ref IriMap.empty
-    val reverse_map = IntHashTable.mkTable (2000, Fail "hash table failure")
-    val next_id = ref 0
+    val forward_map : int IriMap.map ref =
+        ref IriMap.empty
+	
+    val reverse_map : WdString.t IntHashTable.hash_table =
+        IntHashTable.mkTable (2000, Fail "hash table failure")
+
+    val next_id : int ref = ref 0
 
     fun fromWideString ww =
         case IriMap.find (!forward_map, ww) of
