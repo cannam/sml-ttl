@@ -38,7 +38,7 @@ structure TurtleExporter : STORE_EXPORTER = struct
         is_coll   : bool
     }        
 
-    fun was_written (triple, d) = Triples.member (#written d, triple)
+    fun was_written (triple, d : ser_data) = Triples.member (#written d, triple)
 
     fun local_encode str = str (*!!! *)
               
@@ -48,17 +48,17 @@ structure TurtleExporter : STORE_EXPORTER = struct
     fun serialise_anon_object (obj, d) =
         raise Fail "serialise_anon_object not implemented yet"
 
-    fun string_of_abbr_iri (iri, d) =
+    fun string_of_abbr_iri (iri, d : ser_data) =
         case Store.abbreviate (#store d, iri) of
             SOME abbr => local_encode abbr
           | NONE => NTriplesEncoders.string_of_node (IRI iri)
               
-    fun serialise_abbreviated (IRI iri, d) =
+    fun serialise_abbreviated (IRI iri, d : ser_data) =
         TextIO.output (#stream d, string_of_abbr_iri (iri, d))
       | serialise_abbreviated (node, d) = 
         TextIO.output (#stream d, NTriplesEncoders.string_of_node node)
 
-    fun serialise_object (obj, d, pr) : ser_data =
+    fun serialise_object (obj, d, pr : ser_props) : ser_data =
         if (#is_anon pr)
         then (TextIO.output (#stream d, " "); serialise_anon_object (obj, d); d)
         else (TextIO.output (#stream d, " "); serialise_abbreviated (obj, d); d)
@@ -66,12 +66,12 @@ structure TurtleExporter : STORE_EXPORTER = struct
     fun serialise_collection (obj, d, pr) =
         raise Fail "serialise_collection not implemented yet"
                  
-    fun serialise_object_or_collection (obj, d, pr) =
+    fun serialise_object_or_collection (obj, d, pr : ser_props) =
         if (#is_coll pr)
         then serialise_collection (obj, d, pr)
         else serialise_object (obj, d, pr)
 
-    fun serialise_subject_predicate (subj, pred, d, pr) =
+    fun serialise_subject_predicate (subj, pred, d : ser_data, pr) =
         case #subject d of
             NONE => serialise_nodes (d, pr) [subj, pred] (* first triple in graph *)
           | SOME current_subj =>
@@ -107,13 +107,13 @@ structure TurtleExporter : STORE_EXPORTER = struct
             fun has_blank_object (_, _, BLANK _) = true
               | has_blank_object _ = false
 
-            fun is_blank_object_unique (d, t) =
+            fun is_blank_object_unique (d : ser_data, t) =
                 Store.match (#store d, (WILDCARD, WILDCARD, KNOWN (#3 t))) = [t]
 
-            fun was_blank_object_written (d, t) =
+            fun was_blank_object_written (d : ser_data, (_,_,obj)) =
                 List.exists
                     (fn x => was_written (x, d))
-                    (Store.match (#store d, (KNOWN (#3 t), WILDCARD, WILDCARD)))
+                    (Store.match (#store d, (KNOWN obj, WILDCARD, WILDCARD)))
 
             fun is_blank_object_unwritten args = not (was_blank_object_written args)
 
