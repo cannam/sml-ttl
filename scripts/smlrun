@@ -1,0 +1,69 @@
+#!/bin/bash
+set -e
+
+# Run a program defined as an .mlb file using the SML/NJ repl
+
+if echo | sml | grep -q Jersey ; then :
+else
+    echo "Error: SML/NJ binary 'sml' not in path" 1>&2
+    exit 1
+fi
+
+mlb="$1"
+
+if [ -z "$mlb" ]; then
+    echo "Usage: $0 file.mlb" 1>&2
+    exit 1
+fi
+if [ ! -f "$mlb" ]; then
+    echo "Error: File not found: $mlb" 1>&2
+    exit 1
+fi
+
+set -u
+shift
+
+out=$(basename "$mlb" .mlb)
+if [ "$out" = "$(basename $mlb)" ]; then
+    echo "Error: Argument must be a .mlb file" 1>&2
+    exit 1
+fi
+
+tmpobj="/tmp/obj.$$.o"
+tmpout="/tmp/out.$out.$$"
+trap "rm -f ${tmpobj} ${tmpout}" 0
+
+libdir=${SML_LIB:-/usr/lib/mlton/sml}
+
+cat "$mlb" | \
+    fgrep -v basis.mlb |                   # remove incompatible Basis lib
+    sed 's/(\*[^\*]*\*)//g' |              # remove ML-style comments
+    sed 's#$(SML_LIB)#'"${libdir}"'#g' |   # expand library path
+    sed 's/^ *//' |                        # remove leading whitespace
+    sed 's/ *$//' |                        # remove trailing whitespace
+    grep -v '^$' |                         # remove empty lines
+    sed 's/^\(.*\)$/use "\1";/' |
+    (
+	cat <<EOF
+val smlrun__cp = 
+    let val x = !Control.Print.out in
+        Control.Print.out := { say = fn _ => (), flush = fn () => () };
+        x
+    end;
+val smlrun__prev = ref "";
+Control.Print.out := { 
+    say = fn s => 
+        (if String.isSubstring "Error" s 
+         then (Control.Print.out := smlrun__cp;
+               (#say smlrun__cp) (!smlrun__prev);
+               (#say smlrun__cp) s)
+         else (smlrun__prev := s; ())),
+    flush = fn s => ()
+};
+print "Compiling and running '$mlb'...\n";
+EOF
+	cat -
+    ) |
+    CM_VERBOSE=false sml
+
+
