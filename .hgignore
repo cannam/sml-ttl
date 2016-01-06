@@ -3,4 +3,6 @@ syntax: glob
 *~
 *.deps
 test/out/*.nt
-
+MLB/Js
+MLB/RI_GC
+mlmon.out

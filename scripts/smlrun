@@ -30,13 +30,14 @@ if [ "$out" = "$(basename $mlb)" ]; then
 fi
 
 tmpobj="/tmp/obj.$$.o"
-tmpout="/tmp/out.$out.$$"
+tmpout="/tmp/out.$out.$$.sml"
 trap "rm -f ${tmpobj} ${tmpout}" 0
 
 libdir=${SML_LIB:-/usr/lib/mlton/sml}
 
 cat "$mlb" | \
     fgrep -v basis.mlb |                   # remove incompatible Basis lib
+    fgrep -v main.sml |                    # remove unneeded call to main
     sed 's/(\*[^\*]*\*)//g' |              # remove ML-style comments
     sed 's#$(SML_LIB)#'"${libdir}"'#g' |   # expand library path
     sed 's/^ *//' |                        # remove leading whitespace
@@ -60,10 +61,15 @@ Control.Print.out := {
          else (smlrun__prev := s; ())),
     flush = fn s => ()
 };
-print "Compiling and running '$mlb'...\n";
 EOF
 	cat -
-    ) |
-    CM_VERBOSE=false sml
+	cat <<EOF
+
+val _ = main ();
+val _ = OS.Process.exit (OS.Process.success);
+EOF
+    ) > "$tmpout"
+
+CM_VERBOSE=false sml "$tmpout" "$@"
 
 
