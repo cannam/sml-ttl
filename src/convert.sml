@@ -5,7 +5,7 @@ fun usage () =
     let open TextIO in
 	output (stdErr,
 	    "Usage:\n" ^
-            "    load filename.ttl\n");
+            "    convert filename.ttl\n");
         raise Fail "Incorrect arguments specified"
     end
 

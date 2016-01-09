@@ -1,6 +1,17 @@
 
-if ($args.Count -eq 0) {
-   "Usage: smlrun file.mlb"
+<#
+
+.SYNOPSIS
+Use SML/NJ to run a Standard ML program defined in a .mlb file
+
+.EXAMPLE
+smlrun example.mlb datafile.txt
+Run the Standard ML program defined in example.mlb using SML/NJ, passing datafile.txt as an argument to the program
+
+#>
+
+if ($args.Count -lt 1) {
+   "Usage: smlrun file.mlb [args...]"
    exit 1
 }
 
@@ -11,7 +22,7 @@ if ($mlb -notmatch "[.]mlb$") {
    exit 1
 }
 
-$libdir = "/blah/blah/blah"
+$libdir = "c:/Users/Chris/Documents/mlton-20150109-all-mingw-492/lib/sml"
 
 $lines = (Get-Content $mlb)
 
@@ -64,6 +75,15 @@ $script += $intro
 $script += $lines
 $script += $outro
 
-$script
+$tmpfile = ([System.IO.Path]::GetTempFileName()) -replace "[.]tmp",".sml"
 
+$tmpfile
+
+$script | Out-File -Encoding "ASCII" $tmpfile
+
+$env:CM_VERBOSE="false"
+
+sml $tmpfile $args[1,$args.Length]
+
+del $tmpfile
 
