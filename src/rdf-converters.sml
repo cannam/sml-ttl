@@ -28,6 +28,11 @@ structure FileExtensionDrivenConverter : RDF_FILE_CONVERTER = struct
             (StoreFileExporter.save_to_file store outfile;
              CONVERTED)
 
+    (*!!! todo: convert to stream with a given format specified in a
+    string separately. Could possibly adapt the file converter / file
+    exporter etc to accept that as an alternative as well. And for
+    input? *)
+                
 end
 
 
