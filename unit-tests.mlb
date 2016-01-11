@@ -37,13 +37,16 @@ src/turtle-codepoints.sml
 src/turtle-parser.sml
 src/rdf-converter.sig
 src/rdf-converter-fn.sml
-src/rdf-converters.sml
 src/index.sig
 src/index.sml
 src/store.sig
 src/store.sml
+src/store-collection.sml
 src/store-io.sig
+src/turtle-exporter.sml
 src/store-loader.sml
+src/store-exporter.sml
+src/rdf-converters.sml
 test/tests.sig
 test/test-support.sml
 test/test-prefix.sml
