@@ -41,37 +41,37 @@ structure TurtleExporter : STORE_EXPORTER = struct
     fun was_written (triple, d : ser_data) = Triples.member (#written d, triple)
 
     fun local_encode str = str (*!!! *)
-              
-    fun serialise_nodes (d, pr) nodes =
-        raise Fail "serialise_nodes not yet implemented"
-
-    fun serialise_anon_object (obj, d) =
-        raise Fail "serialise_anon_object not implemented yet"
 
     fun string_of_abbr_iri (iri, d : ser_data) =
         case Store.abbreviate (#store d, iri) of
             SOME abbr => local_encode abbr
           | NONE => NTriplesEncoders.string_of_node (IRI iri)
               
-    fun serialise_abbreviated (IRI iri, d : ser_data) =
+    fun serialise_nodes (d, pr) nodes =
+        raise Fail "serialise_nodes not yet implemented"
+
+    and serialise_anon_object (obj, d) =
+        raise Fail "serialise_anon_object not implemented yet"
+              
+    and serialise_abbreviated (IRI iri, d : ser_data) =
         TextIO.output (#stream d, string_of_abbr_iri (iri, d))
       | serialise_abbreviated (node, d) = 
         TextIO.output (#stream d, NTriplesEncoders.string_of_node node)
 
-    fun serialise_object (obj, d, pr : ser_props) : ser_data =
+    and serialise_object (obj, d, pr : ser_props) : ser_data =
         if (#is_anon pr)
         then (TextIO.output (#stream d, " "); serialise_anon_object (obj, d); d)
         else (TextIO.output (#stream d, " "); serialise_abbreviated (obj, d); d)
 
-    fun serialise_collection (obj, d, pr) =
+    and serialise_collection (obj, d, pr) =
         raise Fail "serialise_collection not implemented yet"
                  
-    fun serialise_object_or_collection (obj, d, pr : ser_props) =
+    and serialise_object_or_collection (obj, d, pr : ser_props) =
         if (#is_coll pr)
         then serialise_collection (obj, d, pr)
         else serialise_object (obj, d, pr)
 
-    fun serialise_subject_predicate (subj, pred, d : ser_data, pr) =
+    and serialise_subject_predicate (subj, pred, d : ser_data, pr) =
         case #subject d of
             NONE => serialise_nodes (d, pr) [subj, pred] (* first triple in graph *)
           | SOME current_subj =>
@@ -90,7 +90,7 @@ structure TurtleExporter : STORE_EXPORTER = struct
                 (TextIO.output (#stream d, " .\n\n");
                  serialise_nodes (d, pr) [subj, pred])
 
-    fun serialise_triple_parts ((subj, pred, obj), d : ser_data, pr) =
+    and serialise_triple_parts ((subj, pred, obj), d : ser_data, pr) =
         let val d = serialise_subject_predicate (subj, pred, d, pr)
             val d = serialise_object (obj, d, pr)
         in
@@ -102,7 +102,7 @@ structure TurtleExporter : STORE_EXPORTER = struct
               store = #store d }
         end
 
-    fun serialise_triple_maybe (triple, d) =
+    and serialise_triple_maybe (triple, d) =
         let
             fun has_blank_object (_, _, BLANK _) = true
               | has_blank_object _ = false
@@ -139,10 +139,10 @@ structure TurtleExporter : STORE_EXPORTER = struct
                        is_coll = is_coll })
         end
                         
-    fun serialise_triples data =
+    and serialise_triples data =
         Store.foldl (fn (t, d) => serialise_triple_maybe (t, d)) data (#store data)
         
-    fun serialise_prefixes stream prefixes =
+    and serialise_prefixes stream prefixes =
         foldl (fn ((pfx, iri), t) =>
                   (TextIO.output (t, ("@prefix " ^ pfx ^ ": <" ^ iri ^ "> .\n"));
                    t))
