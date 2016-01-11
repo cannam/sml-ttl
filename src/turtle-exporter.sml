@@ -57,18 +57,34 @@ structure TurtleExporter : STORE_EXPORTER = struct
          of (d, _) => d
 
     and serialise_anon_object (obj, d) =
-        raise Fail "serialise_anon_object not implemented yet"
+        let val triples = Store.match (#store d, (KNOWN obj, WILDCARD, WILDCARD))
+        in
+            TextIO.output (#stream d, "[ ");
+            let val d' = 
+                    serialise_triples {
+                        stream = #stream d,
+                        subject = SOME obj,
+                        predicate = NONE,
+                        indent = #indent d,
+                        written = #written d,
+                        store = #store d
+                    } triples;
+            in
+                TextIO.output (#stream d, " ]");
+                d'
+            end
+        end
               
     and serialise_abbreviated (IRI iri, d : ser_data) =
-        TextIO.output (#stream d, string_of_abbr_iri (iri, d))
+        (TextIO.output (#stream d, string_of_abbr_iri (iri, d)); d)
       | serialise_abbreviated (node, d) =
         (*!!! no, literal nodes should be written in literal utf8 encoding -- use short_string_double_excluded and long_string_double_excluded to determine which chars to escape (and whether to use short or long string in the first place?) *)
-        TextIO.output (#stream d, NTriplesEncoders.string_of_node node)
+        (TextIO.output (#stream d, NTriplesEncoders.string_of_node node); d)
 
     and serialise_object (obj, d, pr : ser_props) : ser_data =
         if (#is_anon pr)
-        then (TextIO.output (#stream d, " "); serialise_anon_object (obj, d); d)
-        else (TextIO.output (#stream d, " "); serialise_abbreviated (obj, d); d)
+        then (TextIO.output (#stream d, " "); serialise_anon_object (obj, d))
+        else (TextIO.output (#stream d, " "); serialise_abbreviated (obj, d))
 
     and serialise_collection (obj, d, pr) =
         raise Fail "serialise_collection not implemented yet"
@@ -146,7 +162,10 @@ structure TurtleExporter : STORE_EXPORTER = struct
                        is_coll = is_coll })
         end
                         
-    and serialise_triples data =
+    and serialise_triples data triples =
+        foldl (fn (t, d) => serialise_triple_maybe (t, d)) data triples
+                        
+    and serialise_store_triples data =
         Store.foldl (fn (t, d) => serialise_triple_maybe (t, d)) data (#store data)
         
     and serialise_prefixes stream prefixes =
@@ -158,7 +177,7 @@ structure TurtleExporter : STORE_EXPORTER = struct
     fun save_to_stream store stream =
         let val stream = serialise_prefixes stream (Store.enumerate_prefixes store)
             val _ = TextIO.output (stream, "\n")
-            val d = serialise_triples
+            val d = serialise_store_triples
                         { stream = stream,
                           subject = NONE,
                           predicate = NONE,
