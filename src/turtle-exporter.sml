@@ -48,14 +48,21 @@ structure TurtleExporter : STORE_EXPORTER = struct
           | NONE => NTriplesEncoders.string_of_node (IRI iri)
               
     fun serialise_nodes (d, pr) nodes =
-        raise Fail "serialise_nodes not yet implemented"
+        case foldl (fn (n, (d, sep)) =>
+                       (TextIO.output (#stream d, sep);
+                        serialise_abbreviated (n, d);
+                        (d, " ")))
+                   (d, "")
+                   nodes
+         of (d, _) => d
 
     and serialise_anon_object (obj, d) =
         raise Fail "serialise_anon_object not implemented yet"
               
     and serialise_abbreviated (IRI iri, d : ser_data) =
         TextIO.output (#stream d, string_of_abbr_iri (iri, d))
-      | serialise_abbreviated (node, d) = 
+      | serialise_abbreviated (node, d) =
+        (*!!! no, literal nodes should be written in literal utf8 encoding -- use short_string_double_excluded and long_string_double_excluded to determine which chars to escape (and whether to use short or long string in the first place?) *)
         TextIO.output (#stream d, NTriplesEncoders.string_of_node node)
 
     and serialise_object (obj, d, pr : ser_props) : ser_data =
@@ -150,14 +157,19 @@ structure TurtleExporter : STORE_EXPORTER = struct
 
     fun save_to_stream store stream =
         let val stream = serialise_prefixes stream (Store.enumerate_prefixes store)
-        in
-            ignore (serialise_triples
+            val _ = TextIO.output (stream, "\n")
+            val d = serialise_triples
                         { stream = stream,
                           subject = NONE,
                           predicate = NONE,
                           indent = 0,
                           written = Triples.empty,
-                          store = store })
+                          store = store }
+        in
+            if not (Triples.isEmpty (#written d))
+            then TextIO.output (stream, " .")
+            else ();
+            TextIO.output (stream, "\n")
         end
 
     fun save_to_file store filename =
