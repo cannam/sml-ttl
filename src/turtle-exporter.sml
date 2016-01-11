@@ -46,20 +46,27 @@ structure TurtleExporter : STORE_EXPORTER = struct
         case Store.abbreviate (#store d, iri) of
             SOME abbr => local_encode abbr
           | NONE => NTriplesEncoders.string_of_node (IRI iri)
-              
+
+    fun string_for_indent indent =
+        String.concatWith "" (List.tabulate (indent, fn _ => " "))
+
+    fun write_indent d =
+        (TextIO.output (#stream d, string_for_indent (#indent d));
+         d)
+            
     fun serialise_nodes (d, pr) nodes =
         case foldl (fn (n, (d, sep)) =>
                        (TextIO.output (#stream d, sep);
                         serialise_abbreviated (n, d);
                         (d, " ")))
-                   (d, "")
+                   ((write_indent d), "")
                    nodes
          of (d, _) => d
 
     and serialise_anon_object (obj, d) =
         let val triples = Store.match (#store d, (KNOWN obj, WILDCARD, WILDCARD))
         in
-            TextIO.output (#stream d, "[ ");
+            TextIO.output (#stream d, "[\n");
             let val d' = 
                     serialise_triples {
                         stream = #stream d,
@@ -94,14 +101,22 @@ structure TurtleExporter : STORE_EXPORTER = struct
         then serialise_collection (obj, d, pr)
         else serialise_object (obj, d, pr)
 
+    and with_indent n d =
+        { stream = #stream d,
+          subject = #subject d,
+          predicate = #predicate d,
+          indent = n,
+          written = #written d,
+          store = #store d }
+                              
     and serialise_subject_predicate (subj, pred, d : ser_data, pr) =
         case #subject d of
-            NONE => serialise_nodes (d, pr) [subj, pred] (* first triple in graph *)
+            NONE => serialise_nodes (with_indent 0 d, pr) [subj, pred] (* first triple in graph *)
           | SOME current_subj =>
             if current_subj = subj then
                 case #predicate d of
                     (*!!! indent *)
-                    NONE => serialise_nodes (d, pr) [pred] (* first triple in bnode [] syntax *)
+                    NONE => serialise_nodes (with_indent 4 d, pr) [pred] (* first triple in bnode [] syntax *)
                   | SOME current_pred =>
                     if current_pred = pred then
                         (TextIO.output (#stream d, ",");
