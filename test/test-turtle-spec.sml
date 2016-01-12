@@ -108,8 +108,26 @@ functor TestTurtleSpecFn (P: RDF_PARSER) : TESTS = struct
             TextIO.closeOut outstream;
             case result of
                 CONVERSION_ERROR e => (print ("\n--- Conversion failed: "^e^"\n");
-                                         false)
+                                       false)
               | CONVERTED => compare_ntriples fout reference
+        end
+
+    fun good_export (base, fin) =
+        let open FileExtensionDrivenConverter
+            val fout = temp_file "export"
+            val out_ttl = fout ^ ".ttl"
+            val out_ref = fout ^ ".ref.nt"
+        in
+            case convert base fin out_ttl of (* the Turtle export *)
+                CONVERSION_ERROR e => (print ("\n--- Conversion to \"" ^ out_ttl ^
+                                              "\" failed: " ^ e ^ "\n");
+                                       false)
+              | CONVERTED =>
+                case convert base fin out_ref of (* and the NTriples export as ref *)
+                    CONVERSION_ERROR e => (print ("\n--- Conversion to \"" ^ out_ref
+                                                  ^ "\" failed: " ^ e ^ "\n");
+                                           false)
+                  | CONVERTED => good_conversion (base, out_ttl, fout, out_ref)
         end
             
     val setup_count = ref 0
@@ -144,7 +162,15 @@ functor TestTurtleSpecFn (P: RDF_PARSER) : TESTS = struct
             { name = name, comment = comment, action = action, result = result }
         end
 
-    datatype test_type = POSITIVE | NEGATIVE | EVAL | NEGATIVE_EVAL
+    (* Except for TURTLE_EXPORT, these correspond to the test types in
+       the spec manifest. POSITIVE and NEGATIVE are syntax tests, EVAL
+       tests require comparing the output against a reference.
+       NEGATIVE_EVAL we treat like NEGATIVE for now. TURTLE_EXPORT is
+       our own test type, which consists of exporting to Turtle,
+       re-importing, and checking that the results are the same -- so
+       it is a Turtle exporter test rather than a parser test. *)
+            
+    datatype test_type = POSITIVE | NEGATIVE | EVAL | NEGATIVE_EVAL | TURTLE_EXPORT
 
     fun test s tt triple =
         let fun eval_test ({ action, ... } : testmeta) POSITIVE =
@@ -162,7 +188,14 @@ functor TestTurtleSpecFn (P: RDF_PARSER) : TESTS = struct
                                   temp_file result,
                                   test_file result)
                  handle IO.Io { name, ... } =>
-                        (print ("\n--- Failed to convert \"" ^ name ^ "\"\n");
+                        (print ("\n--- Failed to convert \"" ^ name ^ "\" to NTriples\n");
+                         false))
+
+              | eval_test ({ action, result, ... } : testmeta) TURTLE_EXPORT =
+                (good_export (base_iri ^ action,
+                              test_file action)
+                 handle IO.Io { name, ... } =>
+                        (print ("\n--- Failed to convert \"" ^ name ^ "\" to Turtle\n");
                          false))
                                             
             val metadata = metadata_for s triple
@@ -172,9 +205,13 @@ functor TestTurtleSpecFn (P: RDF_PARSER) : TESTS = struct
                      ("unable to retrieve test metadata for test: " ^
                       (string_of_node (#1 triple)))
             else
-                (if #comment metadata = "" then #name metadata
-                 else (#name metadata) ^ ": \"" ^ (#comment metadata) ^ "\"",
-                 (fn () => eval_test metadata tt))
+                let val test_name = 
+                        if #comment metadata = "" then #name metadata
+                        else (#name metadata) ^ ": \"" ^ (#comment metadata) ^ "\""
+                in
+                    (if tt = TURTLE_EXPORT then "export-" ^ test_name else test_name,
+                     fn () => eval_test metadata tt)
+                end
         end
                                                           
     fun tests_from_store s =
@@ -186,7 +223,9 @@ functor TestTurtleSpecFn (P: RDF_PARSER) : TESTS = struct
             map (test s POSITIVE) (tests_of_type "TestTurtlePositiveSyntax") @
             map (test s NEGATIVE) (tests_of_type "TestTurtleNegativeSyntax") @
             map (test s EVAL) (tests_of_type "TestTurtleEval") @
-            map (test s NEGATIVE_EVAL) (tests_of_type "TestTurtleNegativeEval")
+            map (test s NEGATIVE_EVAL) (tests_of_type "TestTurtleNegativeEval") @
+            map (test s TURTLE_EXPORT) ((tests_of_type "TestTurtlePositiveSyntax") @
+                                        (tests_of_type "TestTurtleEval"))
         end
             
     fun tests_from_manifest name =

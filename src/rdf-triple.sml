@@ -99,6 +99,6 @@ structure RdfTriple = struct
               | LESS => LESS
               | EQUAL =>
                 RdfNode.compare (o1, o2)
-            
+                                
 end
 

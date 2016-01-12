@@ -37,6 +37,7 @@ structure StoreFileExporter : STORE_FILE_EXPORTER = struct
         in
             (case extension of
                  "ntriples" => NTriplesExporter.save_to_file
+               | "nt" => NTriplesExporter.save_to_file
                | "ttl" => TurtleExporter.save_to_file
                | other => raise Fail ("Unknown or unsupported file extension \""
                                       ^ extension ^ "\""))

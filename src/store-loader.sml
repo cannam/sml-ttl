@@ -68,6 +68,7 @@ structure StoreFileLoader : STORE_FILE_LOADER = struct
                  "ttl" => TurtleLoader.load_file 
                | "n3" => TurtleLoader.load_file
                | "ntriples" => TurtleLoader.load_file
+               | "nt" => TurtleLoader.load_file
                | other => raise Fail ("Unknown or unsupported file extension \""
                                       ^ extension ^ "\""))
                 store iri filename
