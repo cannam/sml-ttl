@@ -762,7 +762,7 @@ structure TurtleStreamParser : RDF_STREAM_PARSER = struct
                         OK (d, SOME (LITERAL {
 					  value = string_of_token body,
 					  lang = string_of_token tag,
-					  dtype = Iri.empty_iri
+					  dtype = Iri.empty
 		    })))
                 | C_CARET =>
                   (case parse_datatype d of
@@ -777,7 +777,7 @@ structure TurtleStreamParser : RDF_STREAM_PARSER = struct
                 | other => OK (d, SOME (LITERAL {
 					     value = string_of_token body,
 					     lang = "",
-					     dtype = Iri.empty_iri
+					     dtype = Iri.empty
 			      })))
 	
     and parse_numeric_literal d =

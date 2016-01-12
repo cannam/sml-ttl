@@ -16,8 +16,10 @@ signature IRI = sig
     val equals : t * t -> bool
     val compare : t * t -> order
 
-    val empty_iri : t
-    val is_empty : t -> bool
+    val isPrefixOf : WdString.t * t -> bool (* prefix, iri *)
+
+    val empty : t
+    val isEmpty : t -> bool
                                
 end
                     

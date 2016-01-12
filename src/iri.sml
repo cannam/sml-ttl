@@ -3,24 +3,38 @@ structure Iri :> IRI = struct
 
     type t = int
 
+    (* Because IRIs often have common prefixes, comparing from their
+       ends is often faster. We use this helper for prefix checking
+       and for the intern map compare function; the IRI equal and
+       compare functions just use intern ids. *)
+    fun compare_prefix_backwards (_, _, 0) = EQUAL
+      | compare_prefix_backwards (s1, s2, n) =
+	let val m = n-1
+	in
+            case Word.compare (WdString.sub (s1, m),
+                               WdString.sub (s2, m)) of
+		LESS => LESS
+              | GREATER => GREATER
+              | EQUAL => compare_prefix_backwards (s1, s2, m)
+	end
+
     fun compare_backwards (s1, s2) =
-        (* because IRIs often have common prefixes, comparing from
-           their ends is often faster *)
         let val n1 = WdString.size s1
             val n2 = WdString.size s2
-            fun compare' ~1 = EQUAL
-              | compare' n = 
-                case Word.compare (WdString.sub (s1, n),
-                                   WdString.sub (s2, n)) of
-                    LESS => LESS
-                  | GREATER => GREATER
-                  | EQUAL => compare' (n - 1)
         in
             if n1 < n2 then LESS
             else if n1 > n2 then GREATER
-            else compare' (n1 - 1)
+            else compare_prefix_backwards (s1, s2, n1)
         end
-                 
+
+    fun is_prefix (s1, s2) =
+        let val n1 = WdString.size s1
+            val n2 = WdString.size s2
+        in
+	    if n1 > n2 then false
+	    else compare_prefix_backwards (s1, s2, n1) = EQUAL
+	end
+	    
     structure IriMap = RedBlackMapFn (struct
                                        type ord_key = WdString.t
                                        val compare = compare_backwards
@@ -58,9 +72,11 @@ structure Iri :> IRI = struct
 
     val compare = Int.compare
 
-    val empty_iri = fromString ""
+    fun isPrefixOf (s, iri) = is_prefix (s, toWideString iri) 
+		      
+    val empty = fromString ""
 
-    fun is_empty id = (id = empty_iri)
+    fun isEmpty id = (id = empty)
                       
 end
 
