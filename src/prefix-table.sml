@@ -1,9 +1,27 @@
 
 structure PrefixTable :> PREFIX_TABLE = struct
 
+    fun compare_backwards (s1, s2) =
+        (* as with IRIs, we compare prefixes backwards because they
+           often have common prefixes of their own *)
+        let val n1 = String.size s1
+            val n2 = String.size s2
+            fun compare' ~1 = EQUAL
+              | compare' n = 
+                case Char.compare (String.sub (s1, n),
+                                   String.sub (s2, n)) of
+                    LESS => LESS
+                  | GREATER => GREATER
+                  | EQUAL => compare' (n - 1)
+        in
+            if n1 < n2 then LESS
+            else if n1 > n2 then GREATER
+            else compare' (n1 - 1)
+        end
+                 
     structure StringMap = RedBlackMapFn (struct
                                           type ord_key = string
-                                          val compare = String.compare
+                                          val compare = compare_backwards
                                           end)
 
     type t = string StringMap.map * string StringMap.map (* fwd, reverse *)
