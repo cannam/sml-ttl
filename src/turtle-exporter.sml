@@ -40,12 +40,18 @@ structure TurtleExporter : STORE_EXPORTER = struct
 
     fun was_written (triple, d : ser_data) = Triples.member (#written d, triple)
 
-    fun local_encode str = str (*!!! *)
+    fun encode_local str =
+        str (*!!!*)
 
+    fun encode_iri iri =
+        Encode.encode_wdstring_except (TurtleCodepoints.iri_escaped,
+                                       Encode.u_encode)
+                                      (Iri.toWideString iri)
+            
     fun string_of_abbr_iri (iri, d : ser_data) =
         case Store.abbreviate (#store d, iri) of
-            SOME abbr => local_encode abbr
-          | NONE => NTriplesEncoders.string_of_node (IRI iri)
+            SOME abbr => encode_local abbr
+          | NONE => encode_iri iri
 
     fun string_for_indent indent =
         String.concatWith "" (List.tabulate (indent, fn _ => " "))
@@ -81,12 +87,24 @@ structure TurtleExporter : STORE_EXPORTER = struct
                 d'
             end
         end
-              
+(*
+    and serialise_short_string_content (text, d : ser_data) = 
+        (TextIO.output (#stream d,
+                        NTriplesEncoders.encode_string TurtleCodepoints.
+                       ); d)
+*)
+
+    and serialise_literal (lit, d) =
+        raise Fail "serialise_literal not yet implemented"
+            
     and serialise_abbreviated (IRI iri, d : ser_data) =
         (TextIO.output (#stream d, string_of_abbr_iri (iri, d)); d)
-      | serialise_abbreviated (node, d) =
+      | serialise_abbreviated (BLANK n, d : ser_data) =
+        (TextIO.output (#stream d, "_:blank" ^ (Int.toString n)); d)
+      | serialise_abbreviated (LITERAL lit, d : ser_data) =
+        serialise_literal (lit, d)
         (*!!! no, literal nodes should be written in literal utf8 encoding -- use short_string_double_excluded and long_string_double_excluded to determine which chars to escape (and whether to use short or long string in the first place?) *)
-        (TextIO.output (#stream d, NTriplesEncoders.string_of_node node); d)
+(*        (TextIO.output (#stream d, NTriplesEncoders.string_of_node node); d) *)
 
     and serialise_object (obj, d, pr : ser_props) : ser_data =
         if (#is_anon pr)

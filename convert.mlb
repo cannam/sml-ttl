@@ -37,8 +37,8 @@ src/rdf-serialiser.sig
 src/rdf-serialiser-fn.sml
 src/rdf-converter.sig
 src/rdf-converter-fn.sml
+src/encode.sml
 src/ntriples-codepoints.sml
-src/ntriples-encoders.sml
 src/ntriples-serialiser.sml
 src/turtle-codepoints.sml
 src/turtle-parser.sml
