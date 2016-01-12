@@ -54,7 +54,7 @@ structure TurtleExporter : STORE_EXPORTER = struct
           | NONE => "<" ^ (encode_iri iri) ^ ">"
 
     fun string_for_indent indent =
-        String.concatWith "" (List.tabulate (indent, fn _ => " "))
+        String.concatWith "" (List.tabulate (indent * 4, fn _ => " "))
 
     fun write_indent d =
         (TextIO.output (#stream d, string_for_indent (#indent d));
@@ -92,7 +92,9 @@ structure TurtleExporter : STORE_EXPORTER = struct
                         store = #store d
                     } triples;
             in
-                TextIO.output (#stream d, " ]");
+                TextIO.output (#stream d', "\n");
+                write_indent d';
+                TextIO.output (#stream d', "]");
                 d'
             end
         end
@@ -137,22 +139,25 @@ structure TurtleExporter : STORE_EXPORTER = struct
         then serialise_collection (obj, d, pr)
         else serialise_object (obj, d, pr)
 
-    and with_indent n d =
+    and indented n (d : ser_data) =
         { stream = #stream d,
           subject = #subject d,
           predicate = #predicate d,
-          indent = n,
+          indent = n + #indent d,
           written = #written d,
           store = #store d }
                               
     and serialise_subject_predicate (subj, pred, d : ser_data, pr) =
         case #subject d of
-            NONE => serialise_nodes (with_indent 0 d, pr) [subj, pred] (* first triple in graph *)
+            NONE =>
+            (* first triple in graph *)
+            serialise_nodes (d, pr) [subj, pred]
           | SOME current_subj =>
             if current_subj = subj then
                 case #predicate d of
-                    (*!!! indent *)
-                    NONE => serialise_nodes (with_indent 4 d, pr) [pred] (* first triple in bnode [] syntax *)
+                    NONE =>
+                    (* first triple in bnode [] syntax *)
+                    serialise_nodes (d, pr) [pred]
                   | SOME current_pred =>
                     if current_pred = pred then
                         (TextIO.output (#stream d, ",");
