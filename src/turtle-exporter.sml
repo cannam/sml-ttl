@@ -112,7 +112,7 @@ structure TurtleExporter : STORE_EXPORTER = struct
             serialise quote;
             if #lang lit = "" then ()
             else serialise ("@" ^ (#lang lit));
-            if Iri.isEmpty (#dtype lit) then ()
+            if Iri.is_empty (#dtype lit) then ()
             else serialise ("^^" ^ string_of_abbr_iri (#dtype lit, d));
             d
         end
