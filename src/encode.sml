@@ -4,6 +4,7 @@ signature ENCODE = sig
     val percent_encode : word -> word list
     val percent_or_u_encode : word -> word list
     val ascii_encode : word -> word list
+    val backslash_encode : word -> word list
 
     type encoder = (CodepointSet.t * (word -> word list))
                                     
@@ -49,9 +50,12 @@ structure Encode :> ENCODE = struct
       | ascii_encode 0wx5C = WdString.explodeUtf8 "\\\\"
       | ascii_encode w = u_encode w
 
-    fun encode_w tester (acceptable, encode_fn) token =
+    fun backslash_encode w =
+        [Word.fromInt (Char.ord #"\\"), w]
+                                  
+    fun encode_w tester (cps, encode_fn) token =
         let fun encode (w, acc) =
-                if tester (CodepointSet.contains acceptable w)
+                if tester (CodepointSet.contains cps w)
                 then w :: acc
                 else (encode_fn w) @ acc
         in
@@ -67,7 +71,7 @@ structure Encode :> ENCODE = struct
         encode_wdstring encoder (WdString.fromUtf8 str)
 
     fun encode_string_except encoder str =
-        encode_wdstring encoder (WdString.fromUtf8 str)
+        encode_wdstring_except encoder (WdString.fromUtf8 str)
 
 end
                        
