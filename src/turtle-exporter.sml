@@ -54,7 +54,8 @@ structure TurtleExporter : STORE_EXPORTER = struct
           | NONE => "<" ^ (encode_iri iri) ^ ">"
 
     fun string_for_indent indent =
-        String.concatWith "" (List.tabulate (indent * 4, fn _ => " "))
+        if indent < 0 then ""
+        else String.concatWith "" (List.tabulate (indent * 4, fn _ => " "))
 
     fun write_indent d =
         (TextIO.output (#stream d, string_for_indent (#indent d));
@@ -78,19 +79,22 @@ structure TurtleExporter : STORE_EXPORTER = struct
                    nodes
          of (d, _) => d
 
+    (*!!! + collections *)
+                          
     and serialise_anon_object (obj, d) =
         let val triples = Store.match (#store d, (KNOWN obj, WILDCARD, WILDCARD))
         in
             TextIO.output (#stream d, "[\n");
-            let val d' = 
-                    serialise_triples {
-                        stream = #stream d,
-                        subject = SOME obj,
-                        predicate = NONE,
-                        indent = #indent d,
-                        written = #written d,
-                        store = #store d
-                    } triples;
+            let val d' =
+                    indented (~1)
+                             (serialise_triples {
+                                   stream = #stream d,
+                                   subject = SOME obj,
+                                   predicate = NONE,
+                                   indent = 1 + #indent d,
+                                   written = #written d,
+                                   store = #store d
+                               } triples)
             in
                 TextIO.output (#stream d', "\n");
                 write_indent d';
@@ -151,7 +155,8 @@ structure TurtleExporter : STORE_EXPORTER = struct
         case #subject d of
             NONE =>
             (* first triple in graph *)
-            serialise_nodes (d, pr) [subj, pred]
+            (serialise_nodes (d, pr) [subj, pred];
+             indented 1 d)
           | SOME current_subj =>
             if current_subj = subj then
                 case #predicate d of
@@ -167,7 +172,7 @@ structure TurtleExporter : STORE_EXPORTER = struct
                          serialise_nodes (d, pr) [pred])
             else
                 (TextIO.output (#stream d, " .\n\n");
-                 serialise_nodes (d, pr) [subj, pred])
+                 indented 1 (serialise_nodes (indented (~1) d, pr) [subj, pred]))
 
     and serialise_triple_parts ((subj, pred, obj), d : ser_data, pr) =
         let val d = serialise_subject_predicate (subj, pred, d, pr)
