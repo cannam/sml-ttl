@@ -88,6 +88,8 @@ functor TestTurtleParserFn (P: RDF_PARSER) : TESTS = struct
                                             "@prefix : <>. :\\  :b :c .",
                                             "@prefix : <>. :\\\\  :b :c .",
                                             "@prefix : <>. :\\< :b :c ." ]),
+          ("local-u-bad",       fn () => bad_string
+                                             "@prefix : <>.:abc :a\\u0062c :abc."),
           ("local-colon",
            fn () => check_iri_triple_parse
                         "@prefix : <>. :a: :b :c."
@@ -105,12 +107,6 @@ functor TestTurtleParserFn (P: RDF_PARSER) : TESTS = struct
                         "@prefix a.b: <a>. a.b:a a.b:b.c a.b:c:d ."
                         { prefixes = [ ("a.b", "a") ],
                           triples  = [ iri_triple ("aa", "ab.c", "ac:d") ] }
-          ),
-          ("local-u-escape",
-           fn () => check_iri_triple_parse
-                        "@prefix : <>.:\\u0061bc :a\\u0062c :ab\\u0063."
-                        { prefixes = [ ( "", "" ) ],
-                          triples  = [ iri_triple ("abc", "abc", "abc") ] }
           ),
           ("local-pc-escape",
             (* "%-encoded sequences are in the character range for
