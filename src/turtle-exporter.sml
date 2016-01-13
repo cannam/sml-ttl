@@ -45,11 +45,19 @@ structure TurtleExporter : STORE_EXPORTER = struct
                                      Encode.backslash_encode)
                                     str
 
+    fun encode_pname pname =
+        (*!!! maybe better if abbreviate returned a pair of
+        prefix+local strings? and if "a" was handled separately? *)
+        case String.fields (fn c => c = #":") pname of
+            [a] => a
+          | p::pl => p ^ ":" ^ (String.concatWith ":" (map encode_local pl))
+          | [] => ""
+                                    
     fun encode_iri iri = Iri.toString iri
             
     fun string_of_abbr_iri (iri, d : ser_data) =
         case Store.abbreviate (#store d, iri) of
-            SOME abbr => encode_local abbr
+            SOME abbr => encode_pname abbr
           | NONE => "<" ^ (encode_iri iri) ^ ">"
 
     fun string_for_indent indent =
