@@ -177,25 +177,7 @@ structure TurtleStreamParser : RDF_STREAM_PARSER = struct
         end
 
     fun prefix_expand (d, token) =
-        let fun unescape_local_tail acc [] = OK acc
-              | unescape_local_tail acc [single] =
-                if CodepointSet.contains pname_char_or_colon single
-                then OK (single::acc)
-                else ERROR ("invalid trailing character \"" ^
-                            (string_of_token [single]) ^
-                            "\" in local part of name")
-              | unescape_local_tail acc (first::rest) =
-                if CodepointSet.contains pname_char_colon_or_dot first
-                then unescape_local_tail (first::acc) rest
-                else if CodepointSet.contains pname_char_percent first
-                then unescape_local_percent acc first rest
-                else if CodepointSet.contains pname_char_backslash first
-                then unescape_local_backslash acc first rest
-                else ERROR ("unexpected character \"" ^
-                            (string_of_token [first]) ^
-                            "\" in local part of name")
-
-            and unescape_local_percent acc _ [] = ERROR "hex digits expected"
+        let fun unescape_local_percent acc _ [] = ERROR "hex digits expected"
               | unescape_local_percent acc _ [a] = ERROR "two hex digits expected"
               | unescape_local_percent acc pc (a::b::rest) =
             (* "%-encoded sequences are in the character range for
@@ -216,7 +198,25 @@ structure TurtleStreamParser : RDF_STREAM_PARSER = struct
                 then unescape_local_tail (first::acc) rest
                 else ERROR "escapable character expected"
                            
-            and unescape_local [] = ERROR "local part of name expected"
+            and unescape_local_tail acc [] = OK acc
+              | unescape_local_tail acc [single] =
+                if CodepointSet.contains pname_char_or_colon single
+                then OK (single::acc)
+                else ERROR ("invalid trailing character \"" ^
+                            (string_of_token [single]) ^
+                            "\" in local part of name")
+              | unescape_local_tail acc (first::rest) =
+                if CodepointSet.contains pname_char_colon_or_dot first
+                then unescape_local_tail (first::acc) rest
+                else if CodepointSet.contains pname_char_percent first
+                then unescape_local_percent acc first rest
+                else if CodepointSet.contains pname_char_backslash first
+                then unescape_local_backslash acc first rest
+                else ERROR ("unexpected character \"" ^
+                            (string_of_token [first]) ^
+                            "\" in local part of name")
+
+            and unescape_local [] = OK [] (* empty local part is allowed *)
               | unescape_local (first::rest) =
                 if CodepointSet.contains pname_char_initial_local first
                 then unescape_local_tail [first] rest
