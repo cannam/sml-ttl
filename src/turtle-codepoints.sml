@@ -146,11 +146,11 @@ structure TurtleCodepoints = struct
                         digit
 	          ])
 
-    val iri_escaped =
-        with_name "iri escaped character"
+    val iri_excluded =
+        with_name "character not permitted in iri ref"
                   (union [
 	                from_range 0wx0000 0wx0020,
-	                from_string "<>\"{}|^`\\%"
+	                from_string "<>\"{}|^`\\"
 	            ])
 	
     val pname_local_escapable =

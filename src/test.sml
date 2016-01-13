@@ -34,8 +34,8 @@ fun main () =
     (print "pname_local_escapable = \n";
      print (CodepointSet.to_string TurtleCodepoints.pname_local_escapable);
      print "\n";
-     print "iri_escaped = \n";
-     print (CodepointSet.to_string TurtleCodepoints.iri_escaped);
+     print "iri_excluded = \n";
+     print (CodepointSet.to_string TurtleCodepoints.iri_excluded);
      print "\n";
 (*     parse (); *)
      check ());

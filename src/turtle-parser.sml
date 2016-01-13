@@ -421,7 +421,7 @@ structure TurtleStreamParser : RDF_STREAM_PARSER = struct
             
     fun match_iriref s : match_result =
         let fun match' s =
-                case match_token_excl iri_escaped s of
+                case match_token_excl iri_excluded s of
                     ERROR e => ERROR e
                   | OK (s as (d, token)) => 
                     case peek_ttl s of
@@ -435,8 +435,10 @@ structure TurtleStreamParser : RDF_STREAM_PARSER = struct
                          then let val (s, w) = unescape_unicode_escape s
                               in if w = 0wx0
                                  then ERROR "invalid Unicode escape"
-                                 else if CodepointSet.contains iri_escaped w
-                                 then ERROR "illegal Unicode escaped character"
+                                 else if CodepointSet.contains iri_excluded w
+                                 then ERROR ("illegal Unicode escaped character " ^
+                                             "codepoint 0x" ^ (Word.toString w) ^
+                                             " in IRI")
                                  else match' (d, token @ [w])
                               end
                          else ERROR "expected Unicode escape")
