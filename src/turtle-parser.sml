@@ -813,15 +813,21 @@ structure TurtleStreamParser : RDF_STREAM_PARSER = struct
         in
 	    (* spec says we store the literal as it appears in the
                file, don't canonicalise: we only convert it to check
-               that it really is a number *)
-	    case Real.fromString candidate_str of
-		SOME i => OK (d, SOME (LITERAL {
-						    value = candidate_str,
-						    lang = "",
-						    dtype = dtype
-						}))
-	      | NONE => ERROR ("expected numeric literal, found \"" ^
-			       candidate_str ^ "\"")
+               that it really is a number. Because SML's number
+               conversion is slightly different from the Turtle spec,
+               we need the odd additional test as well *)
+            if String.isSuffix "e" candidate_str orelse
+               String.isSuffix "E" candidate_str
+            then ERROR ("double numeric literal must have digits after exponent")
+            else
+	        case Real.fromString candidate_str of
+		    SOME i => OK (d, SOME (LITERAL {
+						value = candidate_str,
+						lang = "",
+						dtype = dtype
+				 }))
+	          | NONE => ERROR ("expected numeric literal, found \"" ^
+			           candidate_str ^ "\"")
         end
             
     (* [13] literal ::= RDFLiteral | NumericLiteral | BooleanLiteral *)
