@@ -112,10 +112,10 @@ functor TestTurtleSpecFn (P: RDF_PARSER) : TESTS = struct
               | CONVERTED => compare_ntriples fout reference
         end
 
-    fun good_export (base, fin) =
+    fun good_export (base, fin, action) =
         let open FileExtensionDrivenConverter
-            val fout = temp_file "export"
-            val out_ttl = fout ^ ".ttl"
+            val fout = temp_file action
+            val out_ttl = fout ^ ".export.ttl"
             val out_ref = fout ^ ".ref.nt"
         in
             case convert base fin out_ttl of (* the Turtle export *)
@@ -123,7 +123,7 @@ functor TestTurtleSpecFn (P: RDF_PARSER) : TESTS = struct
                                               "\" failed: " ^ e ^ "\n");
                                        false)
               | CONVERTED =>
-                case convert base fin out_ref of (* and the NTriples export as ref *)
+                case convert base fin out_ref of (* and NTriples, as ref *)
                     CONVERSION_ERROR e => (print ("\n--- Conversion to \"" ^ out_ref
                                                   ^ "\" failed: " ^ e ^ "\n");
                                            false)
@@ -193,7 +193,8 @@ functor TestTurtleSpecFn (P: RDF_PARSER) : TESTS = struct
 
               | eval_test ({ action, result, ... } : testmeta) TURTLE_EXPORT =
                 (good_export (base_iri ^ action,
-                              test_file action)
+                              test_file action,
+                              action)
                  handle IO.Io { name, ... } =>
                         (print ("\n--- Failed to convert \"" ^ name ^ "\" to Turtle\n");
                          false))
