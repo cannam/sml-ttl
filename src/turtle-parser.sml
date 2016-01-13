@@ -638,7 +638,7 @@ structure TurtleStreamParser : RDF_STREAM_PARSER = struct
     fun parse_directive d : parse_result =
         let val s = (d, []) in
 	    case peek_ttl s of
-	        C_LETTER_B => parse_sparql_prefix d
+	        C_LETTER_B => parse_sparql_base d
 	      | C_LETTER_P => parse_sparql_prefix d
 	      | C_AT =>
                 match_parse_seq d
