@@ -43,10 +43,7 @@ structure TurtleExporter : STORE_EXPORTER = struct
     fun encode_local str =
         str (*!!!*)
 
-    fun encode_iri iri =
-        Encode.encode_wdstring_except (TurtleCodepoints.iri_escaped,
-                                       Encode.u_encode)
-                                      (Iri.toWideString iri)
+    fun encode_iri iri = Iri.toString iri
             
     fun string_of_abbr_iri (iri, d : ser_data) =
         case Store.abbreviate (#store d, iri) of
