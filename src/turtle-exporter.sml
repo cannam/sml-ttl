@@ -41,7 +41,9 @@ structure TurtleExporter : STORE_EXPORTER = struct
     fun was_written (triple, d : ser_data) = Triples.member (#written d, triple)
 
     fun encode_local str =
-        str (*!!!*)
+        Encode.encode_string_except (TurtleCodepoints.pname_local_escapable,
+                                     Encode.backslash_encode)
+                                    str
 
     fun encode_iri iri = Iri.toString iri
             
