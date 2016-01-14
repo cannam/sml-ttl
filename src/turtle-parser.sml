@@ -506,6 +506,7 @@ structure TurtleStreamParser : RDF_STREAM_PARSER = struct
                   | LONG_STRING C_QUOTE_DOUBLE => long_string_double_excluded
                   | SHORT_STRING C_QUOTE_SINGLE => short_string_single_excluded
                   | SHORT_STRING C_QUOTE_DOUBLE => short_string_double_excluded
+                  | _ => raise Fail "non-quote passed to match_string_body_type"
 
 	    fun match' s =
                 case match_token_excl quote_codepoint s of
@@ -530,11 +531,13 @@ structure TurtleStreamParser : RDF_STREAM_PARSER = struct
                              (if have_three s then OK s
                               else match' (d, body @ [read s]))
                            | SHORT_STRING _ => OK s
+                           | _ => raise Fail "non-quote passed to match_string_body_type"
 
             val quote_seq =
                 case q of
                     LONG_STRING c => [require_ttl c, require_ttl c, require_ttl c]
                   | SHORT_STRING c => [require_ttl c]
+                  | _ => raise Fail "non-quote passed to match_string_body_type"
         in
             sequence s (quote_seq @ [match'] @ quote_seq)
         end
