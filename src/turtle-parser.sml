@@ -493,32 +493,6 @@ structure TurtleStreamParser : RDF_STREAM_PARSER = struct
 	      | C_QUOTE_SINGLE => short_or_long s C_QUOTE_SINGLE
 	      | other => NO_QUOTE
 	end
-
-    fun match_long_string_body s q : match_result =
-        let
-	    val quote_codepoint =
-		if q = C_QUOTE_SINGLE
-		then long_string_single_excluded
-		else long_string_double_excluded
-
-	    fun match' s =
-                case match_token_excl quote_codepoint s of
-                    ERROR e => ERROR e
-                  | OK (s as (d, token)) =>
-                    if eof s then ERROR "end-of-file reached in string"
-                    else if peek_ttl s = C_BACKSLASH then
-                        (case read_n 2 s of
-                             slash::next::[] => match' (d, token @ [next])
-                           | anything_else => ERROR "escaped character expected")
-                    else if have_three s then OK s
-                    else match' (d, token @ [read s])
-        in
-            sequence s [
-                require_ttl q, require_ttl q, require_ttl q,
-                match',
-                require_ttl q, require_ttl q, require_ttl q
-            ]
-        end
                  
     fun unescape_string_escape s =
         let val e = read s in
@@ -526,19 +500,22 @@ structure TurtleStreamParser : RDF_STREAM_PARSER = struct
                 SOME w => (s, w)
               | NONE => (s, e)
         end
-            
-    fun match_short_string_body s q : match_result =
-	let
+		     
+    fun match_string_body_type q s : match_result =
+        let
 	    val quote_codepoint =
-		if q = C_QUOTE_SINGLE
-		then short_string_single_excluded
-		else short_string_double_excluded
+                case q of
+                    LONG_STRING C_QUOTE_SINGLE => long_string_single_excluded
+                  | LONG_STRING C_QUOTE_DOUBLE => long_string_double_excluded
+                  | SHORT_STRING C_QUOTE_SINGLE => short_string_single_excluded
+                  | SHORT_STRING C_QUOTE_DOUBLE => short_string_double_excluded
 
 	    fun match' s =
                 case match_token_excl quote_codepoint s of
-		    ERROR e => ERROR e
-	          | OK (s as (d, body)) =>
-                    if peek_ttl s = C_BACKSLASH
+                    ERROR e => ERROR e
+                  | OK (s as (d, body)) =>
+                    if eof s then ERROR "end-of-file reached in string"
+                    else if peek_ttl s = C_BACKSLASH
                     then (discard s;
                           if looking_at string_escape s
                           then let val (s, w) = unescape_string_escape s
@@ -551,20 +528,24 @@ structure TurtleStreamParser : RDF_STREAM_PARSER = struct
                                   else match' (d, body @ [w])
                                end
                           else ERROR "expected escape sequence")
-                    else OK s
+                    else case q of
+                             LONG_STRING _ => 
+                             (if have_three s then OK s
+                              else match' (d, body @ [read s]))
+                           | SHORT_STRING _ => OK s
+
+            val quote_seq =
+                case q of
+                    LONG_STRING c => [require_ttl c, require_ttl c, require_ttl c]
+                  | SHORT_STRING c => [require_ttl c]
         in
-            sequence s [
-                require_ttl q,
-                match',
-                require_ttl q
-            ]
+            sequence s (quote_seq @ [match'] @ quote_seq)
         end
-		     
+            
     fun match_string_body s : match_result =
 	case match_quote s of
 	    NO_QUOTE => ERROR "expected quotation mark"
-	  | SHORT_STRING q => match_short_string_body s q
-	  | LONG_STRING q => match_long_string_body s q
+	  | quote => match_string_body_type quote s
 
     fun match_language_tag s : match_result =
         let fun match' s =
