@@ -177,19 +177,19 @@ structure TurtleCodepoints = struct
 
     val short_string_single_excluded =
 	with_name "syntactic character in single-quoted string"
-		  (from_string "\\\n\r'")
+		  (from_string "\n\r'\\")
 
     val short_string_double_excluded =
 	with_name "syntactic character in double-quoted string"
-		  (from_string "\\\n\r\"")
+		  (from_string "\n\r\"\\")
 
     val long_string_single_excluded =
 	with_name "syntactic character in long single-quoted string"
-		  (from_string "'")
+		  (from_string "'\\")
 
     val long_string_double_excluded =
 	with_name "syntactic character in long double-quoted string"
-		  (from_string "\"")
+		  (from_string "\"\\")
 
     val string_escape =
 	with_name "character that can be escaped in string"

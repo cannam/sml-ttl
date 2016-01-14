@@ -504,8 +504,12 @@ structure TurtleStreamParser : RDF_STREAM_PARSER = struct
 	    fun match' s =
                 case match_token_excl quote_codepoint s of
                     ERROR e => ERROR e
-                  | OK (s as (d, token)) => (*!!! todo: handle escapes *)
+                  | OK (s as (d, token)) =>
                     if eof s then ERROR "end-of-file reached in string"
+                    else if peek_ttl s = C_BACKSLASH then
+                        (case read_n 2 s of
+                             slash::next::[] => match' (d, token @ [next])
+                           | anything_else => ERROR "escaped character expected")
                     else if have_three s then OK s
                     else match' (d, token @ [read s])
         in
