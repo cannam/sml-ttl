@@ -48,9 +48,6 @@ structure TurtleStreamParser : RDF_STREAM_PARSER = struct
 
     fun from_ascii a = Word.fromInt (Char.ord a)
 
-    (* !!! pretty sure each of these is called only in one place, so
-           maybe should just write them inline *)
-                                    
     fun add_triple (d : parse_data) (t : triple) =
         {
           source = #source d,
