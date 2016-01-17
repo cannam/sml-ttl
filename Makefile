@@ -1,24 +1,14 @@
 
-all:	tests load convert unit-tests
-
-tests:	tests.deps tests.mlb
-	./scripts/polybuild tests.mlb
-# mlton tests.mlb
-	./tests
+all:	load convert unit-tests
 
 load:	load.deps load.mlb
 	./scripts/polybuild load.mlb
-# mlton load.mlb
 
 convert:	convert.deps convert.mlb
 	./scripts/polybuild convert.mlb
-# mlton convert.mlb
 
 unit-tests:	unit-tests.deps unit-tests.mlb
 	./scripts/polybuild unit-tests.mlb
-
-tests.deps:	tests.mlb
-	./scripts/dependencies $<
 
 load.deps:	load.mlb
 	./scripts/dependencies $<
@@ -30,7 +20,13 @@ unit-tests.deps:	unit-tests.mlb
 	./scripts/dependencies $<
 
 clean:
-	rm -f tests load convert unit-tests
+	rm -f load convert unit-tests
+
+release:
+	mlton load.mlb
+	mlton convert.mlb
+	mlton unit-tests.mlb
+	./unit-tests
 
 -include *.deps
 

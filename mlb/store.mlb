@@ -1,0 +1,7 @@
+parse-serialise.mlb
+../src/index.sig
+../src/index.sml
+../src/store.sig
+../src/store.sml
+../src/store-collection.sml
+../src/store-io.sig

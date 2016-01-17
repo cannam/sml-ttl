@@ -1,49 +1,35 @@
 #!/bin/bash
-set -e
 
 # Run a program defined as an .mlb file using the SML/NJ repl
 
+set -e
+
 if echo | sml | grep -q Jersey ; then :
 else
-    echo "Error: SML/NJ binary 'sml' not in path" 1>&2
+    echo "*** Error: SML/NJ binary 'sml' not in path" 1>&2
     exit 1
 fi
 
-mlb="$1"
+arg="$1"
 
-if [ -z "$mlb" ]; then
-    echo "Usage: $0 file.mlb" 1>&2
-    exit 1
-fi
-if [ ! -f "$mlb" ]; then
-    echo "Error: File not found: $mlb" 1>&2
+if [ -z "$arg" ]; then
+    echo "Usage: $0 file.sml" 1>&2
+    echo "       $0 file.mlb" 1>&2
     exit 1
 fi
 
 set -u
-shift
 
-out=$(basename "$mlb" .mlb)
-if [ "$out" = "$(basename $mlb)" ]; then
-    echo "Error: Argument must be a .mlb file" 1>&2
-    exit 1
-fi
+mydir=$(dirname "$0")
+. "$mydir/include.sh"
 
-tmpobj="/tmp/obj.$$.o"
+out=$(get_outfile "$arg")
+
 tmpout="/tmp/out.$out.$$.sml"
-trap "rm -f ${tmpobj} ${tmpout}" 0
+trap "rm -f ${tmpout}" 0
 
-libdir=${SML_LIB:-/usr/lib/mlton/sml}
-
-cat "$mlb" | \
-    fgrep -v basis.mlb |                   # remove incompatible Basis lib
-    fgrep -v main.sml |                    # remove unneeded call to main
-    sed 's/(\*[^\*]*\*)//g' |              # remove ML-style comments
-    sed 's#$(SML_LIB)#'"${libdir}"'#g' |   # expand library path
-    sed 's/^ *//' |                        # remove leading whitespace
-    sed 's/ *$//' |                        # remove trailing whitespace
-    grep -v '^$' |                         # remove empty lines
-    sed 's/^\(.*\)$/use "\1";/' |
+expand_arg "$arg" | \
+    sed 's/^\(.*\)$/use "\1";/' |              # wrap filenames in REPL use calls
     (
 	cat <<EOF
 val smlrun__cp = 
