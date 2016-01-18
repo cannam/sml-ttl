@@ -9,6 +9,10 @@ else
     lib="$SML_LIB"
 fi
 
+simplify() {
+    sed -e 's,^./,,' -e 's,[^/][^/]*/../,,g' -e 's,//,/,g'
+}
+
 cat_mlb() {
     local mlb="$1"
     if [ ! -f "$mlb" ]; then
@@ -33,8 +37,8 @@ cat_mlb() {
 	    *basis.mlb) ;;			  # remove incompatible Basis lib
 	    *main.sml) ;;			  # remove redundant call to main
 	    *.mlb) cat_mlb "$path" ;;
-	    *.sml) echo "$path" ;;
-	    *.sig) echo "$path" ;;
+	    *.sml) echo "$path" | simplify ;;
+	    *.sig) echo "$path" | simplify ;;
 	esac
     done
 }

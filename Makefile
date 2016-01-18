@@ -24,6 +24,9 @@ d/unit-tests.deps:	unit-tests.mlb $(MLBS)
 clean:
 	rm -f load convert unit-tests
 
+coverage:
+	./scripts/coverage.sh unit-tests.mlb
+
 release:
 	mlton load.mlb
 	mlton convert.mlb

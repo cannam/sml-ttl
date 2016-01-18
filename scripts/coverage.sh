@@ -2,11 +2,23 @@
 
 set -e
 
-arg="$1"
+mlb="$1"
+srcfile="$2"
+
+if [ -z "$mlb" ]; then
+    echo "Usage: $0 program.mlb" 1>&2
+    echo "         prints coverage summary for running program.mlb" 1>&2
+    echo "       $0 program.mlb file.sml" 1>&2
+    echo "         prints detailed coverage for file.sml in program.mlb" 1>&2
+    exit 1
+fi
 
 set -u
 
-PROGRAM=unit-tests
+mydir=$(dirname "$0")
+. "$mydir/include.sh"
+
+PROGRAM=$(get_outfile "$mlb")
 
 mlton -profile count -profile-branch true -profile-val true "$PROGRAM.mlb"
 ./"$PROGRAM" >/dev/null
@@ -41,7 +53,7 @@ summarise_for() {
     fi
 }
 
-if [ "$arg" = "" ]; then
+if [ "$srcfile" = "" ]; then
 
     summarise_for "sml"
     find src -name \*.sml -print | sort |
@@ -53,11 +65,11 @@ else
 
     # A monumentally inefficient way to show the lines lacking
     # coverage from a given source file
-    cat -n "$arg" |
+    cat -n "$srcfile" |
 	sed 's/^ *//' |
 	while read x; do
 	    n=${x%%[^0-9]*}
-	    if grep -q "$arg $n no" "$tmpfile" ;
+	    if grep -q "$srcfile $n no" "$tmpfile" ;
 	    then echo " ### $x";
 	    else echo "     $x";
 	    fi;
