@@ -218,7 +218,7 @@ functor TestTurtleSpecFn (P: RDF_PARSER) : TESTS = struct
     fun tests_from_store s =
         let fun tests_of_type t = 
                 S.match (s, (S.WILDCARD,
-                             S.KNOWN (IRI (S.expand (s, "a"))),
+                             S.KNOWN (IRI (RdfStandardIRIs.iri_rdf_type)),
                              S.KNOWN (IRI (S.expand (s, "rdft:" ^ t)))))
         in
             map (test s POSITIVE) (tests_of_type "TestTurtlePositiveSyntax") @
