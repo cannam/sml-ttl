@@ -42,8 +42,7 @@ structure PrefixTable :> PREFIX_TABLE = struct
 		    
     fun enumerate (table : t) = StringMap.listItemsi (#1 table)
 
-    fun expand (table, "a") = RdfStandardIRIs.iri_rdf_type
-      | expand ((forward, _) : t, curie) =
+    fun expand ((forward, _) : t, curie) =
         Iri.fromString
 	    (case String.fields (fn x => x = #":") curie of
 	         [] => curie
@@ -60,8 +59,7 @@ structure PrefixTable :> PREFIX_TABLE = struct
         StringMap.foldli
             (fn (e, ns, acc) =>
                 if Comp.is_prefix (e, iristr)
-                then SOME (ns ^ ":" ^
-                           (String.extract (iristr, String.size e, NONE)))
+                then SOME (ns, String.extract (iristr, String.size e, NONE))
                 else acc)
             NONE reverse
 
@@ -78,8 +76,7 @@ structure PrefixTable :> PREFIX_TABLE = struct
 	in
 	    case match_prefix_of iristr of
 		(0, _) => NONE
-	      | (len, ns) =>
-                SOME (ns ^ ":" ^ (String.extract (iristr, len, NONE)))
+	      | (len, ns) => SOME (ns, String.extract (iristr, len, NONE))
 	end
 
     fun abbreviate (table, iri) =
@@ -87,7 +84,6 @@ structure PrefixTable :> PREFIX_TABLE = struct
               abbreviate_matching? or some intrinsically better
               method, e.g. a trie... *)
         (*!!! + we should be storing wide strings *)
-	if Iri.equals (iri, RdfStandardIRIs.iri_rdf_type) then SOME "a"
-	else abbreviate_matching (table, Iri.toString iri)
+        abbreviate_matching (table, Iri.toString iri)
             
 end

@@ -30,7 +30,7 @@ functor TestPrefixFn (P: PREFIX_TABLE) : TESTS = struct
     fun abbr_unreal s = P.abbreviate (unreal_table, Iri.fromString s)
     fun abbr_real s = P.abbreviate (real_table, Iri.fromString s)
 
-    fun abbr_to_string (SOME s) = s
+    fun abbr_to_string (SOME (ns, loc)) = ns ^ ":" ^ loc
       | abbr_to_string NONE = "(none)"
                                    
     val tests =
@@ -71,26 +71,26 @@ functor TestPrefixFn (P: PREFIX_TABLE) : TESTS = struct
             fn () =>
                check_all
                    abbr_to_string
-                   [(abbr_unreal "a", SOME "1:"),
-                    (abbr_unreal "aa", SOME "1:a"),
-                    (abbr_unreal "abc", SOME "5:"),
-                    (abbr_unreal "abd", SOME "2:d"),
+                   [(abbr_unreal "a", SOME ("1", "")),
+                    (abbr_unreal "aa", SOME ("1", "a")),
+                    (abbr_unreal "abc", SOME ("5", "")),
+                    (abbr_unreal "abd", SOME ("2", "d")),
                     (abbr_unreal "bbb", NONE),
                     (abbr_unreal "bbd", NONE),
-                    (abbr_unreal "aba", SOME "3:"),
-                    (abbr_unreal "abad", SOME "3:d")]
+                    (abbr_unreal "aba", SOME ("3", "")),
+                    (abbr_unreal "abad", SOME ("3", "d"))]
            ),
            ("abbreviate-lifelike",
             fn () =>
                check_all
                    abbr_to_string
-                   [(abbr_real "http://example.com/vegetable/aubergine", SOME "veg:aubergine"),
-                    (abbr_real "http://example.com/fruit/banana:thing", SOME "fruit:banana:thing"),
-                    (abbr_real "http://example.com/fruit/loop/banana", SOME "fruitloop:banana"),
-                    (abbr_real "http://example.com/fruit/loop:banana", SOME "fruit:loop:banana"),
-                    (abbr_real "http://example.com/fruit/", SOME "fruit:"),
+                   [(abbr_real "http://example.com/vegetable/aubergine", SOME ("veg", "aubergine")),
+                    (abbr_real "http://example.com/fruit/banana:thing", SOME ("fruit", "banana:thing")),
+                    (abbr_real "http://example.com/fruit/loop/banana", SOME ("fruitloop", "banana")),
+                    (abbr_real "http://example.com/fruit/loop:banana", SOME ("fruit", "loop:banana")),
+                    (abbr_real "http://example.com/fruit/", SOME ("fruit", "")),
                     (abbr_real "fruit", NONE),
-                    (abbr_real "emptyfruit", SOME ":fruit")]
+                    (abbr_real "emptyfruit", SOME ("", "fruit"))]
            )
          ]
         )

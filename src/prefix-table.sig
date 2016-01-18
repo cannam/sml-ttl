@@ -12,6 +12,6 @@ signature PREFIX_TABLE = sig
     val enumerate : t -> (string * string) list
 
     val expand : t * string -> iri
-    val abbreviate : t * iri -> string option (* NONE if no prefix matches *)
+    val abbreviate : t * iri -> (string * string) option (* NONE if no prefix matches *)
 
 end
