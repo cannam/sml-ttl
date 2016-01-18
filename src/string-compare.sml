@@ -20,11 +20,11 @@ signature STRING_COMPARE = sig
 
     type str
              
-    (* Compare two strings. Shorter strings always sort before longer
+    (* Compare two strings. Shorter strings sort before longer
        strings; for strings of the same length, comparison is made in
        lexicographic order of the reversed string. *)
     val compare_backwards : str * str -> order
-                                             
+             
     (* Determine whether two strings are equal. *)
     val equals : str * str -> bool
 
