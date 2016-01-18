@@ -46,7 +46,7 @@ functor TestPrefixFn (P: PREFIX_TABLE) : TESTS = struct
             fn () => P.enumerate (P.add (P.empty, "a", "b")) = [("a","b")]),
            ("add-another",
             fn () => P.enumerate (P.add (P.add (P.empty, "a", "b"), "aa", "bb")) =
-                     [("a","b"),("aa","bb")]), (*!!! compare unordered! *)
+                     [("a","b"),("aa","bb")]),
            ("replace",
             fn () => P.enumerate (P.add (P.add (P.empty, "a", "b"), "a", "bb")) =
                      [("a","bb")]),
