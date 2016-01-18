@@ -30,5 +30,5 @@ release:
 	mlton unit-tests.mlb
 	./unit-tests
 
--include *.deps
+-include d/*.deps
 
