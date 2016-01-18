@@ -27,8 +27,8 @@ tmpfile=/tmp/"$$"_cov
 trap "rm -f $tmpfile" 0
 
 mlprof -raw true -show-line true "$PROGRAM" mlmon.out |
-    grep 'src/.*sml: [0-9]' |
-    sed 's,^.* src/,src/,' |
+    grep '/.*sml: [0-9]' |
+    sed 's,^.* \([a-z][a-z]*\)/,\1/,' |
     sed 's/: / /' |
     awk '{ print $1, $2, $4 }' |
     sed 's/(0)/no/g' |
@@ -56,7 +56,7 @@ summarise_for() {
 if [ "$srcfile" = "" ]; then
 
     summarise_for "sml"
-    find src -name \*.sml -print | sort |
+    expand_arg "$mlb" | grep -v '^/' | grep -v '\.sig$' | sort |
 	while read x; do
 	    summarise_for "$x" ;
 	done
