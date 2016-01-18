@@ -10,19 +10,29 @@ signature STRING_COMPARE_ARG = sig
     
 end
 
+
+(* Because IRIs often have common prefixes, comparing them in reverse
+   is usually faster. The same applies to prefix comparison --
+   prefixes often have common prefixes of their own. This signature
+   specifies a reversed string comparator with prefix testing. *)
+
 signature STRING_COMPARE = sig
 
     type str
              
+    (* Compare two strings. Shorter strings always sort before longer
+       strings; for strings of the same length, comparison is made in
+       lexicographic order of the reversed string. *)
     val compare_backwards : str * str -> order
+                                             
+    (* Determine whether two strings are equal. *)
     val equals : str * str -> bool
+
+    (* Determine whether the first string is a prefix of the second one. *)
     val is_prefix : str * str -> bool
     
 end
                                  
-(* Because IRIs often have common prefixes, comparing them in reverse
-   is usually faster. The same applies to prefix comparison --
-   prefixes often have common prefixes of their own. *)
 
 functor StringCompare (S : STRING_COMPARE_ARG) : STRING_COMPARE = struct
 
