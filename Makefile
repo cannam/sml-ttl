@@ -1,23 +1,25 @@
 
 all:	load convert unit-tests
 
-load:	load.deps load.mlb
+load:	d/load.deps load.mlb
 	./scripts/polybuild load.mlb
 
-convert:	convert.deps convert.mlb
+convert:	d/convert.deps convert.mlb
 	./scripts/polybuild convert.mlb
 
-unit-tests:	unit-tests.deps unit-tests.mlb
+unit-tests:	d/unit-tests.deps unit-tests.mlb
 	./scripts/polybuild unit-tests.mlb
 
-load.deps:	load.mlb
-	./scripts/dependencies $<
+MLBS	:= load.mlb convert.mlb unit-tests.mlb $(wildcard mlb/*.mlb)
 
-convert.deps:	convert.mlb
-	./scripts/dependencies $<
+d/load.deps:	load.mlb $(MLBS)
+	./scripts/dependencies $< > $@
 
-unit-tests.deps:	unit-tests.mlb
-	./scripts/dependencies $<
+d/convert.deps:	convert.mlb $(MLBS)
+	./scripts/dependencies $< > $@
+
+d/unit-tests.deps:	unit-tests.mlb $(MLBS)
+	./scripts/dependencies $< > $@
 
 clean:
 	rm -f load convert unit-tests

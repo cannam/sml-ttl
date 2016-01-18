@@ -3,27 +3,17 @@ structure Iri :> IRI = struct
 
     type t = int
 
-    fun compare_backwards (s1, s2) =
-        (* because IRIs often have common prefixes, comparing from
-           their ends is often faster *)
-        let val n1 = WdString.size s1
-            val n2 = WdString.size s2
-            fun compare' ~1 = EQUAL
-              | compare' n = 
-                case Word.compare (WdString.sub (s1, n),
-                                   WdString.sub (s2, n)) of
-                    LESS => LESS
-                  | GREATER => GREATER
-                  | EQUAL => compare' (n - 1)
-        in
-            if n1 < n2 then LESS
-            else if n1 > n2 then GREATER
-            else compare' (n1 - 1)
-        end
+    structure Comp = StringCompare(struct
+                                    type str = WdString.t
+                                    type ch = word
+                                    val size = WdString.size
+                                    val sub = WdString.sub
+                                    val ch_compare = Word.compare
+                                    end)
                  
     structure IriMap = RedBlackMapFn (struct
                                        type ord_key = WdString.t
-                                       val compare = compare_backwards
+                                       val compare = Comp.compare_backwards
                                        end)
 
     val forward_map : int IriMap.map ref =

@@ -19,5 +19,5 @@ base=$(get_outfile "$arg")
 
 deps="$base".deps
 
-expand_arg "$arg" | fmt -60 | sed 's/^/'"$base"': /' > "$deps"
+expand_arg "$arg" | fmt -60 | sed 's/^/'"$base"': /'
 

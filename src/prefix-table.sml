@@ -1,39 +1,17 @@
 
 structure PrefixTable :> PREFIX_TABLE = struct
 
-    (* as with IRIs, we compare prefixes backwards because they
-       often have common prefixes of their own *)
-    fun compare_prefix_backwards (s1, s2, 0) = EQUAL
-      | compare_prefix_backwards (s1, s2, plen) =
-        let val m = plen - 1
-        in
-            case Char.compare (String.sub (s1, m),
-                               String.sub (s2, m)) of
-                LESS => LESS
-              | GREATER => GREATER
-              | EQUAL => compare_prefix_backwards (s1, s2, m)
-        end
-
-    fun compare_backwards (s1, s2) =
-        let val n1 = String.size s1
-            val n2 = String.size s2
-        in
-            if n1 < n2 then LESS
-            else if n1 > n2 then GREATER
-            else compare_prefix_backwards (s1, s2, n1)
-        end
-
-    fun is_prefix (s1, s2) =
-        let val n1 = String.size s1
-            val n2 = String.size s2
-        in
-            if n1 > n2 then false
-            else compare_prefix_backwards (s1, s2, n1) = EQUAL
-        end
+    structure Comp = StringCompare(struct
+                                    type str = string
+                                    type ch = char
+                                    val size = String.size
+                                    val sub = String.sub
+                                    val ch_compare = Char.compare
+                                    end)
             
     structure StringMap = RedBlackMapFn (struct
                                           type ord_key = string
-                                          val compare = compare_backwards
+                                          val compare = Comp.compare_backwards
                                           end)
 
     type t = string StringMap.map * string StringMap.map (* fwd, reverse *)
@@ -81,7 +59,8 @@ structure PrefixTable :> PREFIX_TABLE = struct
         (* faster if there are few prefixes in the table? *)
         (* would be faster still if table stored wide strings *)
         (* or if we had a separate list of just the expansions! *)
-        let val matching = StringMap.filter (fn v => is_prefix (v, iristr)) forward
+        let val matching =
+                StringMap.filter (fn v => Comp.is_prefix (v, iristr)) forward
             val sorted =
                 if StringMap.isEmpty matching then []
                 else ListMergeSort.sort (fn ((_, e1), (_, e2)) =>

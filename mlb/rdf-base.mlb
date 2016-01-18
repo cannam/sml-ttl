@@ -2,6 +2,7 @@ prerequisites.mlb
 ../src/sml-utf8/simple-wide-string.sig
 ../src/sml-utf8/simple-wide-string.sml
 ../src/codepointset.sml
+../src/string-compare.sml
 ../src/iri.sig
 ../src/iri.sml
 ../src/rdf-triple.sml
