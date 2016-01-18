@@ -236,12 +236,19 @@ functor TestTurtleSpecFn (P: RDF_PARSER) : TESTS = struct
          of
             L.LOAD_ERROR err => [setup_failed_test err]
           | L.OK store =>
-            let val n = length (S.enumerate store) in
-                if n < 100 
+            let val n1 = length (S.enumerate store)
+		val tt = tests_from_store store
+		val n2 = length tt
+	    in
+                if n1 < 100 
                 then [setup_failed_test
-                          ("too few (" ^ (Int.toString n) ^
+                          ("too few (" ^ (Int.toString n1) ^
                            ") triples in manifest (load problem?)")]
-                else tests_from_store store
+		else if n2 < 20 
+                then [setup_failed_test
+                          ("too few (" ^ (Int.toString n2) ^
+                           ") tests found in spec store (load problem?)")]
+                else tt
             end
                        
     val tests = (
