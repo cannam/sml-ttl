@@ -176,7 +176,7 @@ structure TurtleExporter : STORE_EXPORTER = struct
 
     and serialise_triple_parts ((subj, pred, obj), d : ser_data, pr) =
         let val d = serialise_subject_predicate (subj, pred, d, pr)
-            val d = serialise_object (obj, d, pr)
+            val d = serialise_object_or_collection (obj, d, pr)
         in
             { stream = #stream d,
               subject = SOME subj,
