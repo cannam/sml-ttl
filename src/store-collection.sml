@@ -38,8 +38,12 @@ structure StoreCollection : STORE_COLLECTION = struct
                                     
     fun is_collection_node (store, node) =
         let val pat = (S.KNOWN node, S.KNOWN node_rest, S.WILDCARD)
+            val result = not (null (S.match (store, pat)))
         in
-            not (null (S.match (store, pat)))
+            Log.info (fn () => ("StoreCollection: % % a collection node",
+                                [Log.S (RdfTriple.string_of_node node),
+                                 Log.S (if result then "is" else "is not")]));
+            result
         end
 
     fun start_of_collection (store, node) =

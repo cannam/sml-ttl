@@ -74,6 +74,7 @@ structure RdfTriple = struct
         "\"" ^ pre ^ "\" -> \"" ^ exp ^ "\""
                                
     (* This is debug streaming, not guaranteed to match a standard format *)
+    (*!!! should be in node? *)
     fun string_of_node (IRI iri) = "<" ^ (Iri.toString iri) ^ ">"
       | string_of_node (BLANK n) = "_:blank" ^ (Int.toString n)
       | string_of_node (LITERAL lit) =

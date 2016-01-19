@@ -43,8 +43,7 @@ fun convert_file iri (infile, outfile) =
     end
         
 fun main () =
-    (Log.set_log_level Log.INFO;
-      case CommandLine.arguments () of
+    (case CommandLine.arguments () of
         [infile, outfile] => convert_file "blah" (infile, outfile) (*!!! + base iri *)
       | [infile] => convert_stdout "blah" infile (*!!! + base iri *)
       | _ => usage ())
