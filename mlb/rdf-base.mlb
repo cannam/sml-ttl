@@ -1,5 +1,4 @@
 prerequisites.mlb
-../src/sml-utf8/simple-wide-string.mlb
 ../src/codepointset.sml
 ../src/string-compare.sml
 ../src/iri.sig

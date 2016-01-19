@@ -20,5 +20,6 @@ signature INDEX = sig
     val remove : t * triple -> t
     val fold_match : (triple * 'a -> 'a) -> 'a -> (t * pattern) -> 'a
     val score : t * pattern -> int
+    val name : t -> string
     
 end

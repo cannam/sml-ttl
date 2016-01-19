@@ -23,6 +23,15 @@ structure Store :> STORE = struct
 		    Index.new Index.OPS ]
     }
 
+    fun string_of_patnode WILDCARD = "*"
+      | string_of_patnode (KNOWN n) = RdfTriple.string_of_node n
+                    
+    fun string_of_pattern (a,b,c) =
+	"(" ^ (string_of_patnode a) ^
+	"," ^ (string_of_patnode b) ^
+	"," ^ (string_of_patnode c) ^
+	")"
+                    
     fun any_index ({ indexes, ... } : t) = hd indexes (* when any index is ok *)
 
     fun contains (store, triple) =
@@ -38,14 +47,24 @@ structure Store :> STORE = struct
 	map_indexes (fn ix => Index.remove (ix, triple)) store
 
     fun fold_match f acc ({ prefixes, indexes } : t, pattern) =
-        Index.fold_match f acc
-                         (IndexPicker.pick_index (indexes, pattern), pattern)
+        let val index = IndexPicker.pick_index (indexes, pattern)
+        in
+            Log.info (fn () => ("fold_match: pattern %, index \"%\"",
+                                [Log.S (string_of_pattern pattern),
+                                 Log.S (Index.name index)]));
+            Index.fold_match f acc (index, pattern)
+        end
 
     fun foldl f acc store =
         Index.fold_match f acc
                          (any_index store, (WILDCARD, WILDCARD, WILDCARD))
                          
-    val match = fold_match (op::) []
+    fun match pattern =
+        let val result = fold_match (op::) [] pattern
+        in
+            Log.info (fn () => ("match: % results", [Log.I (length result)]));
+            result
+        end
 
     val enumerate = foldl (op::) []
 

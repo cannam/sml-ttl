@@ -11,13 +11,6 @@ structure Index :> INDEX = struct
     type pattern = patnode * patnode * patnode
 
     datatype index_order = SPO | POS | OPS | SOP | PSO | OSP
-
-    fun name SPO = "spo" 
-      | name POS = "pos"
-      | name OPS = "ops"
-      | name SOP = "sop"
-      | name PSO = "pso"
-      | name OSP = "osp"
 							     
     structure NodeMap = RedBlackMapFn (struct
                                         type ord_key = node
@@ -25,6 +18,13 @@ structure Index :> INDEX = struct
                                         end)
 
     type t = index_order * triple NodeMap.map NodeMap.map NodeMap.map
+
+    fun name (SPO, _) = "spo" 
+      | name (POS, _) = "pos"
+      | name (OPS, _) = "ops"
+      | name (SOP, _) = "sop"
+      | name (PSO, _) = "pso"
+      | name (OSP, _) = "osp"
 
     fun new ix = (ix, NodeMap.empty)
 
