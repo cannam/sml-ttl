@@ -11,9 +11,8 @@ signature IRI = sig
     val fromWideString : WdString.t -> t
     val toWideString : t -> WdString.t
 
-    (* The comparison functions are *not* lexicographic, they just produce some
+    (* The comparison function is *not* lexicographic, it just produces some
        consistent ordering as quickly as possible *)
-    val equals : t * t -> bool
     val compare : t * t -> order
 
     val empty_iri : t

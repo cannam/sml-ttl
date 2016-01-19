@@ -48,7 +48,7 @@ structure TurtleExporter : STORE_EXPORTER = struct
     fun encode_iri iri = Iri.toString iri
             
     fun string_of_abbr_iri (iri, d : ser_data) =
-	if Iri.equals (iri, RdfStandardIRIs.iri_rdf_type) then "a"
+	if iri = RdfStandardIRIs.iri_rdf_type then "a"
 	else case Store.abbreviate (#store d, iri) of
                  SOME (ns, rest) => ns ^ ":" ^ encode_local rest
                | NONE => "<" ^ (encode_iri iri) ^ ">"

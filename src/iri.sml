@@ -44,8 +44,6 @@ structure Iri :> IRI = struct
 
     fun toString id = WdString.toUtf8 (toWideString id)
 
-    fun equals (id1, id2) = id1 = id2
-
     val compare = Int.compare
 
     val empty_iri = fromString ""

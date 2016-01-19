@@ -9,6 +9,8 @@ structure FileExtensionDrivenConverter : RDF_FILE_CONVERTER = struct
 
     (* goes through a Store *)
 
+(*!!! could be made to use e.g. TurtleNTriplesConverter to avoid the store for streamable types *)
+
     type prefix = RdfTriple.prefix
     type triple = RdfTriple.triple
 
