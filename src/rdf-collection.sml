@@ -4,6 +4,8 @@ structure RdfCollection = struct
     open RdfTriple
     open RdfStandardIRIs
 
+    (* Given a list of nodes, return a list of triples comprising the
+       RDF collection of those nodes *)
     fun collection_of_nodes nodes =
 	let fun collection' link [] = []
 	      | collection' link [node] =
