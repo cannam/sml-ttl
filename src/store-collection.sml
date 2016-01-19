@@ -22,7 +22,7 @@ signature STORE_COLLECTION = sig
 
     (* Given a collection node and the store that contains it, return
        all nodes contained in the collection, in order. *)
-(*!!!    val nodes_of_collection : store * node -> node list *)
+    val nodes_of_collection : store * node -> node list
 end
 
 structure StoreCollection : STORE_COLLECTION = struct
@@ -67,9 +67,11 @@ structure StoreCollection : STORE_COLLECTION = struct
         in
             triples' (store, (start_of_collection (store, node)), [])
         end
-(*!!!
+
     fun nodes_of_collection (store, node) =
-        let fun collect' (store, first) =
-*)                
+        List.concat
+            (map (fn t => if (#2 t = node_first) then [#3 t] else [])
+                 (triples_of_collection (store, node)))
+
 end
                                 
