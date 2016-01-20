@@ -154,27 +154,38 @@ structure TurtleExporter : STORE_EXPORTER = struct
 
     and serialise_collection (obj, d, pr) =
         let val triples = StoreCollection.triples_of_collection (#store d, obj)
-            val _ = TextIO.output (#stream d, " (");
-            val d = 
-                foldl (fn (t as (_, pred, obj) : triple, d) =>
-                          let val d = 
-                                  { stream = #stream d,
-                                    subject = #subject d,
-                                    predicate = #predicate d,
-                                    indent = #indent d,
-                                    written = Triples.add (#written d, t),
-                                    store = #store d }
-                          in
-                              if pred = IRI RdfStandardIRIs.iri_rdf_first
-                              then
-                                  (TextIO.output (#stream d, " ");
-                                   serialise_abbreviated (obj, d))
-                              else d
-                          end)
-                      d triples
+            val any_written = List.exists (fn t => was_written (t, d)) triples
         in
-            TextIO.output (#stream d, " )");
-            d
+            if any_written
+            then
+                (* Can't write as a collection, because one or more of
+                   its metanodes have already been written. This could be
+                   because the head of the collection is a subject node
+                   rather than an object. *)
+                serialise_object (obj, d, pr)
+            else
+                let val _ = TextIO.output (#stream d, " (");
+                    val d = 
+                        foldl (fn (t as (_, pred, obj) : triple, d) =>
+                                  let val d = 
+                                          { stream = #stream d,
+                                            subject = #subject d,
+                                            predicate = #predicate d,
+                                            indent = #indent d,
+                                            written = Triples.add (#written d, t),
+                                            store = #store d }
+                                  in
+                                      if pred = IRI RdfStandardIRIs.iri_rdf_first
+                                      then
+                                          (TextIO.output (#stream d, " ");
+                                           serialise_abbreviated (obj, d))
+                                      else d
+                                  end)
+                              d triples
+                in
+                    TextIO.output (#stream d, " )");
+                    d
+                end
         end
                  
     and serialise_object_or_collection (obj, d, pr : ser_props) =
