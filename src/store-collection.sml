@@ -6,13 +6,13 @@ signature STORE_COLLECTION = sig
     type triple = node * node * node
     
     (* Return true if the given node looks like a collection node,
-       i.e. a metanode, a node with rdf:first and rdf:next property. *)
+       i.e. a metanode, a node with rdf:rest property. *)
     val is_collection_node : store * node -> bool
 
     (* Given a collection node and the store that contains it, return
-       the first collection node (i.e. the node with rdf:first and
-       rdf:next property) of that collection. Assumes the collection
-       is well-formed and may return spurious results if it is not *)
+       the first collection node (i.e. the node with rdf:rest
+       property) of that collection. Assumes the collection is
+       well-formed and may return spurious results if it is not *)
     val start_of_collection : store * node -> node
 
     (* Given a collection node and the store that contains it, return
@@ -68,8 +68,12 @@ structure StoreCollection : STORE_COLLECTION = struct
                           | ([], r::_) => triples' (store, #3 r, acc @ [r])
                           | (h::_, r::_) => triples' (store, #3 r, acc @ [h, r])
                     end
+            val result = triples' (store, (start_of_collection (store, node)), [])
         in
-            triples' (store, (start_of_collection (store, node)), [])
+            Log.info (fn () => ("StoreCollection: node % yields collection:\n%",
+                                [Log.S (RdfTriple.string_of_node node),
+                                 Log.S (RdfTriple.string_of_triples result)]));
+            result
         end
 
     fun nodes_of_collection (store, node) =

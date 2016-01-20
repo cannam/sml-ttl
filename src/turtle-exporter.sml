@@ -136,7 +136,29 @@ structure TurtleExporter : STORE_EXPORTER = struct
         else (TextIO.output (#stream d, " "); serialise_abbreviated (obj, d))
 
     and serialise_collection (obj, d, pr) =
-        raise Fail "serialise_collection not implemented yet"
+        let val triples = StoreCollection.triples_of_collection (#store d, obj)
+            val _ = TextIO.output (#stream d, " (");
+            val d = 
+                foldl (fn (t as (_, pred, obj) : triple, d) =>
+                          let val d = 
+                                  { stream = #stream d,
+                                    subject = #subject d,
+                                    predicate = #predicate d,
+                                    indent = #indent d,
+                                    written = Triples.add (#written d, t),
+                                    store = #store d }
+                          in
+                              if pred = IRI RdfStandardIRIs.iri_rdf_first
+                              then
+                                  (TextIO.output (#stream d, " ");
+                                   serialise_abbreviated (obj, d))
+                              else d
+                          end)
+                      d triples
+        in
+            TextIO.output (#stream d, " )");
+            d
+        end
                  
     and serialise_object_or_collection (obj, d, pr : ser_props) =
         if (#is_coll pr)
