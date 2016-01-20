@@ -5,6 +5,7 @@ structure Log : LOG = struct
              ERROR | WARN | INFO
 
     val level = ref WARN
+    val start_time = ref (Time.now ())
 
     datatype interpolable =
              I of int | R of real | B of bool | S of string | SL of string list
@@ -39,14 +40,20 @@ structure Log : LOG = struct
         in
             int_aux [] (String.explode str) values false
         end
+
+    fun time_string () =
+        Time.fmt 6 (Time.- (Time.now (), !start_time))
             
     val no_log = ("", [])
 
-    fun set_log_level l = level := l
+    fun set_log_level l =
+        (level := l;
+         start_time := Time.now ())
                                        
     fun print string =
         if string <> "" then
-            TextIO.output (TextIO.stdErr, string ^ "\n")
+            TextIO.output (TextIO.stdErr,
+                           (time_string ()) ^ ": " ^ string ^ "\n")
         else ()
 
     fun log (string, args) =
