@@ -103,7 +103,7 @@ structure TurtleExporter : STORE_EXPORTER = struct
             end
         end
 
-    and serialise_literal (lit, d) =
+    and serialise_string_literal (lit, d) =
         let val long = should_use_long_string lit
             val quote = if long then "\"\"\"" else "\""
             fun serialise s = TextIO.output (#stream d, s)
@@ -122,13 +122,30 @@ structure TurtleExporter : STORE_EXPORTER = struct
             else serialise ("^^" ^ string_of_abbr_iri (#dtype lit, d));
             d
         end
-            
+
+    and serialise_boolean_literal (lit, d) =
+        case #value lit of
+            "true" => (TextIO.output (#stream d, "true"); d)
+          | "false" => (TextIO.output (#stream d, "false"); d)
+          | _ => serialise_string_literal (lit, d)
+
+    and serialise_integer_literal (lit, d) =
+        if List.find (fn c => not (Char.isDigit c))
+                     (String.explode (#value lit)) = NONE
+        then (TextIO.output (#stream d, #value lit); d)
+        else serialise_string_literal (lit, d)
+                                          
     and serialise_abbreviated (IRI iri, d : ser_data) =
         (TextIO.output (#stream d, string_of_abbr_iri (iri, d)); d)
       | serialise_abbreviated (BLANK n, d : ser_data) =
         (TextIO.output (#stream d, "_:blank" ^ (Int.toString n)); d)
-      | serialise_abbreviated (LITERAL lit, d : ser_data) =
-        serialise_literal (lit, d)
+      | serialise_abbreviated (LITERAL (lit as { dtype, ... }), d : ser_data) =
+        if dtype = RdfStandardIRIs.iri_type_boolean
+        then serialise_boolean_literal (lit, d)
+        else if dtype = RdfStandardIRIs.iri_type_integer
+        then serialise_integer_literal (lit, d)
+        (*!!! + double, decimal *)
+        else serialise_string_literal (lit, d)
 
     and serialise_object (obj, d, pr : ser_props) : ser_data =
         if (#is_anon pr)
