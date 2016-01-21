@@ -5,3 +5,5 @@ parse-serialise.mlb
 ../src/store.sml
 ../src/store-collection.sml
 ../src/store-io.sig
+../src/property.sig
+../src/property.sml

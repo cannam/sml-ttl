@@ -25,6 +25,8 @@ end
 			 
 structure RdfNode :> RDF_NODE = struct
 
+(*!!! pull out into a separate file *)
+
     type iri = Iri.t
 
     datatype node =
