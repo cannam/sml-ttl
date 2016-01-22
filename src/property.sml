@@ -1,22 +1,22 @@
 
+(* should be "store property" like "store collection"? *)
+
 structure Property : PROPERTY = struct
 
-    structure Store = Store 
     datatype node = datatype RdfNode.node
     type iri = Iri.t
 
-    fun match (store, subject, name) = 
+    fun match (s : Store.t, subject, name) = 
         let open Store
-        in match (store, (KNOWN subject,
-                          KNOWN (IRI (expand (store, name))),
-                          WILDCARD))
+        in match (s, (KNOWN subject,
+                      KNOWN (IRI (expand (s, name))),
+                      WILDCARD))
         end
                    
     fun text_list args =
-        List.map (fn (_, _, LITERAL { value, ... }) => value)
-                 (List.filter (fn (_, _, LITERAL _) => true
-                              | (_, _, _) => false)
-                              (match args))
+        List.mapPartial (fn (_, _, LITERAL { value, ... }) => SOME value
+                        | _ => NONE)
+                        (match args)
 
     fun text args =
         case text_list args of
@@ -24,22 +24,20 @@ structure Property : PROPERTY = struct
           | [] => ""
 
     fun iri_list args = 
-        List.map (fn (_, _, IRI iri) => iri)
-                 (List.filter (fn (_, _, IRI _) => true
-                              | (_, _, _) => false)
-                              (match args))
+        List.mapPartial (fn (_, _, IRI iri) => SOME iri
+                        | _ => NONE)
+                        (match args)
 
     fun iri args =
         case iri_list args of
             result::_ => SOME result
           | [] => NONE
-
+                      
     fun node_list args =
-        List.map (fn (_, _, node) => node)
-                 (List.filter (fn (_, _, IRI _) => true
-                              | (_, _, BLANK _) => true
-                              | (_, _, _) => false)
-                              (match args))
+        List.mapPartial (fn (_, _, IRI iri) => SOME (IRI iri)
+                        | (_, _, BLANK b) => SOME (BLANK b)
+                        | _ => NONE)
+                        (match args)
 
     fun node args =
         case node_list args of

@@ -1,7 +1,6 @@
 
 signature PROPERTY = sig
 
-    structure Store : STORE
     datatype node = datatype RdfNode.node
     type iri = Iri.t
     
