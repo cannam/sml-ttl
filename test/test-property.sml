@@ -66,7 +66,26 @@ functor TestPropertyFn (P: PROPERTY) : TESTS = struct
                 | SOME store =>
                   check (fn x => String.concatWith "," (map Iri.toString x))
                         (P.iri_list (store, spider_node, "rel:enemyOf"),
-                         [goblin_iri]))
+                         [goblin_iri])),
+          ("node",
+           fn () =>
+              case load_testfile () of
+                  NONE => false
+                | SOME store =>
+                  check (fn x => x)
+                        (case P.node (store, goblin_node, "rel:enemyOf") of
+                             SOME node => RdfTriple.string_of_node node
+                           | NONE => "",
+                         RdfTriple.string_of_node spider_node)),
+          ("node_list",
+           fn () =>
+              case load_testfile () of
+                  NONE => false
+                | SOME store =>
+                  check (fn x => String.concatWith
+                                     "," (map RdfTriple.string_of_node x))
+                        (P.node_list (store, spider_node, "rel:enemyOf"),
+                         [goblin_node]))
         ]
     )
 
