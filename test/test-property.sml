@@ -20,8 +20,7 @@ functor TestPropertyFn (P: PROPERTY) : TESTS = struct
 
     fun with_codepoints s =
         s ^ " [ " ^
-        (String.concatWith " " (map (Int.toString o Char.ord) (String.explode s)))
-              (*map Word.toString (WdString.explodeUtf8 s))) *)
+        (String.concatWith " " (map Word.toString (WdString.explodeUtf8 s)))
         ^ " ]";
                 
     structure Sort = ListMergeSort
@@ -44,10 +43,9 @@ functor TestPropertyFn (P: PROPERTY) : TESTS = struct
               case load_testfile () of
                   NONE => false
                 | SOME store =>
-                  check (fn x => with_codepoints
-                                     (String.concatWith ","
-                                                        (Sort.sort String.> x)))
-                        (P.text_list (store, spider, "foaf:name"),
+                  check (fn x => with_codepoints (String.concatWith "," x))
+                        (Sort.sort String.>
+                         (P.text_list (store, spider, "foaf:name")),
                          ["Spiderman", spider_ru]))
         ]
     )
