@@ -4,8 +4,10 @@ functor TestPropertyFn (P: PROPERTY) : TESTS = struct
     open TestSupport
              
     val testfile = "test/other/goblin.ttl"
-    val goblin = Store.IRI (Iri.fromString "http://example.org/#green-goblin")
-    val spider = Store.IRI (Iri.fromString "http://example.org/#spiderman")
+    val goblin_iri = Iri.fromString "http://example.org/#green-goblin"
+    val spider_iri = Iri.fromString "http://example.org/#spiderman"
+    val goblin_node = Store.IRI goblin_iri
+    val spider_node = Store.IRI spider_iri
     val spider_ru = WdString.implodeToUtf8 [
             0wx427, 0wx435, 0wx43B, 0wx43E, 0wx432, 0wx435, 0wx43A, 0wx2D,
             0wx43F, 0wx430, 0wx443, 0wx43A ]
@@ -36,17 +38,35 @@ functor TestPropertyFn (P: PROPERTY) : TESTS = struct
                   NONE => false
                 | SOME store =>
                   check (fn x => x)
-                        (P.text (store, goblin, "foaf:name"),
+                        (P.text (store, goblin_node, "foaf:name"),
                          "Green Goblin")),
-          ("text_list",
+          ("text list",
            fn () =>
               case load_testfile () of
                   NONE => false
                 | SOME store =>
                   check (fn x => with_codepoints (String.concatWith "," x))
                         (Sort.sort String.>
-                         (P.text_list (store, spider, "foaf:name")),
-                         ["Spiderman", spider_ru]))
+                         (P.text_list (store, spider_node, "foaf:name")),
+                         ["Spiderman", spider_ru])),
+          ("iri",
+           fn () =>
+              case load_testfile () of
+                  NONE => false
+                | SOME store =>
+                  check Iri.toString
+                        (case P.iri (store, goblin_node, "rel:enemyOf") of
+                             SOME iri => iri
+                           | NONE => Iri.empty_iri,
+                         spider_iri)),
+          ("iri_list",
+           fn () =>
+              case load_testfile () of
+                  NONE => false
+                | SOME store =>
+                  check (fn x => String.concatWith "," (map Iri.toString x))
+                        (P.iri_list (store, spider_node, "rel:enemyOf"),
+                         [goblin_iri]))
         ]
     )
 
