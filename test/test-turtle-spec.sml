@@ -250,11 +250,10 @@ functor TestTurtleSpecFn (P: RDF_PARSER) : TESTS = struct
                            ") tests found in spec store (load problem?)")]
                 else tt
             end
-                       
-    val tests = (
-        "turtle-spec",
-        tests_from_manifest "manifest.ttl"
-    )
+
+    val name = "turtle-spec"
+                
+    fun tests () = tests_from_manifest "manifest.ttl"
                      
 end
 

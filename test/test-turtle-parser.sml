@@ -61,81 +61,79 @@ functor TestTurtleParserFn (P: RDF_PARSER) : TESTS = struct
         check_all string_of_parse_result
                   [ (P.parse "" (TextIO.openString str),
                      P.PARSED p) ]
-                                 
-    val tests = (
-        "turtle-parser",
-        [
-          ("simple-string",     fn () => good_string "<a> <b> <c>."),
-          ("simple-with-a",     fn () => good_string "<a> a <c>."),
-          ("simple-with-space", fn () => good_string "<a> a <c> . "),
-          ("empty-prefixes",    fn () => good_string "@prefix : <>. :a :b :c."),
-          ("empty-prefix-sparql", fn () => good_string "prefix : <> :a :b :c."),
-          ("nothing",           fn () => bad_string "."),
-          ("no-dot",            fn () => bad_string "<a> a <b>"),
-          ("ends-with-semi",    fn () => bad_string "<a> a <b>;"),
-          ("lit-subject",       fn () => bad_string "\"a\" a <c>."),
-          ("lit-predicate",     fn () => bad_string "<a> \"a\" <c>."),
-          ("blank-predicate",   fn () => bad_string "<a> _:a <c>."),
-          ("local-bad",         fn () => bad_strings [
-                                            ":a :b :c .",
-                                            "@prefix : <>. :a:b :c .",
-                                            "@prefix : <>. :a :b :.c .",
-                                            "@prefix : <>. :a :b. :c .",
-                                            "@prefix : <>. :a :b ::c" ]),
-          ("local-slash-bad",   fn () => bad_strings [
-                                            "@prefix : <>. :\\a :b :c .",
-                                            "@prefix : <>. :\\: :b :c .",
-                                            "@prefix : <>. :\\  :b :c .",
-                                            "@prefix : <>. :\\\\  :b :c .",
-                                            "@prefix : <>. :\\< :b :c ." ]),
-          ("local-u-bad",       fn () => bad_string
-                                             "@prefix : <>.:abc :a\\u0062c :abc."),
-          ("local-colon",
-           fn () => check_iri_triple_parse
-                        "@prefix : <>. :a: :b :c."
-                        { prefixes = [ ("", "") ],
-                          triples  = [ iri_triple ("a:", "b", "c") ] }
-          ),
-          ("local-dot",
-           fn () => check_iri_triple_parse
-                        "@prefix : <>. :a.b :b..c :c.d."
-                        { prefixes = [ ("", "") ],
-                          triples  = [ iri_triple ("a.b", "b..c", "c.d") ] }
-          ),
-          ("prefix-dot",
-           fn () => check_iri_triple_parse
-                        "@prefix a.b: <a>. a.b:a a.b:b.c a.b:c:d ."
-                        { prefixes = [ ("a.b", "a") ],
-                          triples  = [ iri_triple ("aa", "ab.c", "ac:d") ] }
-          ),
-          ("local-pc-escape",
-            (* "%-encoded sequences are in the character range for
+
+    val name = "turtle-parser"
+                  
+    fun tests () = [
+        ("simple-string",     fn () => good_string "<a> <b> <c>."),
+        ("simple-with-a",     fn () => good_string "<a> a <c>."),
+        ("simple-with-space", fn () => good_string "<a> a <c> . "),
+        ("empty-prefixes",    fn () => good_string "@prefix : <>. :a :b :c."),
+        ("empty-prefix-sparql", fn () => good_string "prefix : <> :a :b :c."),
+        ("nothing",           fn () => bad_string "."),
+        ("no-dot",            fn () => bad_string "<a> a <b>"),
+        ("ends-with-semi",    fn () => bad_string "<a> a <b>;"),
+        ("lit-subject",       fn () => bad_string "\"a\" a <c>."),
+        ("lit-predicate",     fn () => bad_string "<a> \"a\" <c>."),
+        ("blank-predicate",   fn () => bad_string "<a> _:a <c>."),
+        ("local-bad",         fn () => bad_strings [
+                                          ":a :b :c .",
+                                          "@prefix : <>. :a:b :c .",
+                                          "@prefix : <>. :a :b :.c .",
+                                          "@prefix : <>. :a :b. :c .",
+                                          "@prefix : <>. :a :b ::c" ]),
+        ("local-slash-bad",   fn () => bad_strings [
+                                          "@prefix : <>. :\\a :b :c .",
+                                          "@prefix : <>. :\\: :b :c .",
+                                          "@prefix : <>. :\\  :b :c .",
+                                          "@prefix : <>. :\\\\  :b :c .",
+                                          "@prefix : <>. :\\< :b :c ." ]),
+        ("local-u-bad",       fn () => bad_string
+                                           "@prefix : <>.:abc :a\\u0062c :abc."),
+        ("local-colon",
+         fn () => check_iri_triple_parse
+                      "@prefix : <>. :a: :b :c."
+                      { prefixes = [ ("", "") ],
+                        triples  = [ iri_triple ("a:", "b", "c") ] }
+        ),
+        ("local-dot",
+         fn () => check_iri_triple_parse
+                      "@prefix : <>. :a.b :b..c :c.d."
+                      { prefixes = [ ("", "") ],
+                        triples  = [ iri_triple ("a.b", "b..c", "c.d") ] }
+        ),
+        ("prefix-dot",
+         fn () => check_iri_triple_parse
+                      "@prefix a.b: <a>. a.b:a a.b:b.c a.b:c:d ."
+                      { prefixes = [ ("a.b", "a") ],
+                        triples  = [ iri_triple ("aa", "ab.c", "ac:d") ] }
+        ),
+        ("local-pc-escape",
+         (* "%-encoded sequences are in the character range for
                 IRIs and are explicitly allowed in local names. These
                 appear as a '%' followed by two hex characters and
                 represent that same sequence of three
                 characters. These sequences are not decoded during
                 processing." *)
-           fn () => check_iri_triple_parse
-                        "@prefix : <>.:%61bc :a%62c :ab%63."
-                        { prefixes = [ ( "", "" ) ],
-                          triples  = [ iri_triple ("%61bc", "a%62c", "ab%63") ] }
-          ),
-          ("local-slash-escape-easy", (* escaped chars are not confusing ones *)
-           fn () => check_iri_triple_parse
-                        "@prefix : <>.:\\~bc :a\\?c :ab\\$."
-                        { prefixes = [ ( "", "" ) ],
-                          triples  = [ iri_triple ("~bc", "a?c", "ab$") ] }
-          ),
-          ("local-slash-escape-tricky", (* escaped chars have other meanings *)
-           fn () => check_iri_triple_parse
-                        "@prefix : <>.:\\% :a\\#c :ab\\(."
-                        { prefixes = [ ( "", "" ) ],
-                          triples  = [ iri_triple ("%", "a#c", "ab(") ] }
-          )
-        ]
-            @ good_file_tests 
+         fn () => check_iri_triple_parse
+                      "@prefix : <>.:%61bc :a%62c :ab%63."
+                      { prefixes = [ ( "", "" ) ],
+                        triples  = [ iri_triple ("%61bc", "a%62c", "ab%63") ] }
+        ),
+        ("local-slash-escape-easy", (* escaped chars are not confusing ones *)
+         fn () => check_iri_triple_parse
+                      "@prefix : <>.:\\~bc :a\\?c :ab\\$."
+                      { prefixes = [ ( "", "" ) ],
+                        triples  = [ iri_triple ("~bc", "a?c", "ab$") ] }
+        ),
+        ("local-slash-escape-tricky", (* escaped chars have other meanings *)
+         fn () => check_iri_triple_parse
+                      "@prefix : <>.:\\% :a\\#c :ab\\(."
+                      { prefixes = [ ( "", "" ) ],
+                        triples  = [ iri_triple ("%", "a#c", "ab(") ] }
         )
-(*!!! tests for numeric literals *)
+    ] @ good_file_tests 
+            
 end
 
 structure TestTurtleParser = TestTurtleParserFn(TurtleParser)

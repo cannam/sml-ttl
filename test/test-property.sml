@@ -1,5 +1,5 @@
 
-functor TestPropertyFn (P: PROPERTY) : TESTS = struct
+functor TestPropertyFn (P: PROPERTY) :> TESTS = struct
 
     open TestSupport
              
@@ -27,67 +27,64 @@ functor TestPropertyFn (P: PROPERTY) : TESTS = struct
                 
     structure Sort = ListMergeSort
 
-    (*!!! separate out name accessor from test list? *)
-    (*!!! make tests a thunk, so it doesn't get evaluated at compile time? *)
-    val tests = (
-        "property",
-        [
-          ("text",
-           fn () =>
-              case load_testfile () of
-                  NONE => false
-                | SOME store =>
-                  check (fn x => x)
-                        (P.text (store, goblin_node, "foaf:name"),
-                         "Green Goblin")),
-          ("text list",
-           fn () =>
-              case load_testfile () of
-                  NONE => false
-                | SOME store =>
-                  check (fn x => with_codepoints (String.concatWith "," x))
-                        (Sort.sort String.>
-                         (P.text_list (store, spider_node, "foaf:name")),
-                         ["Spiderman", spider_ru])),
-          ("iri",
-           fn () =>
-              case load_testfile () of
-                  NONE => false
-                | SOME store =>
-                  check Iri.toString
-                        (case P.iri (store, goblin_node, "rel:enemyOf") of
-                             SOME iri => iri
-                           | NONE => Iri.empty_iri,
-                         spider_iri)),
-          ("iri_list",
-           fn () =>
-              case load_testfile () of
-                  NONE => false
-                | SOME store =>
-                  check (fn x => String.concatWith "," (map Iri.toString x))
-                        (P.iri_list (store, spider_node, "rel:enemyOf"),
-                         [goblin_iri])),
-          ("node",
-           fn () =>
-              case load_testfile () of
-                  NONE => false
-                | SOME store =>
-                  check (fn x => x)
-                        (case P.node (store, goblin_node, "rel:enemyOf") of
-                             SOME node => RdfTriple.string_of_node node
-                           | NONE => "",
-                         RdfTriple.string_of_node spider_node)),
-          ("node_list",
-           fn () =>
-              case load_testfile () of
-                  NONE => false
-                | SOME store =>
-                  check (fn x => String.concatWith
-                                     "," (map RdfTriple.string_of_node x))
-                        (P.node_list (store, spider_node, "rel:enemyOf"),
-                         [goblin_node]))
-        ]
-    )
+    val name = "property";
+
+    fun tests () = [
+        ("text",
+         fn () =>
+            case load_testfile () of
+                NONE => false
+              | SOME store =>
+                check (fn x => x)
+                      (P.text (store, goblin_node, "foaf:name"),
+                       "Green Goblin")),
+        ("text list",
+         fn () =>
+            case load_testfile () of
+                NONE => false
+              | SOME store =>
+                check (fn x => with_codepoints (String.concatWith "," x))
+                      (Sort.sort String.>
+                       (P.text_list (store, spider_node, "foaf:name")),
+                       ["Spiderman", spider_ru])),
+        ("iri",
+         fn () =>
+            case load_testfile () of
+                NONE => false
+              | SOME store =>
+                check Iri.toString
+                      (case P.iri (store, goblin_node, "rel:enemyOf") of
+                           SOME iri => iri
+                         | NONE => Iri.empty_iri,
+                       spider_iri)),
+        ("iri_list",
+         fn () =>
+            case load_testfile () of
+                NONE => false
+              | SOME store =>
+                check (fn x => String.concatWith "," (map Iri.toString x))
+                      (P.iri_list (store, spider_node, "rel:enemyOf"),
+                       [goblin_iri])),
+        ("node",
+         fn () =>
+            case load_testfile () of
+                NONE => false
+              | SOME store =>
+                check (fn x => x)
+                      (case P.node (store, goblin_node, "rel:enemyOf") of
+                           SOME node => RdfTriple.string_of_node node
+                         | NONE => "",
+                       RdfTriple.string_of_node spider_node)),
+        ("node_list",
+         fn () =>
+            case load_testfile () of
+                NONE => false
+              | SOME store =>
+                check (fn x => String.concatWith
+                                   "," (map RdfTriple.string_of_node x))
+                      (P.node_list (store, spider_node, "rel:enemyOf"),
+                       [goblin_node]))
+    ]
 
 end
 

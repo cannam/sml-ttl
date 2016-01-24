@@ -1,5 +1,5 @@
 
-functor TestPrefixFn (P: PREFIX_TABLE) : TESTS = struct
+functor TestPrefixFn (P: PREFIX_TABLE) :> TESTS = struct
 
     open TestSupport
              
@@ -32,69 +32,68 @@ functor TestPrefixFn (P: PREFIX_TABLE) : TESTS = struct
 
     fun abbr_to_string (SOME (ns, loc)) = ns ^ ":" ^ loc
       | abbr_to_string NONE = "(none)"
-                                   
-    val tests =
-        ("prefix",
-         [
-           ("empty",
-            fn () => null (P.enumerate P.empty)),
-           ("empty-expand",
-            fn () => P.expand (P.empty, "a:b") = Iri.fromString "a:b"),
-           ("empty-abbreviate",
-            fn () => P.abbreviate (P.empty, Iri.fromString "a:b") = NONE),
-           ("add",
-            fn () => P.enumerate (P.add (P.empty, "a", "b")) = [("a","b")]),
-           ("add-another",
-            fn () => P.enumerate (P.add (P.add (P.empty, "a", "b"), "aa", "bb")) =
-                     [("a","b"),("aa","bb")]), (*!!! compare unordered! *)
-           ("replace",
-            fn () => P.enumerate (P.add (P.add (P.empty, "a", "b"), "a", "bb")) =
-                     [("a","bb")]),
-           ("expand",
-            fn () =>
-               check_all
-                   Iri.toString
-                   [(P.expand (real_table, "veg:aubergine"),
-                     Iri.fromString "http://example.com/vegetable/aubergine"),
-                    (P.expand (real_table, "fruit:banana:thing"),
-                     Iri.fromString "http://example.com/fruit/banana:thing"),
-                    (P.expand (real_table, "fruitloop:banana"),
-                     Iri.fromString "http://example.com/fruit/loop/banana"),
-                    (P.expand (real_table, ":banana"),
-                     Iri.fromString "emptybanana"),
-                    (P.expand (nil_table, "a.b"),
-                     Iri.fromString "a.b"),
-                    (P.expand (nil_table, ":a.b"),
-                     Iri.fromString "a.b")]
-           ),
-           ("abbreviate",
-            fn () =>
-               check_all
-                   abbr_to_string
-                   [(abbr_unreal "a", SOME ("1", "")),
-                    (abbr_unreal "aa", SOME ("1", "a")),
-                    (abbr_unreal "abc", SOME ("5", "")),
-                    (abbr_unreal "abd", SOME ("2", "d")),
-                    (abbr_unreal "bbb", NONE),
-                    (abbr_unreal "bbd", NONE),
-                    (abbr_unreal "aba", SOME ("3", "")),
-                    (abbr_unreal "abad", SOME ("3", "d"))]
-           ),
-           ("abbreviate-lifelike",
-            fn () =>
-               check_all
-                   abbr_to_string
-                   [(abbr_real "http://example.com/vegetable/aubergine", SOME ("veg", "aubergine")),
-                    (abbr_real "http://example.com/fruit/banana:thing", SOME ("fruit", "banana:thing")),
-                    (abbr_real "http://example.com/fruit/loop/banana", SOME ("fruitloop", "banana")),
-                    (abbr_real "http://example.com/fruit/loop:banana", SOME ("fruit", "loop:banana")),
-                    (abbr_real "http://example.com/fruit/", SOME ("fruit", "")),
-                    (abbr_real "fruit", NONE),
-                    (abbr_real "emptyfruit", SOME ("", "fruit"))]
-           )
-         ]
+
+    val name = "prefix"
+                                  
+    fun tests () = [
+        ("empty",
+         fn () => null (P.enumerate P.empty)),
+        ("empty-expand",
+         fn () => P.expand (P.empty, "a:b") = Iri.fromString "a:b"),
+        ("empty-abbreviate",
+         fn () => P.abbreviate (P.empty, Iri.fromString "a:b") = NONE),
+        ("add",
+         fn () => P.enumerate (P.add (P.empty, "a", "b")) = [("a","b")]),
+        ("add-another",
+         fn () => P.enumerate (P.add (P.add (P.empty, "a", "b"), "aa", "bb")) =
+                  [("a","b"),("aa","bb")]), (*!!! compare unordered! *)
+        ("replace",
+         fn () => P.enumerate (P.add (P.add (P.empty, "a", "b"), "a", "bb")) =
+                  [("a","bb")]),
+        ("expand",
+         fn () =>
+            check_all
+                Iri.toString
+                [(P.expand (real_table, "veg:aubergine"),
+                  Iri.fromString "http://example.com/vegetable/aubergine"),
+                 (P.expand (real_table, "fruit:banana:thing"),
+                  Iri.fromString "http://example.com/fruit/banana:thing"),
+                 (P.expand (real_table, "fruitloop:banana"),
+                  Iri.fromString "http://example.com/fruit/loop/banana"),
+                 (P.expand (real_table, ":banana"),
+                  Iri.fromString "emptybanana"),
+                 (P.expand (nil_table, "a.b"),
+                  Iri.fromString "a.b"),
+                 (P.expand (nil_table, ":a.b"),
+                  Iri.fromString "a.b")]
+        ),
+        ("abbreviate",
+         fn () =>
+            check_all
+                abbr_to_string
+                [(abbr_unreal "a", SOME ("1", "")),
+                 (abbr_unreal "aa", SOME ("1", "a")),
+                 (abbr_unreal "abc", SOME ("5", "")),
+                 (abbr_unreal "abd", SOME ("2", "d")),
+                 (abbr_unreal "bbb", NONE),
+                 (abbr_unreal "bbd", NONE),
+                 (abbr_unreal "aba", SOME ("3", "")),
+                 (abbr_unreal "abad", SOME ("3", "d"))]
+        ),
+        ("abbreviate-lifelike",
+         fn () =>
+            check_all
+                abbr_to_string
+                [(abbr_real "http://example.com/vegetable/aubergine", SOME ("veg", "aubergine")),
+                 (abbr_real "http://example.com/fruit/banana:thing", SOME ("fruit", "banana:thing")),
+                 (abbr_real "http://example.com/fruit/loop/banana", SOME ("fruitloop", "banana")),
+                 (abbr_real "http://example.com/fruit/loop:banana", SOME ("fruit", "loop:banana")),
+                 (abbr_real "http://example.com/fruit/", SOME ("fruit", "")),
+                 (abbr_real "fruit", NONE),
+                 (abbr_real "emptyfruit", SOME ("", "fruit"))]
         )
-             
+    ]
+
 end
-                                                    
+
 structure TestPrefix = TestPrefixFn(PrefixTable)
