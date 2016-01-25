@@ -57,11 +57,11 @@ structure TurtleExporter : STORE_EXPORTER = struct
         if indent < 0 then ""
         else String.concatWith "" (List.tabulate (indent * 4, fn _ => " "))
 
-    fun write_indent d =
+    fun write_indent (d : ser_data) =
         (TextIO.output (#stream d, string_for_indent (#indent d));
          d)
             
-    fun should_use_long_string lit =
+    fun should_use_long_string (lit : RdfNode.literal) =
         String.size (#value lit) > 80 (* arbitrary, avoid scanning v long strings *)
         orelse
         List.exists
