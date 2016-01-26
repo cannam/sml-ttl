@@ -1,7 +1,7 @@
 
 signature STORE_COLLECTION = sig
 
-    type store
+    type store = Store.t
     datatype node = datatype RdfNode.node
     type triple = node * node * node
     
@@ -23,6 +23,7 @@ signature STORE_COLLECTION = sig
     (* Given a collection node and the store that contains it, return
        all nodes contained in the collection, in order. *)
     val nodes_of_collection : store * node -> node list
+
 end
 
 structure StoreCollection : STORE_COLLECTION = struct

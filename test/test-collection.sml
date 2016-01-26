@@ -56,13 +56,44 @@ functor TestCollectionFn (Arg : TEST_COLLECTION_ARG) :> TESTS = struct
               (BLANK 1, IRI iri_rdf_rest, BLANK 2),
               (BLANK 2, IRI iri_rdf_first, IRI (Iri.fromString "y")),
               (BLANK 2, IRI iri_rdf_rest, IRI iri_rdf_nil)])
+
+    fun test_start_of_collection () =
+        let val tt = R.collection_of_nodes [IRI (Iri.fromString "x"),
+                                            IRI (Iri.fromString "y"),
+                                            IRI (Iri.fromString "z")]
+            val store = foldl (fn (t, s) => Store.add (s, t)) Store.empty tt
+            val first_link_node = #1 (hd tt) (* subj node of "x" triple *)
+            val last_link_node = #1 (hd (rev tt)) (* subj node of "z" triple *)
+        in
+            check RdfTriple.string_of_node
+                  (C.start_of_collection (store, last_link_node),
+                   first_link_node)
+            andalso
+            check RdfTriple.string_of_node
+                  (C.start_of_collection (store, first_link_node),
+                   first_link_node)
+        end
             
-    (*!!! + the other two *)
+    fun test_triples_of_collection () =
+        let val tt = R.collection_of_nodes [IRI (Iri.fromString "x"),
+                                            IRI (Iri.fromString "y")]
+            val store = foldl (fn (t, s) => Store.add (s, t)) Store.empty tt
+            val last_link_node = #1 (hd (rev tt)) (* subj node of "y" triple *)
+        in
+            check_triples
+                (C.triples_of_collection (store, last_link_node),
+                 [(BLANK 1, IRI iri_rdf_first, IRI (Iri.fromString "x")),
+                  (BLANK 1, IRI iri_rdf_rest, BLANK 2),
+                  (BLANK 2, IRI iri_rdf_first, IRI (Iri.fromString "y")),
+                  (BLANK 2, IRI iri_rdf_rest, IRI iri_rdf_nil)])
+        end
             
     fun tests () = [
         ("make-empty", test_make_empty),
         ("make-single", test_make_single),
-        ("make-collection", test_make_collection)
+        ("make-collection", test_make_collection),
+        ("start-of-collection", test_start_of_collection),
+        ("triples-of-collection", test_triples_of_collection)
     ]
 
 end
