@@ -3,14 +3,16 @@ signature RDF_NODE = sig
 
     type iri = Iri.t
 
+    type literal = {
+	value : string,
+	dtype : iri,
+	lang  : string
+    }
+		       
     datatype node =
              IRI of iri |
              BLANK of int |
-             LITERAL of {
-		 value : string,
-		 dtype : iri,
-		 lang  : string
-             }
+             LITERAL of literal
 
     val new_blank_node : unit -> node
 
@@ -29,14 +31,16 @@ structure RdfNode :> RDF_NODE = struct
 
     type iri = Iri.t
 
+    type literal = {
+	value : string,
+	dtype : iri,
+	lang  : string
+    }
+		   
     datatype node =
              IRI of iri |
              BLANK of int |
-             LITERAL of {
-		 value : string,
-		 dtype : iri,
-		 lang  : string
-             }
+             LITERAL of literal
 
     val bnode_counter = ref 0
 		
