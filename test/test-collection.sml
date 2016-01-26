@@ -37,7 +37,9 @@ functor TestCollectionFn (Arg : TEST_COLLECTION_ARG) :> TESTS = struct
             (R.collection_of_nodes [IRI (Iri.fromString "x")],
              [(BLANK 1, IRI iri_rdf_first, IRI (Iri.fromString "x")),
               (BLANK 1, IRI iri_rdf_rest, IRI iri_rdf_nil)])
-              
+
+    (*!!! + the other three *)
+            
     fun tests () = [
         ("make-empty", test_make_empty),
         ("make-single", test_make_single)
