@@ -1,5 +1,14 @@
 
-structure RdfCollection = struct
+signature RDF_COLLECTION = sig
+
+    datatype node = datatype RdfNode.node
+    type triple = node * node * node
+
+    val collection_of_nodes : node list -> triple list
+    
+end
+
+structure RdfCollection : RDF_COLLECTION = struct
 
     open RdfTriple
     open RdfStandardIRIs

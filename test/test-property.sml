@@ -3,6 +3,8 @@ functor TestPropertyFn (P: PROPERTY) :> TESTS = struct
 
     open TestSupport
              
+    val name = "property";
+
     val testfile = "test/other/goblin.ttl"
     val goblin_iri = Iri.fromString "http://example.org/#green-goblin"
     val spider_iri = Iri.fromString "http://example.org/#spiderman"
@@ -26,8 +28,6 @@ functor TestPropertyFn (P: PROPERTY) :> TESTS = struct
         ^ " ]";
                 
     structure Sort = ListMergeSort
-
-    val name = "property";
 
     fun tests () = [
         ("text",

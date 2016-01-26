@@ -2,7 +2,9 @@
 functor TestPrefixFn (P: PREFIX_TABLE) :> TESTS = struct
 
     open TestSupport
-             
+
+    val name = "prefix"
+                                  
     fun make_table pairs =
         foldl (fn ((p, e), t) => P.add (t, p, e)) P.empty pairs
              
@@ -33,8 +35,6 @@ functor TestPrefixFn (P: PREFIX_TABLE) :> TESTS = struct
     fun abbr_to_string (SOME (ns, loc)) = ns ^ ":" ^ loc
       | abbr_to_string NONE = "(none)"
 
-    val name = "prefix"
-                                  
     fun tests () = [
         ("empty",
          fn () => null (P.enumerate P.empty)),

@@ -3,6 +3,8 @@ functor TestTurtleSpecFn (P: RDF_PARSER) : TESTS = struct
 
     open TestSupport RdfTriple
 
+    val name = "turtle-spec"
+
     structure L = TurtleLoader (* for manifest in ttl format *)
     structure S = L.Store
                      
@@ -250,8 +252,6 @@ functor TestTurtleSpecFn (P: RDF_PARSER) : TESTS = struct
                            ") tests found in spec store (load problem?)")]
                 else tt
             end
-
-    val name = "turtle-spec"
                 
     fun tests () = tests_from_manifest "manifest.ttl"
                      

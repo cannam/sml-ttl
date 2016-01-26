@@ -3,6 +3,8 @@ functor TestTurtleParserFn (P: RDF_PARSER) : TESTS = struct
 
     open TestSupport RdfTriple
 
+    val name = "turtle-parser"
+                  
     fun check_triples str (P.PARSE_ERROR err) =
         (print ("\n--- Error in parsing \"" ^ str ^ "\": " ^ err ^ "\n");
          false)
@@ -62,8 +64,6 @@ functor TestTurtleParserFn (P: RDF_PARSER) : TESTS = struct
                   [ (P.parse "" (TextIO.openString str),
                      P.PARSED p) ]
 
-    val name = "turtle-parser"
-                  
     fun tests () = [
         ("simple-string",     fn () => good_string "<a> <b> <c>."),
         ("simple-with-a",     fn () => good_string "<a> a <c>."),
