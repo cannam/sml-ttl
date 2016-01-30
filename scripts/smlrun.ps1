@@ -11,41 +11,81 @@ Run the Standard ML program defined in example.mlb using SML/NJ, passing datafil
 #>
 
 if ($args.Count -lt 1) {
-   "Usage: smlrun file.mlb [args...]"
-   exit 1
+  "Usage: smlrun file.mlb [args...]"
+  exit 1
 }
 
 $mlb = $args[0]
 
 if ($mlb -notmatch "[.]mlb$") {
-   "Error: argument must be a .mlb file"
-   exit 1
+  "Error: argument must be a .mlb file"
+  exit 1
 }
 
 $libdir = "c:/Users/Chris/Documents/mlton-20150109-all-mingw-492/lib/sml"
 
-$lines = (Get-Content $mlb)
+function script:processMLB($m) {
 
-# remove incompatible Basis lib and unneeded call to main
-$lines = $lines -notmatch "basis[.]mlb" -notmatch "main[.]sml"
+  if (! (Test-Path $m)) {
+    "Error: file not found: " + $m
+    return
+  }
 
-# remove ML-style comments
-$lines = $lines -replace "\(\*[^\*]*\*\)",""
+  $lines = @(Get-Content $m)
 
-# expand library path
-$lines = $lines -replace "\$\(SML_LIB\)",$libdir
+  # remove incompatible Basis lib and unneeded call to main
+  $lines = $lines -notmatch "basis[.]mlb" -notmatch "main[.]sml"
 
-# remove leading whitespace
-$lines = $lines -replace "^ *",""
+  # remove ML-style comments
+  $lines = $lines -replace "\(\*[^\*]*\*\)",""
 
-# remove trailing whitespace
-$lines = $lines -replace " *$",""
+  # expand library path
+  $lines = $lines -replace "\$\(SML_LIB\)",$libdir
 
-# remove empty lines
-$lines = $lines -notmatch "^$"
+  # remove leading whitespace
+  $lines = $lines -replace "^ *",""
 
-# add use declarations
-$lines = $lines -replace "^(.*)$",'use "$1";'
+  # remove trailing whitespace
+  $lines = $lines -replace " *$",""
+
+  # remove empty lines
+  $lines = $lines -notmatch "^$"
+
+  $expanded = @()
+
+  foreach ($line in $lines) {
+
+    if (!([System.IO.Path]::IsPathRooted($line))) {
+      # resolve path relative to containing mlb file
+      $line = (Join-Path (Split-Path -parent $m) $line)
+    }
+
+    if ($line -match "[.]mlb$") {
+
+      # recurse to expand included mlb
+      $expanded += @(processMLB $line)
+      
+    } else {
+
+      # SML/NJ wants forward slashes for path separators
+      $line = $line -replace "\\","/";
+
+      # add use declaration
+      $line = $line -replace "^(.*)$",'use "$1";'
+
+      $expanded += $line
+    }
+  }
+
+  $expanded
+}
+
+$lines = @(processMLB $mlb)
+
+if ($lines -match "^Error: ") {
+  $lines -match "^Error: "
+  exit 1
+}
 
 $intro = @"
 val smlrun__cp = 
@@ -77,8 +117,6 @@ $script += $outro
 
 $tmpfile = ([System.IO.Path]::GetTempFileName()) -replace "[.]tmp",".sml"
 
-$tmpfile
-
 $script | Out-File -Encoding "ASCII" $tmpfile
 
 $env:CM_VERBOSE="false"
@@ -86,4 +124,3 @@ $env:CM_VERBOSE="false"
 sml $tmpfile $args[1,$args.Length]
 
 del $tmpfile
-
