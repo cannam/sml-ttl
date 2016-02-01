@@ -104,8 +104,20 @@ structure Index :> INDEX = struct
 	    
 end
 
-structure IndexPicker = struct
-			   
+signature INDEX_PICKER = sig
+
+    type index
+    type pattern
+    
+    val pick_index : index list * pattern -> index
+    
+end
+                               
+structure IndexPicker : INDEX_PICKER = struct
+		
+    type index = Index.t
+    type pattern = Index.pattern
+	   
     open IntRedBlackMap
 
     fun pick_index (indexes, pattern) =

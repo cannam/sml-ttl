@@ -32,6 +32,7 @@ fun run_test_suite (suite_name, tests) =
 val all_tests = [
     (TestPrefix.name, TestPrefix.tests ()),
     (TestProperty.name, TestProperty.tests ()),
+    (TestIndex.name, TestIndex.tests ()),
     (TestCollection.name, TestCollection.tests ()),
     (TestTurtleParser.name, TestTurtleParser.tests ()),
     (TestTurtleSpec.name, TestTurtleSpec.tests ())
