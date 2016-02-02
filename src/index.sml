@@ -123,17 +123,20 @@ signature INDEX_PICKER = sig
     
 end
                                
-structure IndexPicker : INDEX_PICKER = struct
+functor IndexPickerFn (IX: INDEX) : INDEX_PICKER = struct
 		
-    type index = Index.t
-    type pattern = Index.pattern
+    type index = IX.t
+    type pattern = IX.pattern
 	   
     open IntRedBlackMap
 
-    fun pick_index (indexes, pattern) =
+    fun pick_index (indexes : index list, pattern : pattern) : index =
 	hd (listItems
 		(List.foldl (fn (ix, m) =>
-			        insert (m, Index.score (ix, pattern), ix))
+			        insert (m, IX.score (ix, pattern), ix))
 		            empty indexes))
 
 end
+
+structure IndexPicker = IndexPickerFn(Index)
+
