@@ -21,5 +21,8 @@ signature INDEX = sig
     val fold_match : (triple * 'a -> 'a) -> 'a -> (t * pattern) -> 'a
     val score : t * pattern -> int
     val name : t -> string
-    
+
+    val name_of_order : index_order -> string
+    val order_of_name : string -> index_order
+                        
 end

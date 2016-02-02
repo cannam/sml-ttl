@@ -19,12 +19,22 @@ structure Index :> INDEX = struct
 
     type t = index_order * triple NodeMap.map NodeMap.map NodeMap.map
 
-    fun name (SPO, _) = "spo" 
-      | name (POS, _) = "pos"
-      | name (OPS, _) = "ops"
-      | name (SOP, _) = "sop"
-      | name (PSO, _) = "pso"
-      | name (OSP, _) = "osp"
+    fun name_of_order SPO = "spo" 
+      | name_of_order POS = "pos"
+      | name_of_order OPS = "ops"
+      | name_of_order SOP = "sop"
+      | name_of_order PSO = "pso"
+      | name_of_order OSP = "osp"
+            
+    fun order_of_name "spo" = SPO
+      | order_of_name "pos" = POS
+      | order_of_name "ops" = OPS
+      | order_of_name "sop" = SOP
+      | order_of_name "pso" = PSO
+      | order_of_name "osp" = OSP
+      | order_of_name name = raise Fail ("Unknown index order name " ^ name)
+
+    fun name (order, _) = name_of_order order
 
     fun new ix = (ix, NodeMap.empty)
 
