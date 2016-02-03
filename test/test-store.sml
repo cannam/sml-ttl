@@ -47,27 +47,11 @@ functor TestStoreFn (Arg : TEST_STORE_ARG) :> TESTS = struct
         List.foldl (fn (t, st) => S.add (st, make_test_triple t))
                    S.empty
                    templates
-                    
-    fun check_lists conv ([], []) = true
-      | check_lists conv (a::aa, []) =
-        (print ("--- Lists have differing lengths (reached " ^ (conv a) ^
-                ", had expected end of list)");
-         false)
-      | check_lists conv ([], b::bb) =
-        (print ("--- Lists have differing lengths (reached end of list, " ^
-                "had expected " ^ (conv b) ^ ")");
-         false)
-      | check_lists conv (a::aa, b::bb) =
-        check conv (a, b) andalso check_lists conv (aa, bb)
-
-    structure Sort = ListMergeSort
-
-    fun triple_greater (t1, t2) = RdfTriple.compare (t1, t2) = GREATER
 
     fun check_triple_lists (a, b) =
-        check_lists RdfTriple.string_of_triple
-                    (Sort.sort triple_greater a,
-                     Sort.sort triple_greater b)
+        check_sets RdfTriple.string_of_triple
+                   (fn (t1, t2) => RdfTriple.compare (t1, t2) = GREATER)
+                   (a, b)
 
     fun tests () = [
 
