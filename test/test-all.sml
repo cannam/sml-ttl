@@ -10,7 +10,9 @@ fun run_test_suite (suite_name, tests) =
                 if (test ()
                     handle Fail msg => report_exception test_name msg
                          | IO.Io { name, ... } =>
-                           report_exception test_name ("IO failure: " ^ name))
+                           (*!!! can we get more info from Exception? *)
+                           report_exception test_name ("IO failure: " ^ name)
+                         | ex => report_exception test_name "Exception caught")
                 then NONE
                 else (print ("*** Test \"" ^ test_name ^ "\" failed\n");
                       SOME test_name))

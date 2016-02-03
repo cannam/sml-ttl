@@ -103,7 +103,7 @@ functor TestStoreFn (Arg : TEST_STORE_ARG) :> TESTS = struct
          fn () =>
             let val st = build_store name ["aaa", "aab", "abc", "bba"]
             in
-                check_all Bool.toString
+                check_pairs Bool.toString
                           [(S.contains (st, make_test_triple "aaa"), true),
                            (S.contains (st, make_test_triple "aab"), true),
                            (S.contains (st, make_test_triple "abc"), true),
@@ -118,7 +118,7 @@ functor TestStoreFn (Arg : TEST_STORE_ARG) :> TESTS = struct
                 val st_rr = S.remove (S.remove (st, make_test_triple "aaa"),
                                        make_test_triple "aaa")
             in
-                check_all Bool.toString
+                check_pairs Bool.toString
                           [(S.contains (st, make_test_triple "aaa"), true),
                            (S.contains (st_r, make_test_triple "aaa"), false),
                            (S.contains (st_rr, make_test_triple "aaa"), false),

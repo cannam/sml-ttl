@@ -52,7 +52,7 @@ functor TestPrefixFn (P: PREFIX_TABLE) :> TESTS = struct
                   [("a","bb")]),
         ("expand",
          fn () =>
-            check_all
+            check_pairs
                 Iri.toString
                 [(P.expand (real_table, "veg:aubergine"),
                   Iri.fromString "http://example.com/vegetable/aubergine"),
@@ -69,7 +69,7 @@ functor TestPrefixFn (P: PREFIX_TABLE) :> TESTS = struct
         ),
         ("abbreviate",
          fn () =>
-            check_all
+            check_pairs
                 abbr_to_string
                 [(abbr_unreal "a", SOME ("1", "")),
                  (abbr_unreal "aa", SOME ("1", "a")),
@@ -82,7 +82,7 @@ functor TestPrefixFn (P: PREFIX_TABLE) :> TESTS = struct
         ),
         ("abbreviate-lifelike",
          fn () =>
-            check_all
+            check_pairs
                 abbr_to_string
                 [(abbr_real "http://example.com/vegetable/aubergine", SOME ("veg", "aubergine")),
                  (abbr_real "http://example.com/fruit/banana:thing", SOME ("fruit", "banana:thing")),

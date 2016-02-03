@@ -60,9 +60,9 @@ functor TestTurtleParserFn (P: RDF_PARSER) : TESTS = struct
                               IRI (Iri.fromString c))
 
     fun check_iri_triple_parse str p =
-        check_all string_of_parse_result
-                  [ (P.parse "" (TextIO.openString str),
-                     P.PARSED p) ]
+        check_pairs string_of_parse_result
+                    [ (P.parse "" (TextIO.openString str),
+                       P.PARSED p) ]
 
     fun tests () = [
         ("simple-string",     fn () => good_string "<a> <b> <c>."),
