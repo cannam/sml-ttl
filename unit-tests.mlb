@@ -4,6 +4,7 @@ test/test-support.sml
 test/test-prefix.sml
 test/test-property.sml
 test/test-index.sml
+test/test-store.sml
 test/test-collection.sml
 test/test-turtle-parser.sml
 test/test-turtle-spec.sml
