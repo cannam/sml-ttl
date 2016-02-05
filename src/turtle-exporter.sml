@@ -79,8 +79,6 @@ structure TurtleExporter : STORE_EXPORTER = struct
                    nodes
          of (d, _) => d
 
-    (*!!! + collections *)
-                          
     and serialise_anon_object (obj, d) =
         let val triples = Store.match (#store d, (KNOWN obj, WILDCARD, WILDCARD))
         in
