@@ -37,9 +37,9 @@ functor TestIndexFn (Arg : TEST_INDEX_ARG) :> TESTS = struct
     val index_names = [ "spo", "pos", "ops", "sop", "pso", "osp" ]
 
     fun match (index, pattern) =
-        IX.fold_match (fn (t, acc) => t :: acc)
-                      []
-                      (index, pattern)
+        IX.foldl_match (fn (t, acc) => t :: acc)
+                       []
+                       (index, pattern)
 
     fun enumerate index =
         match (index, make_test_pattern "***")

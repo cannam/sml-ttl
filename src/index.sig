@@ -18,7 +18,7 @@ signature INDEX = sig
     val add : t * triple -> t
     val contains : t * triple -> bool
     val remove : t * triple -> t
-    val fold_match : (triple * 'a -> 'a) -> 'a -> (t * pattern) -> 'a
+    val foldl_match : (triple * 'a -> 'a) -> 'a -> (t * pattern) -> 'a
     val score : t * pattern -> int
     val name : t -> string
 

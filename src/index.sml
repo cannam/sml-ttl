@@ -92,7 +92,7 @@ structure Index :> INDEX = struct
                                     SOME value => [value]
                                   | NONE => []
 
-    fun fold_match f acc ((ix, m) : t, pattern) =
+    fun foldl_match f acc ((ix, m) : t, pattern) =
 	let val (a, b, c) = decompose (ix, pattern)
         in
             foldl (fn (am, aa) =>

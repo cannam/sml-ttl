@@ -18,7 +18,7 @@ signature STORE = sig
     val contains : t * triple -> bool
     val remove : t * triple -> t
     val match : t * pattern -> triple list
-    val fold_match : (triple * 'a -> 'a) -> 'a -> (t * pattern) -> 'a
+    val foldl_match : (triple * 'a -> 'a) -> 'a -> (t * pattern) -> 'a
     val foldl : (triple * 'a -> 'a) -> 'a -> t -> 'a
     val enumerate : t -> triple list
 

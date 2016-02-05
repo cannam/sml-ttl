@@ -38,11 +38,6 @@ functor TestStoreFn (Arg : TEST_STORE_ARG) :> TESTS = struct
       | make_test_pattern "**a" = (wildcard, wildcard, known "cheese")
       | make_test_pattern x = raise Fail ("Unsupported wildcard template " ^ x)
 
-    fun match (store, pattern) =
-        S.fold_match (fn (t, acc) => t :: acc)
-                      []
-                      (store, pattern)
-
     fun build_store name templates =
         List.foldl (fn (t, st) => S.add (st, make_test_triple t))
                    S.empty
@@ -115,11 +110,11 @@ functor TestStoreFn (Arg : TEST_STORE_ARG) :> TESTS = struct
             let val st = build_store name ["aaa", "aab", "abc", "bba"]
             in
                 check_triple_lists
-                    (match (st, make_test_pattern "***"),
+                    (S.match (st, make_test_pattern "***"),
                      S.enumerate st)
                 andalso
                 check_triple_lists
-                    (match (st, make_test_pattern "**a"),
+                    (S.match (st, make_test_pattern "**a"),
                      [make_test_triple "aaa", make_test_triple "bba"])
             end)
     ]

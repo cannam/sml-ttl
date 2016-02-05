@@ -46,21 +46,21 @@ structure Store :> STORE = struct
     fun remove (store, triple) =
 	map_indexes (fn ix => Index.remove (ix, triple)) store
 
-    fun fold_match f acc ({ prefixes, indexes } : t, pattern) =
+    fun foldl_match f acc ({ prefixes, indexes } : t, pattern) =
         let val index = IndexPicker.pick_index (indexes, pattern)
         in
             Log.info (fn () => ("Store: pattern %, index \"%\"",
                                 [Log.S (string_of_pattern pattern),
                                  Log.S (Index.name index)]));
-            Index.fold_match f acc (index, pattern)
+            Index.foldl_match f acc (index, pattern)
         end
 
     fun foldl f acc store =
-        Index.fold_match f acc
-                         (any_index store, (WILDCARD, WILDCARD, WILDCARD))
+        Index.foldl_match f acc
+                          (any_index store, (WILDCARD, WILDCARD, WILDCARD))
                          
     fun match pattern =
-        let val result = fold_match (op::) [] pattern
+        let val result = foldl_match (op::) [] pattern
         in
             Log.info (fn () => ("Store: matched % results",
                                 [Log.I (length result)]));
