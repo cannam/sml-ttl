@@ -42,6 +42,7 @@ val all_tests = [
 ]
 
 fun main () =
-    app run_test_suite all_tests
+    (StringTrieTest.test ();
+    app run_test_suite all_tests)
 
         
