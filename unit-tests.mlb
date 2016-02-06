@@ -1,6 +1,4 @@
 mlb/sml-ttl.mlb
-src/trie.sig (*!!!*)
-src/trie.sml (*!!!*)
 test/tests.sig
 test/test-support.sml
 test/test-prefix.sml
