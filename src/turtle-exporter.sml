@@ -6,8 +6,6 @@ structure TurtleExporter : STORE_EXPORTER = struct
 
     structure Store = Store
 
-    datatype patnode = datatype Store.patnode
-
     open RdfTriple
 
     fun sorted_by_subject triples = (* with iri-subject triples before blanks *)
