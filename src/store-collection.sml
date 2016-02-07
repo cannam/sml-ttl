@@ -38,7 +38,7 @@ structure StoreCollection : STORE_COLLECTION = struct
     val node_nil   = RdfNode.IRI RdfStandardIRIs.iri_rdf_nil
                                     
     fun is_collection_node (store, node) =
-        let val pat = (S.KNOWN node, S.KNOWN node_rest, S.WILDCARD)
+        let val pat = (SOME node, SOME node_rest, NONE)
             val result = not (null (S.match (store, pat)))
         in
             Log.info (fn () => ("StoreCollection: % % a collection node",
@@ -48,7 +48,7 @@ structure StoreCollection : STORE_COLLECTION = struct
         end
 
     fun start_of_collection (store, node) =
-        let val pat = (S.WILDCARD, S.KNOWN node_rest, S.KNOWN node)
+        let val pat = (NONE, SOME node_rest, SOME node)
         in
             case S.match (store, pat) of
                 (subj, _, _)::_ => start_of_collection (store, subj)
@@ -60,8 +60,8 @@ structure StoreCollection : STORE_COLLECTION = struct
                 if first = node_nil
                 then acc
                 else
-                    let val here = (S.KNOWN first, S.KNOWN node_first, S.WILDCARD)
-                        val rest = (S.KNOWN first, S.KNOWN node_rest, S.WILDCARD)
+                    let val here = (SOME first, SOME node_first, NONE)
+                        val rest = (SOME first, SOME node_rest, NONE)
                     in
                         case (S.match (store, here), S.match (store, rest)) of
                             ([], []) => acc

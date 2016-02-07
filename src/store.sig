@@ -4,11 +4,8 @@ signature STORE = sig
     type t
 
     datatype node = datatype RdfNode.node
-				    
-    datatype patnode =
-	     WILDCARD |
-	     KNOWN of node
 
+    type patnode = node option
     type triple = node * node * node
     type pattern = patnode * patnode * patnode
     type iri = Iri.t

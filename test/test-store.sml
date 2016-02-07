@@ -19,8 +19,8 @@ functor TestStoreFn (Arg : TEST_STORE_ARG) :> TESTS = struct
     val name = "store"
 
     fun iri i = RdfNode.IRI (Iri.fromString i)
-    fun known i = S.KNOWN (RdfNode.IRI (Iri.fromString i))
-    val wildcard = S.WILDCARD
+    fun known i = SOME (RdfNode.IRI (Iri.fromString i))
+    val wildcard = NONE
 
     fun make_test_triple "aaa" = (iri "fred", iri "loves", iri "cheese")
       | make_test_triple "aab" = (iri "fred", iri "loves", iri "fruit")

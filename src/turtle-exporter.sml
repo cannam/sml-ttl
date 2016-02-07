@@ -80,7 +80,7 @@ structure TurtleExporter : STORE_EXPORTER = struct
          of (d, _) => d
 
     and serialise_anon_object (obj, d) =
-        let val triples = Store.match (#store d, (KNOWN obj, WILDCARD, WILDCARD))
+        let val triples = Store.match (#store d, (SOME obj, NONE, NONE))
         in
             TextIO.output (#stream d, "[\n");
             let val d' =
@@ -240,12 +240,12 @@ structure TurtleExporter : STORE_EXPORTER = struct
               | has_blank_object _ = false
 
             fun is_blank_object_unique (d : ser_data, t) =
-                Store.match (#store d, (WILDCARD, WILDCARD, KNOWN (#3 t))) = [t]
+                Store.match (#store d, (NONE, NONE, SOME (#3 t))) = [t]
 
             fun was_blank_object_written (d : ser_data, (_,_,obj)) =
                 List.exists
                     (fn x => was_written (x, d))
-                    (Store.match (#store d, (KNOWN obj, WILDCARD, WILDCARD)))
+                    (Store.match (#store d, (SOME obj, NONE, NONE)))
 
             fun is_blank_object_unwritten args = not (was_blank_object_written args)
 

@@ -2,20 +2,17 @@
 structure Index :> INDEX = struct
 
     datatype node = datatype RdfNode.node
-				    
-    datatype patnode =
-	     WILDCARD |
-	     KNOWN of node
 
+    type patnode = node option
     type triple = node * node * node
     type pattern = patnode * patnode * patnode
 
     datatype index_order = SPO | POS | OPS | SOP | PSO | OSP
 
-    structure NodeTrie = TrieFn(struct
-                                 type t = node
-                                 val compare = RdfNode.compare
-                                 end)
+    structure NodeTrie = ListEntryTrieFn(struct
+                                          type t = node
+                                          val compare = RdfNode.compare
+                                          end)
 
     type t = index_order * NodeTrie.t
 
@@ -62,40 +59,17 @@ structure Index :> INDEX = struct
     fun remove ((ord, ix), triple) =
         (ord, NodeTrie.remove (ix, decompose (ord, triple)))
 
-    datatype 'a pfx_state = WILDCARD_FOUND of 'a | ALL_KNOWN of 'a
-            
-    fun prefix (ord, pattern) =
-        let val decomposed = decompose (ord, pattern)
-        in case List.foldl (fn (_, WILDCARD_FOUND k) => WILDCARD_FOUND k
-                           | (KNOWN n, ALL_KNOWN k) => ALL_KNOWN (k @ [n])
-                           | (WILDCARD, ALL_KNOWN k) => WILDCARD_FOUND k)
-                           (ALL_KNOWN [])
-                           decomposed
-            of
-               WILDCARD_FOUND k => k
-             | ALL_KNOWN k => k
-        end
-            
     fun foldl_match f acc ((ord, ix) : t, pattern) =
-        let val pfx = prefix (ord, pattern)
-        in
-            (*!!! This is not right -- if the pattern goes
-            e.g. KNOWN,KNOWN,WILDCARD we're OK, but if there's a
-            WILDCARD before a KNOWN [which is a bad case for any
-            index] we need to filter the results of the foldl, because
-            it's only a match on the KNOWN prefix *)
-            
-            NodeTrie.foldl_prefix_match
-                (fn (e, acc) => f (recompose (ord, e), acc))
-                acc
-                (ix, pfx)
-        end
+        NodeTrie.foldl_pattern_match
+            (fn (e, acc) => f (recompose (ord, e), acc))
+            acc
+            (ix, decompose (ord, pattern))
 	    
     fun score ((ord, ix), pattern) = (* lower score is better *)
 	case decompose (ord, pattern) of
-	    WILDCARD::WILDCARD::_ => 10
-	  | WILDCARD::_ => 9
-	  | _::WILDCARD::_ => 4
+	    NONE::NONE::_ => 10
+	  | NONE::_ => 9
+	  | _::NONE::_ => 4
 	  | _ => 0
 	    
 end

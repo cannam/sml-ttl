@@ -15,8 +15,8 @@ functor TestIndexFn (Arg : TEST_INDEX_ARG) :> TESTS = struct
     val name = "index"
 
     fun iri i = RdfNode.IRI (Iri.fromString i)
-    fun known i = IX.KNOWN (RdfNode.IRI (Iri.fromString i))
-    val wildcard = IX.WILDCARD
+    fun known i = SOME (RdfNode.IRI (Iri.fromString i))
+    val wildcard = NONE
 
     fun make_test_triple "aaa" = (iri "fred", iri "loves", iri "cheese")
       | make_test_triple "aab" = (iri "fred", iri "loves", iri "fruit")

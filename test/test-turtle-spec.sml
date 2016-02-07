@@ -152,9 +152,9 @@ functor TestTurtleSpecFn (P: RDF_PARSER) : TESTS = struct
 
             and property_text property =
                 text_of
-                    (S.match (s, (S.KNOWN test_node,
-                                  S.KNOWN (IRI (S.expand (s, property))),
-                                  S.WILDCARD)))
+                    (S.match (s, (SOME test_node,
+                                  SOME (IRI (S.expand (s, property))),
+                                  NONE)))
 
             val name = property_text "mf:name"
             val comment = property_text "rdfs:comment"
@@ -219,9 +219,9 @@ functor TestTurtleSpecFn (P: RDF_PARSER) : TESTS = struct
                                                           
     fun tests_from_store s =
         let fun tests_of_type t = 
-                S.match (s, (S.WILDCARD,
-                             S.KNOWN (IRI (RdfStandardIRIs.iri_rdf_type)),
-                             S.KNOWN (IRI (S.expand (s, "rdft:" ^ t)))))
+                S.match (s, (NONE,
+                             SOME (IRI (RdfStandardIRIs.iri_rdf_type)),
+                             SOME (IRI (S.expand (s, "rdft:" ^ t)))))
         in
             map (test s POSITIVE) (tests_of_type "TestTurtlePositiveSyntax") @
             map (test s NEGATIVE) (tests_of_type "TestTurtleNegativeSyntax") @

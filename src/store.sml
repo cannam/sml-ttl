@@ -2,8 +2,8 @@
 structure Store :> STORE = struct
 
     datatype node = datatype RdfNode.node
-    datatype patnode = datatype Index.patnode
 
+    type patnode = node option
     type triple = node * node * node
     type pattern = patnode * patnode * patnode
     type iri = Iri.t
@@ -23,8 +23,8 @@ structure Store :> STORE = struct
 		    Index.new Index.OPS ]
     }
 
-    fun string_of_patnode WILDCARD = "*"
-      | string_of_patnode (KNOWN n) = RdfTriple.string_of_node n
+    fun string_of_patnode NONE = "*"
+      | string_of_patnode (SOME n) = RdfTriple.string_of_node n
                     
     fun string_of_pattern (a,b,c) =
 	"(" ^ (string_of_patnode a) ^
@@ -56,8 +56,7 @@ structure Store :> STORE = struct
         end
 
     fun foldl f acc store =
-        Index.foldl_match f acc
-                          (any_index store, (WILDCARD, WILDCARD, WILDCARD))
+        Index.foldl_match f acc (any_index store, (NONE, NONE, NONE))
                          
     fun match pattern =
         let val result = foldl_match (op::) [] pattern
