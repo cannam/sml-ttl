@@ -1,6 +1,7 @@
 mlb/sml-ttl.mlb
 test/tests.sig
 test/test-support.sml
+test/test-trie.sml
 test/test-prefix.sml
 test/test-property.sml
 test/test-index.sml

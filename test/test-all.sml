@@ -32,6 +32,7 @@ fun run_test_suite (suite_name, tests) =
         end
             
 val all_tests = [
+    (TestTrie.name, TestTrie.tests ()),
     (TestPrefix.name, TestPrefix.tests ()),
     (TestProperty.name, TestProperty.tests ()),
     (TestIndex.name, TestIndex.tests ()),
@@ -42,7 +43,6 @@ val all_tests = [
 ]
 
 fun main () =
-    (StringTrieTest.test ();
-    app run_test_suite all_tests)
+    app run_test_suite all_tests
 
         
