@@ -1,6 +1,4 @@
 parse-serialise.mlb
-../src/trie.sig
-../src/trie.sml
 ../src/index.sig
 ../src/index.sml
 ../src/store.sig
