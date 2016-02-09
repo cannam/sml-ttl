@@ -277,7 +277,8 @@ structure TurtleExporter : STORE_EXPORTER = struct
         
     and serialise_prefixes stream prefixes =
         foldl (fn ((pfx, iri), t) =>
-                  (TextIO.output (t, ("@prefix " ^ pfx ^ ": <" ^ iri ^ "> .\n"));
+                  (TextIO.output (t, ("@prefix " ^ pfx ^ ": <" ^
+                                      (Iri.toString iri) ^ "> .\n"));
                    t))
               stream prefixes
 

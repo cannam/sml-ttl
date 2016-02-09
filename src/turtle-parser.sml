@@ -65,7 +65,7 @@ structure TurtleStreamParser : RDF_STREAM_PARSER = struct
           prefixes = TokenMap.insert (#prefixes d, p, e),
           blank_nodes = #blank_nodes d,
           new_triples = #new_triples d,
-          new_prefixes = (string_of_token p, string_of_token e) ::
+          new_prefixes = (string_of_token p, iri_of_token e) ::
                          (#new_prefixes d)
         }
                      

@@ -27,7 +27,8 @@ end
 			 
 structure RdfNode :> RDF_NODE = struct
 
-(*!!! pull out into a separate file *)
+(*!!! pull out into a separate file? or rename this file to something
+      more generic *)
 
     type iri = Iri.t
 
@@ -74,10 +75,10 @@ structure RdfTriple = struct
 			    
     type triple = node * node * node
 
-    type prefix = string * string
+    type prefix = string * iri  (* prefix, expansion *)
 
     fun string_of_prefix (pre, exp) =
-        "\"" ^ pre ^ "\" -> \"" ^ exp ^ "\""
+        "\"" ^ pre ^ "\" -> <" ^ (Iri.toString exp) ^ ">"
                                
     (* This is debug streaming, not guaranteed to match a standard format *)
     (*!!! should be in node? *)

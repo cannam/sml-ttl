@@ -10,24 +10,24 @@ functor TestPrefixFn (P: PREFIX_TABLE) :> TESTS = struct
              
     val unreal_table =
         make_table
-            [("1", "a"),
-             ("2", "ab"),
-             ("3", "aba"),
-             ("4", "abba"),
-             ("5", "abc"),
-             ("6", "bbc"),
-             ("7", "bbf")]
+            [("1", Iri.fromString "a"),
+             ("2", Iri.fromString "ab"),
+             ("3", Iri.fromString "aba"),
+             ("4", Iri.fromString "abba"),
+             ("5", Iri.fromString "abc"),
+             ("6", Iri.fromString "bbc"),
+             ("7", Iri.fromString "bbf")]
              
     val real_table =
         make_table 
-            [("fruit", "http://example.com/fruit/"),
-             ("fruitloop", "http://example.com/fruit/loop/"),
-             ("veg", "http://example.com/vegetable/"),
-             ("", "empty")]
+            [("fruit", Iri.fromString "http://example.com/fruit/"),
+             ("fruitloop", Iri.fromString "http://example.com/fruit/loop/"),
+             ("veg", Iri.fromString "http://example.com/vegetable/"),
+             ("", Iri.fromString "empty")]
 
     val nil_table =
         make_table
-            [("", "")]
+            [("", Iri.fromString "")]
             
     fun abbr_unreal s = P.abbreviate (unreal_table, Iri.fromString s)
     fun abbr_real s = P.abbreviate (real_table, Iri.fromString s)
@@ -43,13 +43,13 @@ functor TestPrefixFn (P: PREFIX_TABLE) :> TESTS = struct
         ("empty-abbreviate",
          fn () => P.abbreviate (P.empty, Iri.fromString "a:b") = NONE),
         ("add",
-         fn () => P.enumerate (P.add (P.empty, "a", "b")) = [("a","b")]),
+         fn () => P.enumerate (P.add (P.empty, "a", Iri.fromString "b")) = [("a", Iri.fromString "b")]),
         ("add-another",
-         fn () => P.enumerate (P.add (P.add (P.empty, "a", "b"), "aa", "bb")) =
-                  [("a","b"),("aa","bb")]), (*!!! compare unordered! *)
+         fn () => P.enumerate (P.add (P.add (P.empty, "a", Iri.fromString "b"), "aa", Iri.fromString "bb")) =
+                  [("a", Iri.fromString "b"),("aa", Iri.fromString "bb")]), (*!!! compare unordered! *)
         ("replace",
-         fn () => P.enumerate (P.add (P.add (P.empty, "a", "b"), "a", "bb")) =
-                  [("a","bb")]),
+         fn () => P.enumerate (P.add (P.add (P.empty, "a", Iri.fromString "b"), "a", Iri.fromString "bb")) =
+                  [("a", Iri.fromString "bb")]),
         ("expand",
          fn () =>
             check_pairs

@@ -1,40 +1,79 @@
 
-structure PrefixTable :> PREFIX_TABLE = struct
+structure IriTrie :> TRIE where type entry = Iri.t = struct
 
-    structure Comp = StringCompare(struct
-                                    type str = string
-                                    type ch = char
-                                    val size = String.size
-                                    val sub = String.sub
-                                    val ch_compare = Char.compare
-                                    end)
+    structure WordListTrie = ListEntryTrieFn(struct
+				              type t = word
+				              val compare = Word.compare
+				              end)
+
+    type t = WordListTrie.t
+    type entry = Iri.t
+
+    val empty = WordListTrie.empty
+
+    fun explode iri = WdString.explode (Iri.toWideString iri)
+    fun implode ws = Iri.fromWideString (WdString.implode ws)
+                    
+    fun add (trie, s) =
+        WordListTrie.add (trie, explode s)
+
+    fun contains (trie, s) =
+        WordListTrie.contains (trie, explode s)
+                         
+    fun remove (trie, s) =
+        WordListTrie.remove (trie, explode s)
+
+    fun foldl f acc trie =
+        WordListTrie.foldl (fn (e, acc) => f (implode e, acc))
+                           acc trie
+
+    fun enumerate trie =
+        List.map implode (WordListTrie.enumerate trie)
+
+    fun foldl_prefix_match f acc (trie, s) =
+        WordListTrie.foldl_prefix_match (fn (e, acc) => f (implode e, acc))
+                                 acc (trie, explode s)
+                 
+    fun prefix_match (trie, s) =
+        List.map implode (WordListTrie.prefix_match (trie, explode s))
+
+    fun prefix_of (trie, s) =
+        implode (WordListTrie.prefix_of (trie, explode s))
+
+end
+
+structure PrefixTable :> PREFIX_TABLE = struct
 
     structure StringMap = RedBlackMapFn (struct
                                           type ord_key = string
-                                          val compare = Comp.compare_backwards
+                                          val compare = String.compare
                                           end)
 
-    type t = string StringMap.map * string StringMap.map * StringTrie.t
-    type iri = Iri.t
-                        
-    val empty : t = (StringMap.empty, StringMap.empty, StringTrie.empty)
+    structure IriMap = RedBlackMapFn (struct
+                                       type ord_key = Iri.t
+                                       val compare = Iri.compare
+                                       end)
 
-    fun remove_from (map, key) =
-	case StringMap.remove (map, key) of (map', _) => map'
-							 handle NotFound => map
-	    
+    type iri = Iri.t
+    type t = iri StringMap.map * string IriMap.map * IriTrie.t
+                        
+    val empty : t = (StringMap.empty, IriMap.empty, IriTrie.empty)
+
+    fun remove_with (remover, map, key) =
+	case remover (map, key) of (map', _) => map' handle NotFound => map
+
     fun remove (table as (forward, reverse, trie) : t, namespace) =
 	case StringMap.find (forward, namespace) of
 	    NONE => table
 	  | SOME expansion =>
-	    (remove_from (forward, namespace),
-             remove_from (reverse, expansion),
-	     StringTrie.remove (trie, expansion))
+	    (remove_with (StringMap.remove, forward, namespace),
+             remove_with (IriMap.remove, reverse, expansion),
+	     IriTrie.remove (trie, expansion))
 
     fun add ((forward, reverse, trie) : t, namespace, expansion) =
 	(StringMap.insert (forward, namespace, expansion),
-	 StringMap.insert (reverse, expansion, namespace),
-	 StringTrie.add (trie, expansion))
+	 IriMap.insert (reverse, expansion, namespace),
+	 IriTrie.add (trie, expansion))
 
     fun from_prefixes prefixes =
         List.foldl (fn ((ns, e), tab) => add (tab, ns, e)) empty prefixes
@@ -44,58 +83,41 @@ structure PrefixTable :> PREFIX_TABLE = struct
 		    
     fun enumerate (table : t) = StringMap.listItemsi (#1 table)
 
-    fun expand ((forward, _, _) : t, curie) =
-        Iri.fromString
-	    (case String.fields (fn x => x = #":") curie of
-	         [] => curie
-	       | namespace::rest =>
-	         case StringMap.find (forward, namespace) of
-		     NONE => curie
-	           | SOME expansion => expansion ^ (String.concatWith ":" rest))
+    (*!!! these are now rather inelegant *)
+                                                     
+    fun expand ((forward, _, _) : t, curie : string) =
+	case String.fields (fn x => x = #":") curie of
+	    [] => Iri.fromString curie
+	  | namespace::rest =>
+	    case StringMap.find (forward, namespace) of
+		NONE => Iri.fromString curie
+	      | SOME expansion =>
+                let open WdString
+                in
+                    Iri.fromWideString
+                    (concatWith empty
+                                [Iri.toWideString expansion,
+                                 fromUtf8 (String.concatWith ":" rest)])
+                end
 
-    fun abbreviate_trie ((_, reverse, trie) : t, iristr) =
-      case StringTrie.prefix_of (trie, iristr) of
-	  "" => NONE
-	| prefix =>
-	  case StringMap.find (reverse, prefix) of
-	      NONE => raise Fail "internal error: prefix in trie but not reverse map"
-	    | SOME ns =>
-	      SOME (ns, String.extract (iristr, String.size prefix, NONE))
-	    
-    fun abbreviate_matching ((_, reverse, _) : t, iristr) =
-        (* faster if there are few prefixes in the table? *)
-        (* This depends on the keys of reverse being ordered with short
-           strings before long ones (since we're looking for the longest
-           prefix) *)
-        StringMap.foldli
-            (fn (e, ns, acc) =>
-                if Comp.is_prefix (e, iristr)
-                then SOME (ns, String.extract (iristr, String.size e, NONE))
-                else acc)
-            NONE reverse
-
-    fun abbreviate_reducing ((_, reverse, _) : t, iristr) =
-        (* faster if there are lots of prefixes in the table and/or
-           iri is short *)
-	let fun match_prefix_of "" = (0, "")
-	      | match_prefix_of name =
-		let val len = String.size name in
-		    case StringMap.find (reverse, name) of
-			NONE => match_prefix_of (String.substring (name, 0, len-1))
-		      | SOME ns => (len, ns)
-		end
-	in
-	    case match_prefix_of iristr of
-		(0, _) => NONE
-	      | (len, ns) => SOME (ns, String.extract (iristr, len, NONE))
-	end
-
-    fun abbreviate (table, iri) =
-        (*!!! how to decide between abbreviate_reducing and
-              abbreviate_matching? or some intrinsically better
-              method, e.g. a trie... *)
-        (*!!! + we should be storing wide strings *)
-(*        abbreviate_matching (table, Iri.toString iri) *)
-        abbreviate_trie (table, Iri.toString iri)
+    fun abbreviate ((_, reverse, trie) : t, iri) =
+        let val prefix = IriTrie.prefix_of (trie, iri)
+        in
+            if Iri.is_empty prefix
+            then NONE
+            else 
+	        case IriMap.find (reverse, prefix) of
+	            NONE => raise Fail "error: prefix in trie but not reverse map"
+	          | SOME ns =>
+                    let open WdString
+                    in
+	                SOME (ns,
+                              toUtf8
+                                  (implode
+                                       (List.drop
+                                            (explode (Iri.toWideString iri),
+                                             WdString.size (Iri.toWideString prefix)))))
+                    end
+        end
             
 end

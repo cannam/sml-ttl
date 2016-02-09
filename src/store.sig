@@ -19,10 +19,10 @@ signature STORE = sig
     val foldl : (triple * 'a -> 'a) -> 'a -> t -> 'a
     val enumerate : t -> triple list
 
-    val add_prefix : t * string * string -> t
+    val add_prefix : t * string * iri -> t (*!!! or use existing prefix type? *)
     val contains_prefix : t * string -> bool
     val remove_prefix : t * string -> t
-    val enumerate_prefixes : t -> (string * string) list
+    val enumerate_prefixes : t -> (string * iri) list
     val expand : t * string -> iri
     val abbreviate : t * iri -> (string * string) option (* NONE if no prefix matches *)
 	     
