@@ -27,10 +27,12 @@ clean:
 coverage:
 	./scripts/coverage.sh unit-tests.mlb
 
+MLTON_ARGS	:= -runtime 'copy-generational-ratio 10.0' -runtime 'ram-slop 0.8'
+
 release:
-	mlton load.mlb
-	mlton convert.mlb
-	mlton unit-tests.mlb
+	mlton $(MLTON_ARGS) load.mlb
+	mlton $(MLTON_ARGS) convert.mlb
+	mlton $(MLTON_ARGS) unit-tests.mlb
 	./unit-tests
 
 -include d/*.deps
