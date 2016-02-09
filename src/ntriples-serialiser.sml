@@ -26,7 +26,7 @@ structure NTriplesSerialiser :> RDF_STREAM_SERIALISER = struct
       | string_of_node (RdfNode.LITERAL lit) =
 	"\"" ^ (encode_literal_value (#value lit)) ^ "\"" ^
         (if #lang lit = "" then "" else "@" ^ (#lang lit)) ^
-        (if Iri.is_empty (#dtype lit) then ""
+        (if Iri.isEmpty (#dtype lit) then ""
 	 else "^^" ^ (string_of_node (RdfNode.IRI (#dtype lit))))
 	    
     fun serialise (t, PREFIX prefix) = t  (* ntriples doesn't include prefixes *)

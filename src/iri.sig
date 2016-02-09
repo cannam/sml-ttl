@@ -15,8 +15,10 @@ signature IRI = sig
        consistent ordering as quickly as possible *)
     val compare : t * t -> order
 
-    val empty_iri : t
-    val is_empty : t -> bool
-                               
+    val empty : t
+    val isEmpty : t -> bool
+
+    val addSuffix : (t * WdString.t) -> t
+                            
 end
                     

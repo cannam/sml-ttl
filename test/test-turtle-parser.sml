@@ -93,13 +93,13 @@ functor TestTurtleParserFn (P: RDF_PARSER) : TESTS = struct
         ("local-colon",
          fn () => check_iri_triple_parse
                       "@prefix : <>. :a: :b :c."
-                      { prefixes = [ ("", Iri.empty_iri) ],
+                      { prefixes = [ ("", Iri.empty) ],
                         triples  = [ iri_triple ("a:", "b", "c") ] }
         ),
         ("local-dot",
          fn () => check_iri_triple_parse
                       "@prefix : <>. :a.b :b..c :c.d."
-                      { prefixes = [ ("", Iri.empty_iri) ],
+                      { prefixes = [ ("", Iri.empty) ],
                         triples  = [ iri_triple ("a.b", "b..c", "c.d") ] }
         ),
         ("prefix-dot",
@@ -117,19 +117,19 @@ functor TestTurtleParserFn (P: RDF_PARSER) : TESTS = struct
                 processing." *)
          fn () => check_iri_triple_parse
                       "@prefix : <>.:%61bc :a%62c :ab%63."
-                      { prefixes = [ ( "", Iri.empty_iri ) ],
+                      { prefixes = [ ( "", Iri.empty ) ],
                         triples  = [ iri_triple ("%61bc", "a%62c", "ab%63") ] }
         ),
         ("local-slash-escape-easy", (* escaped chars are not confusing ones *)
          fn () => check_iri_triple_parse
                       "@prefix : <>.:\\~bc :a\\?c :ab\\$."
-                      { prefixes = [ ( "", Iri.empty_iri ) ],
+                      { prefixes = [ ( "", Iri.empty ) ],
                         triples  = [ iri_triple ("~bc", "a?c", "ab$") ] }
         ),
         ("local-slash-escape-tricky", (* escaped chars have other meanings *)
          fn () => check_iri_triple_parse
                       "@prefix : <>.:\\% :a\\#c :ab\\(."
-                      { prefixes = [ ( "", Iri.empty_iri ) ],
+                      { prefixes = [ ( "", Iri.empty ) ],
                         triples  = [ iri_triple ("%", "a#c", "ab(") ] }
         )
     ] @ good_file_tests 

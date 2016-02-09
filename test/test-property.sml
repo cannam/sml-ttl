@@ -55,7 +55,7 @@ functor TestPropertyFn (P: PROPERTY) :> TESTS = struct
                 check Iri.toString
                       (case P.iri (store, goblin_node, "rel:enemyOf") of
                            SOME iri => iri
-                         | NONE => Iri.empty_iri,
+                         | NONE => Iri.empty,
                        spider_iri)),
         ("iri_list",
          fn () =>

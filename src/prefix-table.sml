@@ -92,18 +92,13 @@ structure PrefixTable :> PREFIX_TABLE = struct
 	    case StringMap.find (forward, namespace) of
 		NONE => Iri.fromString curie
 	      | SOME expansion =>
-                let open WdString
-                in
-                    Iri.fromWideString
-                    (concatWith empty
-                                [Iri.toWideString expansion,
-                                 fromUtf8 (String.concatWith ":" rest)])
-                end
+                Iri.addSuffix (expansion,
+                               WdString.fromUtf8 (String.concatWith ":" rest))
 
     fun abbreviate ((_, reverse, trie) : t, iri) =
         let val prefix = IriTrie.prefix_of (trie, iri)
         in
-            if Iri.is_empty prefix
+            if Iri.isEmpty prefix
             then NONE
             else 
 	        case IriMap.find (reverse, prefix) of

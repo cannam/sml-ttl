@@ -46,10 +46,14 @@ structure Iri :> IRI = struct
 
     val compare = Int.compare
 
-    val empty_iri = fromString ""
+    val empty = fromString ""
 
-    fun is_empty id = (id = empty_iri)
-                      
+    fun isEmpty id = (id = empty)
+
+    fun addSuffix (iri, suffix) =
+        fromWideString (WdString.concatWith WdString.empty
+                                            [toWideString iri, suffix])
+                         
 end
 
                            

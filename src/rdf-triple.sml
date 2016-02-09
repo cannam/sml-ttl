@@ -86,7 +86,7 @@ structure RdfTriple = struct
       | string_of_node (BLANK n) = "_:blank" ^ (Int.toString n)
       | string_of_node (LITERAL lit) =
         "\"" ^ (#value lit) ^ "\"" ^
-        (if #dtype lit = Iri.empty_iri then ""
+        (if #dtype lit = Iri.empty then ""
 	 else "^^" ^ (Iri.toString (#dtype lit))) ^
         (if #lang lit = "" then ""
 	 else "@" ^ (#lang lit))
