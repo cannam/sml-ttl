@@ -1,0 +1,36 @@
+
+check back to yertle:
+
+  % fix
+  collection serialisation (test/spec/turtle-syntax-lists-05.ttl)
+
+coding/naming standards:
+
+ * signatures LIKE_THIS and they go in file.sig (but there may also be
+ non-public signatures in file.sml)
+
+ * structures and functors LikeThis and LikeThisFn
+
+ * functions like_this? maybe public ones likeThis?
+
+ * src/subdir.mlb is build file for src/subdir/*.sml ?
+
+pull out sml-utf8, sml-log, trie to separate repos
+
+unit tests for trie
+
+sml-utf8 tests, and add support for 5 and 6 byte encodings?
+
+rename from sml-ttl to... what?
+
+tidy up tests, so they all have a similar layout (test-collection may
+be a good example)
+
+licence & copyright in top of source files & in COPYING etc
+
+"where" clauses in signature expressions to avoid having to
+over-specify structure types
+
+ensure abbreviation does not produce any local part with "/" in it (or
+other pname local part excluded / escaped chars? - what's the right
+way to do this?)
