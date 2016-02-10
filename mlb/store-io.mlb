@@ -1,4 +1,5 @@
 store.mlb
+../src/file-extension.sml
 ../src/turtle-exporter.sml
 ../src/store-loader.sml
 ../src/store-exporter.sml

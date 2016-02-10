@@ -30,18 +30,15 @@ structure StoreFileExporter : STORE_FILE_EXPORTER = struct
     structure Store = Store
 
     fun save_to_file store filename =
-        let val extension =
-                case String.tokens (fn x => x = #".") filename of
-                    [] => ""
-                  | bits => hd (rev bits)
+        let val exporter = 
+                case FileExtension.extension filename of
+                    "ntriples" => NTriplesExporter.save_to_file
+                  | "nt" => NTriplesExporter.save_to_file
+                  | "ttl" => TurtleExporter.save_to_file
+                  | other => raise Fail ("Unknown or unsupported file extension \""
+                                         ^ other ^ "\"")
         in
-            (case extension of
-                 "ntriples" => NTriplesExporter.save_to_file
-               | "nt" => NTriplesExporter.save_to_file
-               | "ttl" => TurtleExporter.save_to_file
-               | other => raise Fail ("Unknown or unsupported file extension \""
-                                      ^ extension ^ "\""))
-                store filename
+            exporter store filename
         end
                                   
 end

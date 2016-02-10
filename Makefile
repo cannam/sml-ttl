@@ -9,6 +9,7 @@ convert:	d/convert.deps convert.mlb
 
 unit-tests:	d/unit-tests.deps unit-tests.mlb
 	./scripts/polybuild unit-tests.mlb
+	./unit-tests
 
 MLBS	:= load.mlb convert.mlb unit-tests.mlb $(wildcard mlb/*.mlb)
 
