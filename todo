@@ -23,9 +23,6 @@ sml-utf8 tests, and add support for 5 and 6 byte encodings?
 
 rename from sml-ttl to... what?
 
-tidy up tests, so they all have a similar layout (test-collection may
-be a good example)
-
 extend test coverage
 
 licence & copyright in top of source files & in COPYING etc
@@ -35,4 +32,4 @@ over-specify structure types
 
 ensure abbreviation does not produce any local part with "/" in it (or
 other pname local part excluded / escaped chars? - what's the right
-way to do this?)
+way to do this?) + test it
