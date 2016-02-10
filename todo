@@ -26,6 +26,8 @@ rename from sml-ttl to... what?
 tidy up tests, so they all have a similar layout (test-collection may
 be a good example)
 
+extend test coverage
+
 licence & copyright in top of source files & in COPYING etc
 
 "where" clauses in signature expressions to avoid having to
