@@ -18,6 +18,9 @@ signature IRI = sig
     val empty : t
     val isEmpty : t -> bool
 
+    (* Return the length of the IRI in ISO 10646-1 codepoints *)
+    val size : t -> int
+
     val addSuffix : (t * WdString.t) -> t
                             
 end

@@ -50,6 +50,8 @@ structure Iri :> IRI = struct
 
     fun isEmpty id = (id = empty)
 
+    fun size iri = WdString.size (toWideString iri)
+			 
     fun addSuffix (iri, suffix) =
         fromWideString (WdString.concatWith WdString.empty
                                             [toWideString iri, suffix])

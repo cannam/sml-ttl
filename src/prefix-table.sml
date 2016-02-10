@@ -96,23 +96,19 @@ structure PrefixTable :> PREFIX_TABLE = struct
                                WdString.fromUtf8 (String.concatWith ":" rest))
 
     fun abbreviate ((_, reverse, trie) : t, iri) =
-        let val prefix = IriTrie.prefix_of (trie, iri)
-        in
-            if Iri.isEmpty prefix
-            then NONE
-            else 
-	        case IriMap.find (reverse, prefix) of
-	            NONE => raise Fail "error: prefix in trie but not reverse map"
-	          | SOME ns =>
-                    let open WdString
-                    in
-	                SOME (ns,
-                              toUtf8
-                                  (implode
-                                       (List.drop
-                                            (explode (Iri.toWideString iri),
-                                             WdString.size (Iri.toWideString prefix)))))
-                    end
-        end
-            
+      let val prefix = IriTrie.prefix_of (trie, iri)
+	  open WdString
+	  fun drop_prefix (iri, n) =
+	      (*!!! could do with WdString.extract or substring *)
+  	      implode (List.drop (explode (Iri.toWideString iri), n))
+      in
+	  if Iri.isEmpty prefix
+	  then NONE
+	  else
+	      case IriMap.find (reverse, prefix) of
+		  NONE => raise Fail "error: prefix in trie but not reverse map"
+		| SOME ns =>
+	          SOME (ns, toUtf8 (drop_prefix (iri, Iri.size prefix)))
+      end
+		   
 end
