@@ -15,7 +15,7 @@ coding/naming standards:
 
  * src/subdir.mlb is build file for src/subdir/*.sml ?
 
-pull out sml-utf8, sml-log, trie to separate repos
+pull out sml-utf8, sml-log, test-support, trie to separate repos
 
 unit tests for trie
 
@@ -33,3 +33,6 @@ over-specify structure types
 ensure abbreviation does not produce any local part with "/" in it (or
 other pname local part excluded / escaped chars? - what's the right
 way to do this?) + test it
+
+review http://mlton.org/ObjectOrientedProgramming for ideas for
+dynamic dispatch for I/O functions
