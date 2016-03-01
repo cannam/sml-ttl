@@ -153,9 +153,18 @@ structure TurtleCodepoints = struct
 	                from_string "<>\"{}|^`\\"
 	            ])
 	
+    val pname_local_to_escape =
+        with_name "character that must be escaped in local part"
+                  (* not sure about this one? we definitely don't have
+                     to escape e.g. underscore, even though we can *)
+                  (from_string "~!$&'()*+,;=/?#@-")
+	
     val pname_local_escapable =
-        with_name "local part escaped character"
-                  (from_string "_~.!$&'()*+,;=/?#@%-")
+        with_name "character that can be escaped in local part"
+                  (union [
+                        pname_local_to_escape,
+                        from_string "_%."
+                  ])
 
     val pname_excluded =
 	with_name "prefixed-name excluded character"

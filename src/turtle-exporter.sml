@@ -39,7 +39,7 @@ structure TurtleExporter : STORE_EXPORTER = struct
     fun was_written (triple, d : ser_data) = Triples.member (#written d, triple)
 
     fun encode_local str =
-        Encode.encode_string_except (TurtleCodepoints.pname_local_escapable,
+        Encode.encode_string_except (TurtleCodepoints.pname_local_to_escape,
                                      Encode.backslash_encode)
                                     str
 
