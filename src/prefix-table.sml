@@ -7,6 +7,7 @@ structure IriTrie :> TRIE where type entry = Iri.t = struct
 				              end)
 
     type t = WordListTrie.t
+    type trie = t
     type entry = Iri.t
 
     val empty = WordListTrie.empty
