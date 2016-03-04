@@ -16,19 +16,19 @@ unit-tests:	d/unit-tests.deps unit-tests.mlb
 MLBS	:= load.mlb convert.mlb unit-tests.mlb $(wildcard mlb/*.mlb)
 
 d/load.deps:	load.mlb $(MLBS)
-	${SCRIPTS}/dependencies $< > $@
+	${SCRIPTS}/mlb-dependencies $< > $@
 
 d/convert.deps:	convert.mlb $(MLBS)
-	${SCRIPTS}/dependencies $< > $@
+	${SCRIPTS}/mlb-dependencies $< > $@
 
 d/unit-tests.deps:	unit-tests.mlb $(MLBS)
-	${SCRIPTS}/dependencies $< > $@
+	${SCRIPTS}/mlb-dependencies $< > $@
 
 clean:
 	rm -f load convert unit-tests
 
 coverage:
-	${SCRIPTS}/coverage.sh unit-tests.mlb
+	${SCRIPTS}/mlb-coverage unit-tests.mlb
 
 MLTON_ARGS	:= -runtime 'copy-generational-ratio 10.0' -runtime 'ram-slop 0.8'
 
