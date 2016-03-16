@@ -1,0 +1,10 @@
+prerequisites.mlb
+rdf-base/codepointset.sml
+rdf-base/string-compare.sml
+rdf-base/iri.sig
+rdf-base/iri.sml
+rdf-base/rdf-node.sig
+rdf-base/rdf-node.sml
+rdf-base/rdf-triple.sig
+rdf-base/rdf-triple.sml
+rdf-base/rdf-standard-iris.sml

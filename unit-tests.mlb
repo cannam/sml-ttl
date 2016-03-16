@@ -1,4 +1,4 @@
-mlb/sml-ttl.mlb
+src/sml-ttl.mlb
 test/tests.sig
 test/test-support.sml
 test/test-trie.sml

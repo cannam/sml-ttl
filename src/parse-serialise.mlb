@@ -1,0 +1,16 @@
+rdf-base.mlb
+parse-serialise/source.sml
+parse-serialise/rdf-collection.sml
+parse-serialise/rdf-parser.sig
+parse-serialise/rdf-parser-fn.sml
+parse-serialise/rdf-serialiser.sig
+parse-serialise/rdf-serialiser-fn.sml
+parse-serialise/encode.sml
+parse-serialise/prefix-table.sig
+parse-serialise/prefix-table.sml
+parse-serialise/ntriples-codepoints.sml
+parse-serialise/ntriples-serialiser.sml
+parse-serialise/turtle-codepoints.sml
+parse-serialise/turtle-parser.sml
+parse-serialise/rdf-converter.sig
+parse-serialise/rdf-converter-fn.sml
