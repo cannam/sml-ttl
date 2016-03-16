@@ -28,3 +28,10 @@ over-specify structure types
 
 review http://mlton.org/ObjectOrientedProgramming for ideas for
 dynamic dispatch for I/O functions
+
+review the API generally against "what we'd like the most basic entry
+points of the API to look like"
+e.g. RdfFileParser.parse "filename.ttl" "http://base/iri"
+returning triples
+e.g. RdfFileLoader.load "filename.ttl" "http://base/iri"
+returning a new store
