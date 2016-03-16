@@ -1,12 +1,12 @@
 
 functor TestTurtleSpecFn (P: RDF_PARSER) : TESTS = struct
 
-    open TestSupport RdfTriple
+    open TestSupport RdfNode RdfTriple
 
     val name = "turtle-spec"
 
     structure L = TurtleLoader (* for manifest in ttl format *)
-    structure S = L.Store
+    structure S = Store
                      
     val test_file_dir = "test/spec"
     val out_file_dir = "test/out"

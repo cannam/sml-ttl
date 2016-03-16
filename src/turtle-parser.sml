@@ -1,6 +1,7 @@
 
 structure TurtleStreamParser : RDF_STREAM_PARSER = struct
 
+    open RdfNode
     open RdfTriple
     open TurtleCodepoints
 

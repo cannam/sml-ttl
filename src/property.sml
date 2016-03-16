@@ -1,10 +1,13 @@
 
-(* should be "store property" like "store collection"? *)
+(* !!! should be "store property" like "store collection"? *)
 
-structure Property : PROPERTY = struct
+structure Property :> STORE_PROPERTY = struct
 
-    datatype node = datatype RdfNode.node
     type iri = Iri.t
+    datatype node = datatype RdfNode.node
+    type store = Store.t
+
+    open RdfNode
 
     fun match (s : Store.t, subject, name) = 
         Store.match (s, (SOME subject,

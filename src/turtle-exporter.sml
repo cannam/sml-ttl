@@ -2,11 +2,12 @@
 (* This is an exporter, rather than just a serialiser like the
    NTriples one, because it needs to be backed by a store *)
 
-structure TurtleExporter : STORE_EXPORTER = struct
+structure TurtleExporter :> STORE_EXPORTER where type store = Store.t = struct
 
-    structure Store = Store
+    type store = Store.t
+    structure S = Store
 
-    open RdfTriple
+    open RdfNode
 
     fun sorted_by_subject triples = (* with iri-subject triples before blanks *)
         let fun greater (n1, n2) =
@@ -162,7 +163,7 @@ structure TurtleExporter : STORE_EXPORTER = struct
             else
                 let val _ = TextIO.output (#stream d, " (");
                     val d = 
-                        foldl (fn (t as (_, pred, obj) : triple, d) =>
+                        foldl (fn (t as (_, pred, obj) : RdfTriple.triple, d) =>
                                   let val d = 
                                           { stream = #stream d,
                                             subject = #subject d,

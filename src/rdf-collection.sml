@@ -10,6 +10,7 @@ end
 
 structure RdfCollection : RDF_COLLECTION = struct
 
+    open RdfNode
     open RdfTriple
     open RdfStandardIRIs
 

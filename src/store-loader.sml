@@ -1,15 +1,14 @@
 
 structure StoreLoadBase : STORE_LOAD_BASE = struct
 
-    structure Store = Store
-			  
     datatype result = LOAD_ERROR of string | OK of Store.t
-			  
     type base_iri = string
 
 end
                                             
-functor StoreStreamLoaderFn (P: RDF_STREAM_PARSER) : STORE_LOADER = struct
+functor StoreStreamLoaderFn (P: RDF_STREAM_PARSER) : STORE_LOADER where type store = Store.t = struct
+
+    type store = Store.t
 
     open StoreLoadBase
 
@@ -54,7 +53,9 @@ end
 
 structure TurtleLoader = StoreStreamLoaderFn(TurtleStreamParser)
                                             
-structure StoreFileLoader : STORE_FILE_LOADER = struct
+structure StoreFileLoader :> STORE_FILE_LOADER where type store = Store.t = struct
+
+    type store = Store.t
 
     open StoreLoadBase
 

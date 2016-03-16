@@ -1,7 +1,7 @@
 
-functor StoreStreamExporterFn (S: RDF_STREAM_SERIALISER) : STORE_EXPORTER = struct
+functor StoreStreamExporterFn (S: RDF_STREAM_SERIALISER) :> STORE_EXPORTER where type store = Store.t = struct
 
-    structure Store = Store
+    type store = Store.t
 
     fun save_to_stream store stream =
         let val serialiser = S.new stream
@@ -25,9 +25,9 @@ end
 					    
 structure NTriplesExporter = StoreStreamExporterFn(NTriplesSerialiser)
 
-structure StoreFileExporter : STORE_FILE_EXPORTER = struct
+structure StoreFileExporter :> STORE_FILE_EXPORTER where type store = Store.t = struct
 
-    structure Store = Store
+    type store = Store.t
 
     fun save_to_file store filename =
         let val exporter = 

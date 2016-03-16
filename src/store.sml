@@ -24,7 +24,7 @@ structure Store :> STORE = struct
     }
 
     fun string_of_patnode NONE = "*"
-      | string_of_patnode (SOME n) = RdfTriple.string_of_node n
+      | string_of_patnode (SOME n) = RdfNode.string_of_node n
                     
     fun string_of_pattern (a,b,c) =
 	"(" ^ (string_of_patnode a) ^

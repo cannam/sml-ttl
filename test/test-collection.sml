@@ -65,11 +65,11 @@ functor TestCollectionFn (Arg : TEST_COLLECTION_ARG) :> TESTS = struct
             val first_link_node = #1 (hd tt) (* subj node of "x" triple *)
             val last_link_node = #1 (hd (rev tt)) (* subj node of "z" triple *)
         in
-            check RdfTriple.string_of_node
+            check RdfNode.string_of_node
                   (C.start_of_collection (store, last_link_node),
                    first_link_node)
             andalso
-            check RdfTriple.string_of_node
+            check RdfNode.string_of_node
                   (C.start_of_collection (store, first_link_node),
                    first_link_node)
         end

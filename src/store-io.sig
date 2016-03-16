@@ -1,10 +1,7 @@
 
 signature STORE_LOAD_BASE = sig
-
-    structure Store : STORE
 			  
     type base_iri = string
-
     datatype result = LOAD_ERROR of string | OK of Store.t
 
 end
@@ -15,10 +12,11 @@ signature STORE_LOADER = sig
        is being loaded. *)
 
     include STORE_LOAD_BASE
+    type store
                      
-    val load_file : Store.t -> base_iri -> string -> result
-    val load_stream : Store.t -> base_iri -> TextIO.instream -> result
-    val load_string : Store.t -> base_iri -> string -> result
+    val load_file : store -> base_iri -> string -> result
+    val load_stream : store -> base_iri -> TextIO.instream -> result
+    val load_string : store -> base_iri -> string -> result
                      
     val load_file_as_new_store : base_iri -> string -> result
     val load_stream_as_new_store : base_iri -> TextIO.instream -> result
@@ -35,8 +33,9 @@ signature STORE_FILE_LOADER = sig
        internally. *)
 
     include STORE_LOAD_BASE
+    type store
     
-    val load_file : Store.t -> base_iri -> string -> result
+    val load_file : store -> base_iri -> string -> result
     val load_file_as_new_store : base_iri -> string -> result
 
 end
@@ -46,10 +45,10 @@ signature STORE_EXPORTER = sig
     (* Signature for exporters that already know, or assume, what
        format is being saved to. *)
 
-    structure Store : STORE
+    type store
 
-    val save_to_file : Store.t -> string -> unit
-    val save_to_stream : Store.t -> TextIO.outstream -> unit
+    val save_to_file : store -> string -> unit
+    val save_to_stream : store -> TextIO.outstream -> unit
 
 end
 
@@ -61,11 +60,11 @@ signature STORE_FILE_EXPORTER = sig
        probably work by guessing and delegating to the appropriate
        STORE_EXPORTER internally. *)
     
-    structure Store : STORE
+    type store
 
     (* !!! todo: base iri *)
                      
-    val save_to_file : Store.t -> string -> unit
+    val save_to_file : store -> string -> unit
 
 end
 
