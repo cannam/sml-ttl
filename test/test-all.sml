@@ -41,8 +41,23 @@ val all_tests = [
     (TestTurtleParser.name, TestTurtleParser.tests ()),
     (TestTurtleSpec.name, TestTurtleSpec.tests ())
 ]
+	 
+fun usage () =
+    let open TextIO in
+	output (stdErr,
+	    "Usage:\n" ^
+            "    test-all [-v]\n");
+        raise Fail "Incorrect arguments specified"
+    end
 
+fun handle_args args =
+    case args of
+        "-v"::rest => (Log.set_log_level Log.INFO ; handle_args rest)
+      | [] => app run_test_suite all_tests
+      | _ => usage ()
+           
 fun main () =
-    app run_test_suite all_tests
+    handle_args (CommandLine.arguments ())
+    handle Fail msg => TextIO.output (TextIO.stdErr, "Exception: " ^ msg ^ "\n")
 
         
