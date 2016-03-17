@@ -35,3 +35,7 @@ e.g. RdfFileParser.parse "filename.ttl" "http://base/iri"
 returning triples
 e.g. RdfFileLoader.load "filename.ttl" "http://base/iri"
 returning a new store
+
+ * make sure all the file conversion sources/targets are covered in the unit tests
+
+
