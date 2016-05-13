@@ -25,7 +25,7 @@ d/unit-tests.deps:	unit-tests.mlb $(MLBS)
 	${SCRIPTS}/mlb-dependencies $< > $@
 
 clean:
-	rm -f load convert unit-tests
+	rm -f load convert unit-tests d
 
 coverage:
 	${SCRIPTS}/mlb-coverage unit-tests.mlb
