@@ -1,42 +1,42 @@
 
 SCRIPTS	:= ../sml-buildscripts
 
-all:	load convert unit-tests
+all:	programs/load programs/convert test/tests
 
-load:	d/load.deps load.mlb
-	${SCRIPTS}/polybuild load.mlb
+programs/load:		programs/load.mlb d/load.deps 
+	${SCRIPTS}/polybuild $<
 
-convert:	d/convert.deps convert.mlb
-	${SCRIPTS}/polybuild convert.mlb
+programs/convert:	programs/convert.mlb d/convert.deps 
+	${SCRIPTS}/polybuild $<
 
-unit-tests:	d/unit-tests.deps unit-tests.mlb
-	${SCRIPTS}/polybuild unit-tests.mlb
-	./unit-tests
+test/tests:		test/tests.mlb d/tests.deps
+	${SCRIPTS}/polybuild $<
+	$@
 
-MLBS	:= load.mlb convert.mlb unit-tests.mlb $(wildcard mlb/*.mlb)
+MLBS	:= programs/load.mlb programs/convert.mlb test/tests.mlb $(wildcard src/*.mlb)
 
-d/load.deps:	load.mlb $(MLBS)
+d/load.deps:	programs/load.mlb $(MLBS)
 	${SCRIPTS}/mlb-dependencies $< > $@
 
-d/convert.deps:	convert.mlb $(MLBS)
+d/convert.deps:	programs/convert.mlb $(MLBS)
 	${SCRIPTS}/mlb-dependencies $< > $@
 
-d/unit-tests.deps:	unit-tests.mlb $(MLBS)
+d/tests.deps:	test/tests.mlb $(MLBS)
 	${SCRIPTS}/mlb-dependencies $< > $@
 
 clean:
-	rm -f load convert unit-tests d
+	rm -f programs/load programs/convert test/tests d/*
 
 coverage:
-	${SCRIPTS}/mlb-coverage unit-tests.mlb
+	${SCRIPTS}/mlb-coverage test/tests.mlb
 
 MLTON_ARGS	:= -runtime 'copy-generational-ratio 10.0' -runtime 'ram-slop 0.8'
 
 release:
-	mlton $(MLTON_ARGS) load.mlb
-	mlton $(MLTON_ARGS) convert.mlb
-	mlton $(MLTON_ARGS) unit-tests.mlb
-	./unit-tests
+	mlton $(MLTON_ARGS) programs/load.mlb
+	mlton $(MLTON_ARGS) programs/convert.mlb
+	mlton $(MLTON_ARGS) test/tests.mlb
+	test/tests
 
 -include d/*.deps
 
