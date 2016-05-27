@@ -13,7 +13,8 @@ signature RDF_PARSER = sig
 
     type base_iri = string
 
-    val parse : base_iri -> TextIO.instream -> parsed (* does not close the stream *)
+    (* does not close the input stream after parsing *)
+    val parse : base_iri -> TextIO.instream -> parsed
 
 end
 
@@ -32,7 +33,8 @@ signature RDF_STREAM_PARSER = sig
 
     type base_iri = string
                      
-    val parse : base_iri -> TextIO.instream -> stream_value (* does not close the stream *)
+    (* does not close the input stream after parsing *)
+    val parse : base_iri -> TextIO.instream -> stream_value
                      
 end
                                   

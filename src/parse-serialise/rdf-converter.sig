@@ -12,8 +12,14 @@ signature RDF_CONVERTER = sig
 
     include RDF_CONVERTER_BASE
     
-    (* Signature for converters that already know, or assume, what
-       formats to convert from and to *)
+    (* An RDF_CONVERTER converts from one file or stream directly to
+       another. It may use a store or any other magic in between, but
+       the API does not make the intermediate triples visible.
+
+       The RDF_CONVERTER signature is for converters that already
+       know, or assume, what formats to convert from and to. (Unlike
+       RDF_FILE_CONVERTER, which determines these based on file
+       extensions.) *)
                         
     val convert : base_iri -> TextIO.instream -> TextIO.outstream -> result
 
