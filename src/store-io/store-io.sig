@@ -8,8 +8,12 @@ end
 			  
 signature STORE_LOADER = sig
 
-    (* Signature for loaders that already know, or assume, what format
-       is being loaded. *)
+    (* STORE_LOADER and STORE_FILE_LOADER load RDF triples from a file
+       or text stream into a queryable store.
+
+       The STORE_LOADER signature is for loaders that load from a
+       single format, and so don't need to be told what format to
+       read. *)
 
     include STORE_LOAD_BASE
     type store
@@ -42,8 +46,12 @@ end
                                     
 signature STORE_EXPORTER = sig
 
-    (* Signature for exporters that already know, or assume, what
-       format is being saved to. *)
+    (* STORE_EXPORTER and STORE_FILE_EXPORTER save RDF triples from a
+       store to a file or text stream.
+
+       The STORE_EXPORTER signature is for exporters that save to a
+       single format, and so don't need to be told what format to save
+       to. *)
 
     type store
 
