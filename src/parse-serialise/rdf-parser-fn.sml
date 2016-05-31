@@ -1,16 +1,9 @@
 
 functor RdfParserFn (P: RDF_STREAM_PARSER) : RDF_PARSER = struct
 
-    type prefix = P.prefix
-    type triple = P.triple
-    type base_iri = P.base_iri
+    (* Turn a streaming parser into a one-shot parser *)
 
-    datatype parsed =
-             PARSE_ERROR of string |
-             PARSED of {
-                 prefixes : prefix list,
-                 triples : triple list
-             }
+    open RdfParserBase
 
     fun parse iri stream : parsed =
         let fun parse' acc f =

@@ -28,3 +28,4 @@ signature RDF_STREAM_SERIALISER = sig
 
 end
 			       
+(*!!! + file serialiser (i.e. using extension, analogous to store file exporter) *)

@@ -1,8 +1,10 @@
 
 structure TurtleStreamParser : RDF_STREAM_PARSER = struct
 
+    open RdfParserBase
     open RdfNode
     open RdfTriple
+             
     open TurtleCodepoints
 
     type base_iri = string

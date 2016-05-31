@@ -23,9 +23,8 @@ structure FileExtensionDrivenConverter : RDF_FILE_CONVERTER = struct
                           
     (*!!! the parsers/serialisers should declare their expected file extensions *)
     fun is_streamable infile outfile =
-        case FileExtension.extension outfile of
-            "ntriples" => true
-          | "nt" => true
+        case FileType.type_of outfile of
+            FileType.NTRIPLES => true
           | _ => false
                               
     fun convert_streamable base_iri infile outfile =

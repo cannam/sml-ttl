@@ -60,14 +60,12 @@ structure StoreFileLoader :> STORE_FILE_LOADER where type store = Store.t = stru
     open StoreLoadBase
 
     fun load_file store iri filename =
-        let val loader =
-                case FileExtension.extension filename of
-                    "ttl" => TurtleLoader.load_file 
-                  | "n3" => TurtleLoader.load_file
-                  | "ntriples" => TurtleLoader.load_file
-                  | "nt" => TurtleLoader.load_file
-                  | other => raise Fail ("Unknown or unsupported file extension \""
-                                         ^ other ^ "\"")
+        let open FileType
+            val loader =
+                case type_of filename of
+                    TURTLE => TurtleLoader.load_file 
+                  | NTRIPLES => TurtleLoader.load_file
+                  | _ => raise Fail "Unknown or unsupported file extension"
         in
             loader store iri filename
         end

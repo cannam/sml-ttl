@@ -30,13 +30,12 @@ structure StoreFileExporter :> STORE_FILE_EXPORTER where type store = Store.t = 
     type store = Store.t
 
     fun save_to_file store filename =
-        let val exporter = 
-                case FileExtension.extension filename of
-                    "ntriples" => NTriplesExporter.save_to_file
-                  | "nt" => NTriplesExporter.save_to_file
-                  | "ttl" => TurtleExporter.save_to_file
-                  | other => raise Fail ("Unknown or unsupported file extension \""
-                                         ^ other ^ "\"")
+        let open FileType
+            val exporter = 
+                case type_of filename of
+                    NTRIPLES => NTriplesExporter.save_to_file
+                  | TURTLE => TurtleExporter.save_to_file
+                  | _ => raise Fail "Unknown or unsupported file extension"
         in
             exporter store filename
         end
