@@ -51,7 +51,9 @@ signature STORE_EXPORTER = sig
 
        The STORE_EXPORTER signature is for exporters that save to a
        single format, and so don't need to be told what format to save
-       to. *)
+       to.
+
+       STORE_EXPORTER raises an exception on failure. *)
 
     type store
 
@@ -66,11 +68,13 @@ signature STORE_FILE_EXPORTER = sig
        exported based on file metadata, e.g. suffix. These therefore
        can only save to files, not arbitrary text streams, and will
        probably work by guessing and delegating to the appropriate
-       STORE_EXPORTER internally. *)
+       STORE_EXPORTER internally.
+
+       STORE_FILE_EXPORTER raises an exception on failure. *)
     
     type store
 
-    (* !!! todo: base iri *)
+    (* !!! todo: base iri? *)
                      
     val save_to_file : store -> string -> unit
 

@@ -42,15 +42,42 @@ fun load_to_store_example () =
         open StoreFileLoader
     in
         case load_file_as_new_store base_iri filename of
-            LOAD_ERROR text => (print ("Load failed: " ^ text ^ "\n"); Store.empty)
+            LOAD_ERROR text =>
+            (print ("Load failed: " ^ text ^ "\n"); Store.empty)
           | OK store => store
     end
 
 (* 5. Load a Turtle file into a store, query it, and save the results
       as an NTriples file *)
 
-(* !!! *)
+fun conversion_example_1 () =
+    let
+        val filename = "test/other/goblin.ttl"
+        val outfile = "test/out/temporary1.ntriples"
+        val base_iri = "file:///" ^ filename
+        open StoreFileLoader
+        open StoreFileExporter
+    in
+        case load_file_as_new_store base_iri filename of
+            LOAD_ERROR text =>
+            (print ("Load failed: " ^ text ^ "\n"); false)
+          | OK store => (save_to_file store outfile; true)
+    end
 
+(* 6. Do that again but using an RDF converter *)
+
+fun conversion_example_2 () =
+    let
+        val filename = "test/other/goblin.ttl"
+        val outfile = "test/out/temporary2.ntriples"
+        val base_iri = "file:///" ^ filename
+        open FileExtensionDrivenConverter
+    in
+        case convert base_iri filename outfile of
+            CONVERSION_ERROR text =>
+            (print ("Conversion failed: " ^ text ^ "\n"); false)
+          | CONVERTED => true
+    end
 
 
         
@@ -59,6 +86,8 @@ fun main () =
         val triples_from_turtle = read_turtle_stream_example ()
         val triples_from_any = read_any_file_example ()
         val store_from_turtle = load_to_store_example ()
+        val converted_1 = conversion_example_1 ()
+        val converted_2 = conversion_example_2 ()
     in
 
         print ("Parsed " ^
@@ -71,7 +100,14 @@ fun main () =
 
         print ("Loaded " ^
                (Int.toString (length (Store.enumerate store_from_turtle))) ^
-               " triple(s) into store from file\n")
+               " triple(s) into store from file\n");
+
+        print ("Conversion example 1 result: " ^
+               (Bool.toString converted_1) ^ "\n");
+
+        print ("Conversion example 2 result: " ^
+               (Bool.toString converted_2) ^ "\n")
+              
     end
         
         
