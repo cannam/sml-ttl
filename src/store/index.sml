@@ -60,7 +60,7 @@ structure Index :> INDEX = struct
         (ord, NodeTrie.remove (ix, decompose (ord, triple)))
 
     fun foldl_match f acc ((ord, ix) : t, pattern) =
-        NodeTrie.foldl_pattern_match
+        NodeTrie.foldlPatternMatch
             (fn (e, acc) => f (recompose (ord, e), acc))
             acc
             (ix, decompose (ord, pattern))

@@ -32,8 +32,6 @@ fun run_test_suite (suite_name, tests) =
         end
             
 val all_tests = [
-    (*!!! remove trie tests? (is the library properly tested separately? *)
-    (TestTrie.name, TestTrie.tests ()),
     (TestPrefix.name, TestPrefix.tests ()),
     (TestProperty.name, TestProperty.tests ()),
     (TestIndex.name, TestIndex.tests ()),

@@ -30,15 +30,15 @@ structure IriTrie :> TRIE where type entry = Iri.t = struct
     fun enumerate trie =
         List.map implode (WordListTrie.enumerate trie)
 
-    fun foldl_prefix_match f acc (trie, s) =
-        WordListTrie.foldl_prefix_match (fn (e, acc) => f (implode e, acc))
+    fun foldlPrefixMatch f acc (trie, s) =
+        WordListTrie.foldlPrefixMatch (fn (e, acc) => f (implode e, acc))
                                         acc (trie, explode s)
                  
-    fun prefix_match (trie, s) =
-        List.map implode (WordListTrie.prefix_match (trie, explode s))
+    fun prefixMatch (trie, s) =
+        List.map implode (WordListTrie.prefixMatch (trie, explode s))
 
-    fun prefix_of (trie, s) =
-        implode (WordListTrie.prefix_of (trie, explode s))
+    fun prefixOf (trie, s) =
+        implode (WordListTrie.prefixOf (trie, explode s))
 
 end
 
@@ -94,7 +94,7 @@ structure PrefixTable :> PREFIX_TABLE = struct
                                WdString.fromUtf8 (String.concatWith ":" rest))
 
     fun abbreviate ((_, reverse, trie) : t, iri) =
-      let val prefix = IriTrie.prefix_of (trie, iri)
+      let val prefix = IriTrie.prefixOf (trie, iri)
 	  open WdString
 	  fun drop_prefix (iri, n) =
   	      implode (List.drop (explode (Iri.toWideString iri), n))
