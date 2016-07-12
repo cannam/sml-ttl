@@ -44,7 +44,7 @@ fun convert_file iri (infile, outfile) =
         
 fun handle_args args =
     case args of
-        "-v"::rest => (Log.set_log_level Log.INFO ; handle_args rest)
+        "-v"::rest => (Log.setLogLevel Log.INFO ; handle_args rest)
       | [infile, outfile] => convert_file "blah" (infile, outfile) (*!!! + base iri *)
       | [infile] => convert_stdout "blah" infile (*!!! + base iri *)
       | _ => usage ()
