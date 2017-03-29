@@ -49,9 +49,9 @@ structure Store :> STORE = struct
     fun foldl_match f acc ({ prefixes, indexes } : t, pattern) =
         let val index = IndexPicker.pick_index (indexes, pattern)
         in
-            Log.info (fn () => ("Store: pattern %, index \"%\"",
-                                [Log.S (string_of_pattern pattern),
-                                 Log.S (Index.name index)]));
+            Log.info (fn () => ["Store: pattern %, index \"%\"",
+                                Log.S (string_of_pattern pattern),
+                                Log.S (Index.name index)]);
             Index.foldl_match f acc (index, pattern)
         end
 
@@ -61,8 +61,8 @@ structure Store :> STORE = struct
     fun match pattern =
         let val result = foldl_match (op::) [] pattern
         in
-            Log.info (fn () => ("Store: matched % results",
-                                [Log.I (length result)]));
+            Log.info (fn () => ["Store: matched % results",
+                                Log.I (length result)]);
             result
         end
 

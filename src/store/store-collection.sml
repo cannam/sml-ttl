@@ -14,9 +14,9 @@ structure StoreCollection :> STORE_COLLECTION = struct
         let val pat = (SOME node, SOME node_rest, NONE)
             val result = not (null (S.match (store, pat)))
         in
-            Log.info (fn () => ("StoreCollection: % % a collection node",
-                                [Log.S (RdfNode.string_of_node node),
-                                 Log.S (if result then "is" else "is not")]));
+            Log.info (fn () => ["StoreCollection: % % a collection node",
+                                Log.S (RdfNode.string_of_node node),
+                                Log.S (if result then "is" else "is not")]);
             result
         end
 
@@ -44,9 +44,9 @@ structure StoreCollection :> STORE_COLLECTION = struct
                     end
             val result = triples' (store, (start_of_collection (store, node)), [])
         in
-            Log.info (fn () => ("StoreCollection: node % yields collection:\n%",
-                                [Log.S (RdfNode.string_of_node node),
-                                 Log.S (RdfTriple.string_of_triples result)]));
+            Log.info (fn () => ["StoreCollection: node % yields collection:\n%",
+                                Log.S (RdfNode.string_of_node node),
+                                Log.S (RdfTriple.string_of_triples result)]);
             result
         end
 
