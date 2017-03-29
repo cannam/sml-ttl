@@ -1,19 +1,21 @@
 
 SCRIPTS	:= ../sml-buildscripts
 
+BUILDER	:= ${SCRIPTS}/polybuild
+
 all:	programs/load programs/convert example test/tests
 
 programs/load:		programs/load.mlb d/load.deps 
-	${SCRIPTS}/polybuild $<
+	${BUILDER} $<
 
 programs/convert:	programs/convert.mlb d/convert.deps 
-	${SCRIPTS}/polybuild $<
+	${BUILDER} $<
 
 example:		example.mlb d/example.deps
-	${SCRIPTS}/polybuild $<
+	${BUILDER} $<
 
 test/tests:		test/tests.mlb d/tests.deps
-	${SCRIPTS}/polybuild $<
+	${BUILDER} $<
 	$@
 
 MLBS	:= programs/load.mlb programs/convert.mlb example.mlb test/tests.mlb $(wildcard src/*.mlb)
