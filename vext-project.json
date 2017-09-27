@@ -1,0 +1,28 @@
+{
+    "config": {
+        "extdir": "ext"
+    },
+    "libraries": {
+        "sml-smlnj-containers": {
+            "vcs": "hg",
+            "service": "bitbucket",
+	    "owner": "cannam"
+        },
+        "sml-utf8": {
+            "vcs": "hg",
+            "service": "bitbucket",
+	    "owner": "cannam"
+        },
+        "sml-trie": {
+            "vcs": "hg",
+            "service": "bitbucket",
+	    "owner": "cannam"
+        },
+        "sml-log": {
+            "vcs": "hg",
+            "service": "bitbucket",
+	    "owner": "cannam"
+        }
+    }
+}
+

@@ -3,7 +3,10 @@ SCRIPTS	:= ../sml-buildscripts
 
 BUILDER	:= ${SCRIPTS}/polybuild
 
-all:	programs/load programs/convert example test/tests
+all:	ext programs/load programs/convert example test/tests
+
+ext:
+	./vext install
 
 programs/load:		programs/load.mlb d/load.deps 
 	${BUILDER} $<
