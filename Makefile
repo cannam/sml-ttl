@@ -3,10 +3,7 @@ SCRIPTS	:= ../sml-buildscripts
 
 BUILDER	:= ${SCRIPTS}/polybuild
 
-all:	ext programs/load programs/convert example test/tests
-
-ext:
-	./vext install
+all:	programs/load programs/convert example test/tests
 
 programs/load:		programs/load.mlb d/load.deps 
 	${BUILDER} $<
@@ -20,6 +17,11 @@ example:		example.mlb d/example.deps
 test/tests:		test/tests.mlb d/tests.deps
 	${BUILDER} $<
 	$@
+
+src/prerequisites.mlb:	ext
+
+ext:
+	./vext install
 
 MLBS	:= programs/load.mlb programs/convert.mlb example.mlb test/tests.mlb $(wildcard src/*.mlb)
 
