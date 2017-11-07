@@ -1,6 +1,6 @@
 
 signature RDF_SERIALISER = sig
-
+    
     type prefix = RdfTriple.prefix
     type triple = RdfTriple.triple
 

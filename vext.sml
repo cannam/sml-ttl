@@ -38,7 +38,7 @@
     authorization.
 *)
 
-val vext_version = "0.9.6"
+val vext_version = "0.9.9"
 
 
 datatype vcs =
@@ -136,6 +136,7 @@ structure VextFilenames = struct
     val project_file = "vext-project.json"
     val project_lock_file = "vext-lock.json"
     val user_config_file = ".vext.json"
+    val archive_dir = ".vext-archive"
 end
                    
 signature VCS_CONTROL = sig
@@ -197,6 +198,7 @@ structure FileBits :> sig
     val mydir : unit -> string
     val homedir : unit -> string
     val mkpath : string -> unit result
+    val rmpath : string -> unit result
     val project_spec_path : string -> string
     val project_lock_path : string -> string
     val verbose : unit -> bool
@@ -208,23 +210,31 @@ end = struct
           | SOME _ => true
           | NONE => false
 
+    fun split_relative path desc =
+        case OS.Path.fromString path of
+            { isAbs = true, ... } => raise Fail (desc ^ " may not be absolute")
+          | { arcs, ... } => arcs
+                        
     fun extpath ({ rootpath, extdir, ... } : context) =
         let val { isAbs, vol, arcs } = OS.Path.fromString rootpath
         in OS.Path.toString {
                 isAbs = isAbs,
                 vol = vol,
-                arcs = arcs @ [ extdir ]
+                arcs = arcs @
+                       split_relative extdir "extdir"
             }
         end
     
     fun subpath ({ rootpath, extdir, ... } : context) libname remainder =
         (* NB libname is allowed to be a path fragment, e.g. foo/bar *)
         let val { isAbs, vol, arcs } = OS.Path.fromString rootpath
-            val split = String.fields (fn c => c = #"/")
         in OS.Path.toString {
                 isAbs = isAbs,
                 vol = vol,
-                arcs = arcs @ [ extdir ] @ split libname @ split remainder
+                arcs = arcs @
+                       split_relative extdir "extdir" @
+                       split_relative libname "library path" @
+                       split_relative remainder "subpath"
             }
         end
 
@@ -366,21 +376,58 @@ end = struct
           | (NONE, NONE) =>
             raise Fail "Failed to look up home directory from environment"
 
-    fun mkpath path =
+    fun mkpath' path =
         if OS.FileSys.isDir path handle _ => false
         then OK ()
         else case OS.Path.fromString path of
                  { arcs = nil, ... } => OK ()
                | { isAbs = false, ... } => ERROR "mkpath requires absolute path"
                | { isAbs, vol, arcs } => 
-                 case mkpath (OS.Path.toString {      (* parent *)
-                                   isAbs = isAbs,
-                                   vol = vol,
-                                   arcs = rev (tl (rev arcs)) }) of
+                 case mkpath' (OS.Path.toString {      (* parent *)
+                                    isAbs = isAbs,
+                                    vol = vol,
+                                    arcs = rev (tl (rev arcs)) }) of
                      ERROR e => ERROR e
                    | OK () => ((OS.FileSys.mkDir path; OK ())
                                handle OS.SysErr (e, _) =>
                                       ERROR ("Directory creation failed: " ^ e))
+
+    fun mkpath path =
+        mkpath' (OS.Path.mkCanonical path)
+
+    fun rmpath' path =
+        let open OS
+            fun files_from dirstream =
+                case FileSys.readDir dirstream of
+                    NONE => []
+                  | SOME file =>
+                    (* readDir is supposed to filter these, 
+                       but let's be extra cautious: *)
+                    if file = Path.parentArc orelse file = Path.currentArc
+                    then files_from dirstream
+                    else file :: files_from dirstream
+            fun contents dir =
+                let val stream = FileSys.openDir dir
+                    val files = map (fn f => Path.joinDirFile
+                                                 { dir = dir, file = f })
+                                    (files_from stream)
+                    val _ = FileSys.closeDir stream
+                in files
+                end
+            fun remove path =
+                if FileSys.isLink path (* dangling links bother isDir *)
+                then FileSys.remove path
+                else if FileSys.isDir path
+                then (app remove (contents path); FileSys.rmDir path)
+                else FileSys.remove path
+        in
+            (remove path; OK ())
+            handle SysErr (e, _) => ERROR ("Path removal failed: " ^ e)
+        end
+
+    fun rmpath path =
+        rmpath' (OS.Path.mkCanonical path)
+
 end
                                          
 functor LibControlFn (V: VCS_CONTROL) :> LIB_CONTROL = struct
@@ -1097,7 +1144,12 @@ end = struct
         case List.find (fn a => service = #service a) accounts of
             SOME { login, ... } => SOME login
           | NONE => NONE
-                                          
+
+    fun reponame_for path =
+        case String.tokens (fn c => c = #"/") path of
+            [] => raise Fail "Non-empty library path required"
+          | toks => hd (rev toks)
+                        
     fun remote_url (context : context) vcs source libname =
         case source of
             URL_SOURCE u => u
@@ -1107,7 +1159,7 @@ end = struct
                            owner = owner,
                            repo = case repo of
                                       SOME r => r
-                                    | NONE => libname }
+                                    | NONE => reponame_for libname }
                          (login_for context service)
                          (#providers context)
 end
@@ -1117,7 +1169,7 @@ structure HgControl :> VCS_CONTROL = struct
     type vcsstate = { id: string, modified: bool,
                       branch: string, tags: string list }
 
-    val hg_args = [ "--config", "ui.interactive=true" ]
+    val hg_args = [ "--config", "ui.interactive=true", "--config", "ui.merge=:merge" ]
                         
     fun hg_command context libname args =
         FileBits.command context libname ("hg" :: hg_args @ args)
@@ -1216,7 +1268,10 @@ structure HgControl :> VCS_CONTROL = struct
     fun checkout context (libname, source, branch) =
         let val url = remote_for context (libname, source)
         in
-            case FileBits.mkpath (FileBits.extpath context) of
+            (* make the lib dir rather than just the ext dir, since
+               the lib dir might be nested and hg will happily check
+               out into an existing empty dir anyway *)
+            case FileBits.mkpath (FileBits.libpath context libname) of
                 ERROR e => ERROR e
               | _ => hg_command context ""
                                 ["clone", "-u", branch_name branch,
@@ -1278,7 +1333,10 @@ structure GitControl :> VCS_CONTROL = struct
     fun checkout context (libname, source, branch) =
         let val url = remote_for context (libname, source)
         in
-            case FileBits.mkpath (FileBits.extpath context) of
+            (* make the lib dir rather than just the ext dir, since
+               the lib dir might be nested and git will happily check
+               out into an existing empty dir anyway *)
+            case FileBits.mkpath (FileBits.libpath context libname) of
                 OK () => git_command context ""
                                      ["clone", "-b",
                                       branch_name branch,
@@ -1401,6 +1459,246 @@ structure AnyLibControl :> LIB_CONTROL = struct
 
     fun id_of context (spec as { vcs, ... } : libspec) =
         (fn HG => H.id_of | GIT => G.id_of) vcs context spec
+end
+
+
+type exclusions = string list
+              
+structure Archive :> sig
+
+    val archive : string * exclusions -> project -> OS.Process.status
+        
+end = struct
+
+    (* The idea of "archive" is to replace hg/git archive, which won't
+       include files, like the Vext-introduced external libraries,
+       that are not under version control with the main repo.
+
+       The process goes like this:
+
+       - Make sure we have a target filename from the user, and take
+         its basename as our archive directory name
+
+       - Make an "archive root" subdir of the project repo, named
+         typically .vext-archive
+       
+       - Identify the VCS used for the project repo. Note that any
+         explicit references to VCS type in this structure are to
+         the VCS used for the project (something Vext doesn't 
+         otherwise care about), not for an individual library
+
+       - Synthesise a Vext project with the archive root as its
+         root path, "." as its extdir, with one library whose
+         name is the user-supplied basename and whose explicit
+         source URL is the original project root; update that
+         project -- thus cloning the original project to a subdir
+         of the archive root
+
+       - Synthesise a Vext project identical to the original one for
+         this project, but with the newly-cloned copy as its root
+         path; update that project -- thus checking out clean copies
+         of the external library dirs
+
+       - Call out to an archive program to archive up the new copy,
+         running e.g.
+         tar cvzf project-release.tar.gz \
+             --exclude=.hg --exclude=.git project-release
+         in the archive root dir
+
+       - (We also omit the vext-project.json file and any trace of
+         Vext. It can't properly be run in a directory where the
+         external project folders already exist but their repo history
+         does not. End users shouldn't get to see Vext)
+
+       - Clean up by deleting the new copy
+    *)
+
+    fun project_vcs_and_id dir =
+        let val context = {
+                rootpath = dir,
+                extdir = ".",
+                providers = [],
+                accounts = []
+            }
+            val vcs_maybe = 
+                case [HgControl.exists context ".",
+                      GitControl.exists context "."] of
+                    [OK true, OK false] => OK HG
+                  | [OK false, OK true] => OK GIT
+                  | _ => ERROR ("Unable to identify VCS for directory " ^ dir)
+        in
+            case vcs_maybe of
+                ERROR e => ERROR e
+              | OK vcs =>
+                case (fn HG => HgControl.id_of | GIT => GitControl.id_of)
+                         vcs context "." of
+                    ERROR e => ERROR ("Unable to obtain id of project repo: "
+                                      ^ e)
+                  | OK id => OK (vcs, id)
+        end
+            
+    fun make_archive_root (context : context) =
+        let val path = OS.Path.joinDirFile {
+                    dir = #rootpath context,
+                    file = VextFilenames.archive_dir
+                }
+        in
+            case FileBits.mkpath path of
+                ERROR e => raise Fail ("Failed to create archive directory \""
+                                       ^ path ^ "\": " ^ e)
+              | OK () => path
+        end
+
+    fun archive_path archive_dir target_name =
+        OS.Path.joinDirFile {
+            dir = archive_dir,
+            file = target_name
+        }
+
+    fun check_nonexistent path =
+        case SOME (OS.FileSys.fileSize path) handle OS.SysErr _ => NONE of
+            NONE => ()
+          | _ => raise Fail ("Path " ^ path ^ " exists, not overwriting")
+            
+    fun file_url path =
+        let val forward_path = 
+                String.translate (fn #"\\" => "/" |
+                                     c => Char.toString c) path
+        in
+            (* Path is expected to be absolute already, but if it
+                starts with a drive letter, we'll need an extra slash *)
+            case explode forward_path of
+                #"/"::rest => "file:///" ^ implode rest
+              | _ => "file:///" ^ forward_path
+        end
+            
+    fun make_archive_copy target_name (vcs, project_id)
+                          ({ context, ... } : project) =
+        let val archive_root = make_archive_root context
+            val synthetic_context = {
+                rootpath = archive_root,
+                extdir = ".",
+                providers = [],
+                accounts = []
+            }
+            val synthetic_library = {
+                libname = target_name,
+                vcs = vcs,
+                source = URL_SOURCE (file_url (#rootpath context)),
+                branch = DEFAULT_BRANCH, (* overridden by pinned id below *)
+                project_pin = PINNED project_id,
+                lock_pin = PINNED project_id
+            }
+            val path = archive_path archive_root target_name
+            val _ = print ("Cloning original project to " ^ path
+                           ^ " at revision " ^ project_id ^ "...\n");
+            val _ = check_nonexistent path
+        in
+            case AnyLibControl.update synthetic_context synthetic_library of
+                ERROR e => ERROR ("Failed to clone original project to "
+                                  ^ path ^ ": " ^ e)
+              | OK _ => OK archive_root
+        end
+
+    fun update_archive archive_root target_name
+                       (project as { context, ... } : project) =
+        let val synthetic_context = {
+                rootpath = archive_path archive_root target_name,
+                extdir = #extdir context,
+                providers = #providers context,
+                accounts = #accounts context
+            }
+        in
+            foldl (fn (lib, acc) =>
+                      case acc of
+                          ERROR e => ERROR e
+                        | OK _ => AnyLibControl.update synthetic_context lib)
+                  (OK "")
+                  (#libs project)
+        end
+
+    datatype packer = TAR
+                    | TAR_GZ
+                    | TAR_BZ2
+                    | TAR_XZ
+    (* could add other packers, e.g. zip, if we knew how to
+       handle the file omissions etc properly in pack_archive *)
+                          
+    fun packer_and_basename path =
+        let val extensions = [ (".tar", TAR),
+                               (".tar.gz", TAR_GZ),
+                               (".tar.bz2", TAR_BZ2),
+                               (".tar.xz", TAR_XZ)]
+            val filename = OS.Path.file path
+        in
+            foldl (fn ((ext, packer), acc) =>
+                      if String.isSuffix ext filename
+                      then SOME (packer,
+                                 String.substring (filename, 0,
+                                                   String.size filename -
+                                                   String.size ext))
+                      else acc)
+                  NONE
+                  extensions
+        end
+            
+    fun pack_archive archive_root target_name target_path packer exclusions =
+        case FileBits.command {
+                rootpath = archive_root,
+                extdir = ".",
+                providers = [],
+                accounts = []
+            } "" ([
+                     "tar",
+                     case packer of
+                         TAR => "cf"
+                       | TAR_GZ => "czf"
+                       | TAR_BZ2 => "cjf"
+                       | TAR_XZ => "cJf",
+                     target_path,
+                     "--exclude=.hg",
+                     "--exclude=.git",
+                     "--exclude=vext",
+                     "--exclude=vext.sml",
+                     "--exclude=vext.ps1",
+                     "--exclude=vext.bat",
+                     "--exclude=vext-project.json",
+                     "--exclude=vext-lock.json"
+                 ] @ (map (fn e => "--exclude=" ^ e) exclusions) @
+                  [ target_name ])
+         of
+            ERROR e => ERROR e
+          | OK _ => FileBits.rmpath (archive_path archive_root target_name)
+            
+    fun archive (target_path, exclusions) (project : project) =
+        let val _ = check_nonexistent target_path
+            val (packer, name) =
+                case packer_and_basename target_path of
+                    NONE => raise Fail ("Unsupported archive file extension in "
+                                        ^ target_path)
+                  | SOME pn => pn
+            val details =
+                case project_vcs_and_id (#rootpath (#context project)) of
+                    ERROR e => raise Fail e
+                  | OK details => details
+            val archive_root =
+                case make_archive_copy name details project of
+                    ERROR e => raise Fail e
+                  | OK archive_root => archive_root
+            val outcome = 
+                case update_archive archive_root name project of
+                    ERROR e => ERROR e
+                  | OK _ =>
+                    case pack_archive archive_root name
+                                      target_path packer exclusions of
+                        ERROR e => ERROR e
+                      | OK _ => OK ()
+        in
+            case outcome of
+                ERROR e => raise Fail e
+              | OK () => OS.Process.success
+        end
+            
 end
 
 val libobjname = "libraries"
@@ -1665,7 +1963,7 @@ fun lock_project ({ context, libs } : project) =
         else ();
         return_code
     end
-        
+    
 fun load_local_project pintype =
     let val userconfig = load_userconfig ()
         val rootpath = OS.FileSys.getDir ()
@@ -1675,10 +1973,8 @@ fun load_local_project pintype =
 
 fun with_local_project pintype f =
     let val return_code = f (load_local_project pintype)
-                          handle e =>
-                                 (print ("Failed with exception: " ^
-                                         (exnMessage e) ^ "\n");
-                                  OS.Process.failure)
+                          handle e => (print ("Error: " ^ exnMessage e);
+                                       OS.Process.failure)
         val _ = print "\n";
     in
         return_code
@@ -1706,8 +2002,18 @@ fun usage () =
             ^ "  install  update configured libraries according to project specs and lock file\n"
             ^ "  update   update configured libraries and lock file according to project specs\n"
             ^ "  lock     update lock file to match local library status\n"
+            ^ "  archive  pack up project and all libraries into an archive file\n"
+            ^ "           (invoke as 'vext archive target-file.tar.gz')\n"
             ^ "  version  print the Vext version number and exit\n\n");
     OS.Process.failure)
+
+fun archive target args =
+    case args of
+        [] =>
+        with_local_project USE_LOCKFILE (Archive.archive (target, []))
+      | "--exclude"::xs =>
+        with_local_project USE_LOCKFILE (Archive.archive (target, xs))
+      | _ => usage ()
 
 fun vext args =
     let val return_code = 
@@ -1718,6 +2024,7 @@ fun vext args =
               | ["update"] => update ()
               | ["lock"] => lock ()
               | ["version"] => version ()
+              | "archive"::target::args => archive target args
               | _ => usage ()
     in
         OS.Process.exit return_code;

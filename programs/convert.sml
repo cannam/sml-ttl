@@ -1,6 +1,8 @@
 
 open RdfTriple
-	 
+
+(*!!! todo: make clear in usage how output format is selected; support turtle output to stdout (it works to file only at the mo) *)
+         
 fun usage () =
     let open TextIO in
 	output (stdErr,
