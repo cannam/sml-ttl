@@ -10,7 +10,7 @@ signature RDF_SERIALISER = sig
 
 end
 
-signature RDF_STREAM_SERIALISER = sig
+signature RDF_INCREMENTAL_SERIALISER = sig
 
     type prefix = RdfTriple.prefix
     type triple = RdfTriple.triple

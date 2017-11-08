@@ -1,5 +1,6 @@
 
-functor StoreStreamExporterFn (S: RDF_STREAM_SERIALISER) :> STORE_EXPORTER where type store = Store.t = struct
+functor StoreIncrementalExporterFn (S: RDF_INCREMENTAL_SERIALISER)
+        :> STORE_EXPORTER where type store = Store.t = struct
 
     type store = Store.t
 
@@ -23,9 +24,10 @@ functor StoreStreamExporterFn (S: RDF_STREAM_SERIALISER) :> STORE_EXPORTER where
 			  
 end
 					    
-structure NTriplesExporter = StoreStreamExporterFn(NTriplesSerialiser)
+structure NTriplesExporter = StoreIncrementalExporterFn(NTriplesSerialiser)
 
-structure StoreFileExporter :> STORE_FILE_EXPORTER where type store = Store.t = struct
+structure StoreFileExporter
+          :> STORE_FILE_EXPORTER where type store = Store.t = struct
 
     type store = Store.t
 

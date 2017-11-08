@@ -1,7 +1,7 @@
 
-functor RdfParserFn (P: RDF_STREAM_PARSER) : RDF_PARSER = struct
+functor RdfParserFn (P: RDF_INCREMENTAL_PARSER) : RDF_PARSER = struct
 
-    (* Turn a streaming parser into a one-shot parser *)
+    (* Turn an incremental parser into a one-shot parser *)
 
     open RdfParserBase
 

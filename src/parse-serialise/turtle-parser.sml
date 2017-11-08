@@ -1,5 +1,5 @@
 
-structure TurtleStreamParser : RDF_STREAM_PARSER = struct
+structure TurtleIncrementalParser : RDF_INCREMENTAL_PARSER = struct
 
     open RdfParserBase
     open RdfNode
@@ -1018,5 +1018,5 @@ structure TurtleStreamParser : RDF_STREAM_PARSER = struct
             
 end
 
-structure TurtleParser = RdfParserFn(TurtleStreamParser)
+structure TurtleParser = RdfParserFn(TurtleIncrementalParser)
 

@@ -1,5 +1,5 @@
 
-structure NTriplesSerialiser :> RDF_STREAM_SERIALISER = struct
+structure NTriplesSerialiser :> RDF_INCREMENTAL_SERIALISER = struct
 
     open RdfTriple
 

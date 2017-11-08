@@ -1,10 +1,12 @@
 
-signature RDF_CONVERTER_STREAM_ARG = sig
-    structure Parser : RDF_STREAM_PARSER
-    structure Serialiser : RDF_STREAM_SERIALISER
+signature RDF_CONVERTER_INCREMENTAL_ARG = sig
+    structure Parser : RDF_INCREMENTAL_PARSER
+    structure Serialiser : RDF_INCREMENTAL_SERIALISER
 end
 
-functor RdfConverterStreamFn (A: RDF_CONVERTER_STREAM_ARG) :> RDF_CONVERTER = struct
+functor RdfConverterIncrementalFn (A: RDF_CONVERTER_INCREMENTAL_ARG)
+        :> RDF_CONVERTER = struct
+    
     structure P = A.Parser
     structure S = A.Serialiser
 

@@ -1,5 +1,6 @@
 
-functor RdfSerialiserFn (S: RDF_STREAM_SERIALISER) : RDF_SERIALISER = struct
+functor RdfSerialiserFn (S: RDF_INCREMENTAL_SERIALISER)
+        : RDF_SERIALISER = struct
 
     type prefix = S.prefix
     type triple = S.triple

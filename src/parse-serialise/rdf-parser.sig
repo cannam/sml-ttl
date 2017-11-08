@@ -19,7 +19,7 @@ signature RDF_PARSER = sig
 
     (* RDF_PARSER is the signature for a parser that reads from a text
        stream and produces a complete parsed set of prefixes and
-       triples.
+       triples "in one go".
 
        This signature is for parsers that parse a single format, and
        so don't need to be told what format to parse. *)
@@ -31,11 +31,13 @@ signature RDF_PARSER = sig
 
 end
 
-signature RDF_STREAM_PARSER = sig
+signature RDF_INCREMENTAL_PARSER = sig
 
-    (* RDF_PARSER is the signature for a parser that reads from a text
-       stream and emits prefixes and triples as it sees them. Only
-       some RDF serialisation formats can be parsed in this way.
+    (* RDF_INCREMENTAL_PARSER is the signature for a parser that reads
+       from a text stream and emits prefixes and triples as it sees
+       them. Only some RDF serialisation formats can be parsed in this
+       way. The parse function should normally be called repeatedly on
+       the same input stream until it returns END_OF_STREAM.
 
        This signature is for parsers that parse a single format, and
        so don't need to be told what format to parse. *)
