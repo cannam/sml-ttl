@@ -15,32 +15,31 @@ signature RDF_PARSER_BASE = sig
 
 end
 
+(** Parser that reads from a text stream and produces a complete
+    parsed set of prefixes and triples "in one go".
+
+    This signature is for parsers that parse a single format, and so
+    don't need to be told what format to parse.
+ *)
 signature RDF_PARSER = sig
-
-    (* RDF_PARSER is the signature for a parser that reads from a text
-       stream and produces a complete parsed set of prefixes and
-       triples "in one go".
-
-       This signature is for parsers that parse a single format, and
-       so don't need to be told what format to parse. *)
 
     include RDF_PARSER_BASE
                 
-    (* does not close the input stream after parsing *)
+    (** does not close the input stream after parsing *)
     val parse : base_iri -> TextIO.instream -> parsed
 
 end
 
+(** Parser that reads from a text stream and emits prefixes and
+    triples as it sees them. Only some RDF serialisation formats can
+    be parsed in this way. The parse function should normally be
+    called repeatedly on the same input stream until it returns
+    END_OF_STREAM.
+
+    This signature is for parsers that parse a single format, and so
+    don't need to be told what format to parse.
+*)
 signature RDF_INCREMENTAL_PARSER = sig
-
-    (* RDF_INCREMENTAL_PARSER is the signature for a parser that reads
-       from a text stream and emits prefixes and triples as it sees
-       them. Only some RDF serialisation formats can be parsed in this
-       way. The parse function should normally be called repeatedly on
-       the same input stream until it returns END_OF_STREAM.
-
-       This signature is for parsers that parse a single format, and
-       so don't need to be told what format to parse. *)
     
     type prefix = RdfTriple.prefix
     type triple = RdfTriple.triple
@@ -55,18 +54,17 @@ signature RDF_INCREMENTAL_PARSER = sig
 
     type base_iri = string
                      
-    (* does not close the input stream after parsing *)
+    (** does not close the input stream after parsing *)
     val parse : base_iri -> TextIO.instream -> stream_value
                      
 end
-                                  
-signature RDF_FILE_PARSER = sig
                            
-    (* RDF_FILE_PARSER is the signature for a parser that reads from a
-       file and produces a complete parsed set of prefixes and
-       triples. It uses file metadata, e.g. suffix, to determine the
-       format to be parsed, and will probably work by guessing and
-       delegating to an appropriate RDF_PARSER internally. *)
+(** Parser that reads from a file and produces a complete parsed set
+    of prefixes and triples. It uses file metadata, e.g. suffix, to
+    determine the format to be parsed, and will probably work by
+    guessing and delegating to an appropriate RDF_PARSER internally.
+*)
+signature RDF_FILE_PARSER = sig
 
     include RDF_PARSER_BASE
 
