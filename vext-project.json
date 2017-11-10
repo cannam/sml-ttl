@@ -22,6 +22,11 @@
             "vcs": "hg",
             "service": "bitbucket",
 	    "owner": "cannam"
+        },
+        "sml-buildscripts": {
+            "vcs": "hg",
+            "service": "bitbucket",
+	    "owner": "cannam"
         }
     }
 }

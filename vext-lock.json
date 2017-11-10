@@ -11,6 +11,9 @@
     },
     "sml-log": {
       "pin": "eb568f7d3c13"
+    },
+    "sml-buildscripts": {
+      "pin": "8939c4a0d8f1"
     }
   }
 }
