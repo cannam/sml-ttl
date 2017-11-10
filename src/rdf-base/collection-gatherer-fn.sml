@@ -1,8 +1,9 @@
 
-structure StoreCollection :> STORE_COLLECTION = struct
+functor CollectionGathererFn (M : MATCHER) :> COLLECTION_GATHERER
+                                                  where type matcher = M.t
+= struct
 
-    structure S = Store
-    type store = S.t
+    type matcher = M.t
     datatype node = datatype RdfNode.node
     type triple = node * node * node
 
@@ -10,50 +11,50 @@ structure StoreCollection :> STORE_COLLECTION = struct
     val node_rest  = RdfNode.IRI RdfStandardIRIs.iri_rdf_rest
     val node_nil   = RdfNode.IRI RdfStandardIRIs.iri_rdf_nil
                                     
-    fun is_collection_node (store, node) =
+    fun is_collection_node (matcher, node) =
         let val pat = (SOME node, SOME node_rest, NONE)
-            val result = not (null (S.match (store, pat)))
+            val result = not (null (M.match (matcher, pat)))
         in
-            Log.info (fn () => ["StoreCollection: % % a collection node",
+            Log.info (fn () => ["Collection: % % a collection node",
                                 Log.S (RdfNode.string_of_node node),
                                 Log.S (if result then "is" else "is not")]);
             result
         end
 
-    fun start_of_collection (store, node) =
+    fun start_of_collection (matcher, node) =
         let val pat = (NONE, SOME node_rest, SOME node)
         in
-            case S.match (store, pat) of
-                (subj, _, _)::_ => start_of_collection (store, subj)
+            case M.match (matcher, pat) of
+                (subj, _, _)::_ => start_of_collection (matcher, subj)
               | _ => node
         end
 
-    fun triples_of_collection (store, node) =
-        let fun triples' (store, first, acc) =
+    fun triples_of_collection (matcher, node) =
+        let fun triples' (matcher, first, acc) =
                 if first = node_nil
                 then acc
                 else
                     let val here = (SOME first, SOME node_first, NONE)
                         val rest = (SOME first, SOME node_rest, NONE)
                     in
-                        case (S.match (store, here), S.match (store, rest)) of
+                        case (M.match (matcher, here), M.match (matcher, rest)) of
                             ([], []) => acc
                           | (h::_, []) => acc @ [h]
-                          | ([], r::_) => triples' (store, #3 r, acc @ [r])
-                          | (h::_, r::_) => triples' (store, #3 r, acc @ [h, r])
+                          | ([], r::_) => triples' (matcher, #3 r, acc @ [r])
+                          | (h::_, r::_) => triples' (matcher, #3 r, acc @ [h, r])
                     end
-            val result = triples' (store, (start_of_collection (store, node)), [])
+            val result = triples' (matcher, (start_of_collection (matcher, node)), [])
         in
-            Log.info (fn () => ["StoreCollection: node % yields collection:\n%",
+            Log.info (fn () => ["Collection: node % yields collection:\n%",
                                 Log.S (RdfNode.string_of_node node),
                                 Log.S (RdfTriple.string_of_triples result)]);
             result
         end
 
-    fun nodes_of_collection (store, node) =
+    fun nodes_of_collection (matcher, node) =
         List.concat
             (map (fn t => if (#2 t = node_first) then [#3 t] else [])
-                 (triples_of_collection (store, node)))
+                 (triples_of_collection (matcher, node)))
 
 end
-                                
+     

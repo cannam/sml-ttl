@@ -651,7 +651,7 @@ structure TurtleIncrementalParser : RDF_INCREMENTAL_PARSER = struct
 		    (discard (d, []);
 		     if null acc
 		     then OK (d, SOME (IRI RdfStandardIRIs.iri_rdf_nil))
-		     else let val c = RdfCollection.collection_of_nodes acc
+		     else let val c = CollectionExpander.collection_of_nodes acc
 			      val d = foldl (fn (t, data) => add_triple data t) d c
 			  in
 			      OK (d, SOME (#1 (hd c)))

@@ -1,21 +1,12 @@
 
-signature RDF_COLLECTION = sig
-
-    datatype node = datatype RdfNode.node
-    type triple = node * node * node
-
-    val collection_of_nodes : node list -> triple list
-    
-end
-
-structure RdfCollection : RDF_COLLECTION = struct
+structure CollectionExpander :> COLLECTION_EXPANDER = struct
 
     open RdfNode
     open RdfTriple
     open RdfStandardIRIs
 
     (* Given a list of nodes, return a list of triples comprising the
-       RDF collection of those nodes *)
+       RDF collection of those nodes. *)
     fun collection_of_nodes nodes =
 	let fun collection' link [] = []
 	      | collection' link [node] =
@@ -32,4 +23,4 @@ structure RdfCollection : RDF_COLLECTION = struct
 	     
 end
 
-			   
+                           

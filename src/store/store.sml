@@ -88,4 +88,7 @@ structure Store :> STORE = struct
     fun abbreviate ({ prefixes, ... } : t, iri) =
         PrefixTable.abbreviate (prefixes, iri)
 
+    fun get_prefix_table ({ prefixes, ... } : t) =
+        prefixes
+                               
 end

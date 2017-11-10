@@ -3,7 +3,5 @@ store/index.sig
 store/index.sml
 store/store.sig
 store/store.sml
-store/store-collection.sig
-store/store-collection.sml
 store/property.sig
 store/property.sml

@@ -7,12 +7,8 @@ functor StoreIncrementalExporterFn (S: RDF_INCREMENTAL_SERIALISER)
     fun save_to_stream store stream =
         let val serialiser = S.new stream
         in
-            Store.foldl (fn (t, s) => S.serialise (s, S.TRIPLE t))
-                        (List.foldl (fn (p, s) => S.serialise (s, S.PREFIX p))
-                                    serialiser
-                                    (Store.enumerate_prefixes store))
-                        store;
-            ()
+            S.serialise (serialiser, Store.enumerate store);
+            S.finish serialiser
         end
             
     fun save_to_file store filename =
