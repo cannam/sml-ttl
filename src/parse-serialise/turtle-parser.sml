@@ -159,11 +159,7 @@ structure TurtleIncrementalParser : RDF_INCREMENTAL_PARSER = struct
               | like_absolute_iri (first::rest) = 
                 if CodepointSet.contains alpha first
                 then like_absolute_iri rest
-                else if first = from_ascii #":"
-                then case rest of
-                         s1::s2::_ => s1 = s2 andalso s1 = from_ascii #"/"
-                       | _ => false
-                else false
+                else first = from_ascii #":"
         in
             iri_of_token
                 (case token of
