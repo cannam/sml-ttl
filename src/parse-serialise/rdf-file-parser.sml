@@ -7,7 +7,7 @@ structure RdfFileParser :> RDF_FILE_PARSER = struct
         let open FileType
 
             val parser =
-                case type_of filename of
+                case format_of filename of
                     TURTLE => TurtleParser.parse
                   | NTRIPLES => TurtleParser.parse
                   | _ => raise Fail "Unknown or unsupported file extension"

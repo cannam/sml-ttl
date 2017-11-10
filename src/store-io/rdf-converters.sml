@@ -23,7 +23,7 @@ structure FileExtensionDrivenConverter : RDF_FILE_CONVERTER = struct
                           
     (*!!! the parsers/serialisers should declare their expected file extensions *)
     fun is_incremental infile outfile =
-        case FileType.type_of outfile of
+        case FileType.format_of outfile of
             FileType.NTRIPLES => true
           | _ => false
                               
