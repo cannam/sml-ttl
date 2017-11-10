@@ -1,17 +1,10 @@
 
-signature TEST_COLLECTION_ARG = sig
-
-    structure R : RDF_COLLECTION
-    structure C : STORE_COLLECTION
-    
-end
-
-functor TestCollectionFn (Arg : TEST_COLLECTION_ARG) :> TESTS = struct
+structure TestCollection :> TESTS = struct
 
     open TestSupport
 
-    structure R = Arg.R
-    structure C = Arg.C
+    structure E = CollectionExpander
+    structure G = CollectionGathererFn(Store)
 
     open RdfNode
     open RdfStandardIRIs
@@ -40,17 +33,17 @@ functor TestCollectionFn (Arg : TEST_COLLECTION_ARG) :> TESTS = struct
 
     fun test_make_empty () =
         check_triples
-            (R.collection_of_nodes [], [])
+            (E.collection_of_nodes [], [])
 
     fun test_make_single () =
         check_triples
-            (R.collection_of_nodes [IRI (Iri.fromString "x")],
+            (E.collection_of_nodes [IRI (Iri.fromString "x")],
              [(BLANK 1, IRI iri_rdf_first, IRI (Iri.fromString "x")),
               (BLANK 1, IRI iri_rdf_rest, IRI iri_rdf_nil)])
 
     fun test_make_collection () =
         check_triples
-            (R.collection_of_nodes [IRI (Iri.fromString "x"),
+            (E.collection_of_nodes [IRI (Iri.fromString "x"),
                                     IRI (Iri.fromString "y")],
              [(BLANK 1, IRI iri_rdf_first, IRI (Iri.fromString "x")),
               (BLANK 1, IRI iri_rdf_rest, BLANK 2),
@@ -58,7 +51,7 @@ functor TestCollectionFn (Arg : TEST_COLLECTION_ARG) :> TESTS = struct
               (BLANK 2, IRI iri_rdf_rest, IRI iri_rdf_nil)])
 
     fun test_start_of_collection () =
-        let val tt = R.collection_of_nodes [IRI (Iri.fromString "x"),
+        let val tt = E.collection_of_nodes [IRI (Iri.fromString "x"),
                                             IRI (Iri.fromString "y"),
                                             IRI (Iri.fromString "z")]
             val store = foldl (fn (t, s) => Store.add (s, t)) Store.empty tt
@@ -66,22 +59,22 @@ functor TestCollectionFn (Arg : TEST_COLLECTION_ARG) :> TESTS = struct
             val last_link_node = #1 (hd (rev tt)) (* subj node of "z" triple *)
         in
             check RdfNode.string_of_node
-                  (C.start_of_collection (store, last_link_node),
+                  (G.start_of_collection (store, last_link_node),
                    first_link_node)
             andalso
             check RdfNode.string_of_node
-                  (C.start_of_collection (store, first_link_node),
+                  (G.start_of_collection (store, first_link_node),
                    first_link_node)
         end
             
     fun test_triples_of_collection () =
-        let val tt = R.collection_of_nodes [IRI (Iri.fromString "x"),
+        let val tt = E.collection_of_nodes [IRI (Iri.fromString "x"),
                                             IRI (Iri.fromString "y")]
             val store = foldl (fn (t, s) => Store.add (s, t)) Store.empty tt
             val last_link_node = #1 (hd (rev tt)) (* subj node of "y" triple *)
         in
             check_triples
-                (C.triples_of_collection (store, last_link_node),
+                (G.triples_of_collection (store, last_link_node),
                  [(BLANK 1, IRI iri_rdf_first, IRI (Iri.fromString "x")),
                   (BLANK 1, IRI iri_rdf_rest, BLANK 2),
                   (BLANK 2, IRI iri_rdf_first, IRI (Iri.fromString "y")),
@@ -97,9 +90,4 @@ functor TestCollectionFn (Arg : TEST_COLLECTION_ARG) :> TESTS = struct
     ]
 
 end
-                                                              
-structure TestCollection = TestCollectionFn(struct
-                                             structure R = RdfCollection
-                                             structure C = StoreCollection
-                                             end)
 

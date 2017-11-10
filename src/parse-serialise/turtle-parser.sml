@@ -1,5 +1,5 @@
 
-structure TurtleStreamParser : RDF_STREAM_PARSER = struct
+structure TurtleIncrementalParser : RDF_INCREMENTAL_PARSER = struct
 
     open RdfParserBase
     open RdfNode
@@ -159,11 +159,7 @@ structure TurtleStreamParser : RDF_STREAM_PARSER = struct
               | like_absolute_iri (first::rest) = 
                 if CodepointSet.contains alpha first
                 then like_absolute_iri rest
-                else if first = from_ascii #":"
-                then case rest of
-                         s1::s2::_ => s1 = s2 andalso s1 = from_ascii #"/"
-                       | _ => false
-                else false
+                else first = from_ascii #":"
         in
             iri_of_token
                 (case token of
@@ -651,7 +647,7 @@ structure TurtleStreamParser : RDF_STREAM_PARSER = struct
 		    (discard (d, []);
 		     if null acc
 		     then OK (d, SOME (IRI RdfStandardIRIs.iri_rdf_nil))
-		     else let val c = RdfCollection.collection_of_nodes acc
+		     else let val c = CollectionExpander.collection_of_nodes acc
 			      val d = foldl (fn (t, data) => add_triple data t) d c
 			  in
 			      OK (d, SOME (#1 (hd c)))
@@ -1018,5 +1014,5 @@ structure TurtleStreamParser : RDF_STREAM_PARSER = struct
             
 end
 
-structure TurtleParser = RdfParserFn(TurtleStreamParser)
+structure TurtleParser = RdfParserFn(TurtleIncrementalParser)
 

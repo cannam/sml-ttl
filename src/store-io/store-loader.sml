@@ -6,7 +6,8 @@ structure StoreLoadBase : STORE_LOAD_BASE = struct
 
 end
                                             
-functor StoreStreamLoaderFn (P: RDF_STREAM_PARSER) : STORE_LOADER where type store = Store.t = struct
+functor StoreIncrementalLoaderFn (P: RDF_INCREMENTAL_PARSER)
+        : STORE_LOADER where type store = Store.t = struct
 
     type store = Store.t
 
@@ -51,7 +52,7 @@ functor StoreStreamLoaderFn (P: RDF_STREAM_PARSER) : STORE_LOADER where type sto
 			
 end
 
-structure TurtleLoader = StoreStreamLoaderFn(TurtleStreamParser)
+structure TurtleLoader = StoreIncrementalLoaderFn(TurtleIncrementalParser)
                                             
 structure StoreFileLoader :> STORE_FILE_LOADER where type store = Store.t = struct
 

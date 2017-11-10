@@ -1,9 +1,9 @@
 
 structure TurtleNTriplesConverter =
-    RdfConverterStreamFn(struct
-                          structure Parser = TurtleStreamParser
-                          structure Serialiser = NTriplesSerialiser
-                          end)
+    RdfConverterIncrementalFn(struct
+                               structure Parser = TurtleIncrementalParser
+                               structure Serialiser = NTriplesSerialiser
+                               end)
 
 structure FileExtensionDrivenConverter : RDF_FILE_CONVERTER = struct
 
@@ -22,12 +22,12 @@ structure FileExtensionDrivenConverter : RDF_FILE_CONVERTER = struct
     (*!!! need end-to-end tests for file conversions *)
                           
     (*!!! the parsers/serialisers should declare their expected file extensions *)
-    fun is_streamable infile outfile =
+    fun is_incremental infile outfile =
         case FileType.type_of outfile of
             FileType.NTRIPLES => true
           | _ => false
                               
-    fun convert_streamable base_iri infile outfile =
+    fun convert_incremental base_iri infile outfile =
         let
             val instream = TextIO.openIn infile
             val outstream = TextIO.openOut outfile
@@ -50,8 +50,8 @@ structure FileExtensionDrivenConverter : RDF_FILE_CONVERTER = struct
              CONVERTED)
 
     fun convert base_iri infile outfile =
-        if is_streamable infile outfile then
-            convert_streamable base_iri infile outfile
+        if is_incremental infile outfile then
+            convert_incremental base_iri infile outfile
         else
             convert_via_store base_iri infile outfile
 

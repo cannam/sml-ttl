@@ -1,11 +1,7 @@
 
-structure NTriplesSerialiser :> RDF_STREAM_SERIALISER = struct
+structure NTriplesSerialiser :> RDF_INCREMENTAL_SERIALISER = struct
 
     open RdfTriple
-
-    datatype entry =
-	     PREFIX of prefix |
-	     TRIPLE of triple
 
     type t = TextIO.outstream
 
@@ -29,15 +25,20 @@ structure NTriplesSerialiser :> RDF_STREAM_SERIALISER = struct
         (if Iri.isEmpty (#dtype lit) then ""
 	 else "^^" ^ (string_of_node (RdfNode.IRI (#dtype lit))))
 	    
-    fun serialise (t, PREFIX prefix) = t  (* ntriples doesn't include prefixes *)
-      | serialise (t, TRIPLE (a, b, c)) =
+    (** Add a series of triples to the output. *)
+    fun serialise (t, []) = t
+      | serialise (t, (a, b, c)::rest) =
 	let val str = string_of_node a ^ " " ^
 		      string_of_node b ^ " " ^
 		      string_of_node c
 	in
 	    TextIO.output (t, str ^ " .\n");
-	    t
+	    serialise (t, rest)
 	end
-		 
+
+    (** Write any pending triples and clean up. 
+        Does not close the underlying text stream. *)
+    fun finish t = ()
+            
 end
 							    

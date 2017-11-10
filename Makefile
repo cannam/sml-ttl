@@ -1,5 +1,5 @@
 
-SCRIPTS	:= ../sml-buildscripts
+SCRIPTS	:= ext/sml-buildscripts
 
 BUILDER	:= ${SCRIPTS}/polybuild
 
@@ -20,7 +20,10 @@ test/tests:		test/tests.mlb d/tests.deps
 
 src/prerequisites.mlb:	ext
 
-ext:
+.PHONY:	ext
+ext:	ext/sml-buildscripts/mlb-dependencies
+
+ext/sml-buildscripts/mlb-dependencies:
 	./vext install
 
 MLBS	:= programs/load.mlb programs/convert.mlb example.mlb test/tests.mlb $(wildcard src/*.mlb)
