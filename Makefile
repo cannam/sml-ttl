@@ -40,6 +40,12 @@ clean:
 coverage:
 	${SCRIPTS}/mlb-coverage test/tests.mlb
 
+.PHONY:	doc
+doc:
+	mkdir -p doc
+	ext/sml-buildscripts/mlb-expand src/sml-ttl.mlb | grep -v '^ext' > .docfiles
+	smldoc --nowarn -d doc -a .docfiles
+
 MLTON_ARGS	:= -runtime 'copy-generational-ratio 10.0' -runtime 'ram-slop 0.8'
 
 release:
