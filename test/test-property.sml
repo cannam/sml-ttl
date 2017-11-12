@@ -89,4 +89,4 @@ functor TestPropertyFn (P: STORE_PROPERTY) :> TESTS = struct
 
 end
 
-structure TestProperty = TestPropertyFn(Property)
+structure TestProperty = TestPropertyFn(StoreProperty)

@@ -1,7 +1,5 @@
 
-(* !!! should be "store property" like "store collection"? *)
-
-structure Property :> STORE_PROPERTY = struct
+structure StoreProperty :> STORE_PROPERTY = struct
 
     type iri = Iri.t
     datatype node = datatype RdfNode.node
