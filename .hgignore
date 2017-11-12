@@ -9,3 +9,4 @@ MLB/Js
 MLB/RI_GC
 mlmon.out
 *.orig
+.docfiles

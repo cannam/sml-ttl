@@ -12,8 +12,7 @@ structure FileExtensionDrivenConverter :> RDF_FILE_CONVERTER = struct
 
     type base_iri = string
 
-    datatype result = CONVERSION_ERROR of string |
-                      CONVERTED
+    open RdfConverterBase
 
     (*!!! what to do with file exceptions, e.g. the Fail thrown by
     StoreFileLoader.load_file_as_new_store for unknown file extension,
@@ -32,10 +31,10 @@ structure FileExtensionDrivenConverter :> RDF_FILE_CONVERTER = struct
             val instream = TextIO.openIn infile
             val outstream = TextIO.openOut outfile
             val result = 
-            (*!!! can we avoid these prefixes by sharing datatypes with a where clause? *)
-                case TurtleNTriplesConverter.convert base_iri instream outstream of
-                    TurtleNTriplesConverter.CONVERSION_ERROR e => CONVERSION_ERROR e
-                  | TurtleNTriplesConverter.CONVERTED => CONVERTED
+                case TurtleNTriplesConverter.convert base_iri
+                                                     instream outstream of
+                    CONVERSION_ERROR e => CONVERSION_ERROR e
+                  | CONVERTED => CONVERTED
         in
             TextIO.closeOut outstream;
             TextIO.closeIn instream;

@@ -1,11 +1,16 @@
 
+structure RdfConverterBase = struct
+    datatype result = CONVERSION_ERROR of string |
+                      CONVERTED
+end
+
 signature RDF_INCREMENTAL_CONVERTER_ARG = sig
     structure Parser : RDF_INCREMENTAL_PARSER
     structure Serialiser : RDF_INCREMENTAL_SERIALISER
 end
 
 functor RdfIncrementalConverterFn (A: RDF_INCREMENTAL_CONVERTER_ARG)
-        :> RDF_CONVERTER = struct
+        : RDF_CONVERTER = struct
     
     structure P = A.Parser
     structure S = A.Serialiser
@@ -14,8 +19,7 @@ functor RdfIncrementalConverterFn (A: RDF_INCREMENTAL_CONVERTER_ARG)
 
     type base_iri = string
 
-    datatype result = CONVERSION_ERROR of string |
-                      CONVERTED
+    open RdfConverterBase
                         
     fun convert base_iri instream outstream =
         let fun convert' s f =
