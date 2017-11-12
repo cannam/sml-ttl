@@ -30,7 +30,7 @@ functor StoreIncrementalLoaderFn (P: RDF_INCREMENTAL_PARSER)
 	    parse' Store.empty (fn () => P.parse iri stream)
 	end
 								  
-    fun load_string store iri string =
+    fun load_string' store iri string =
         let val stream = TextIO.openString string
             val result = load_stream store iri stream
         in
@@ -38,7 +38,11 @@ functor StoreIncrementalLoaderFn (P: RDF_INCREMENTAL_PARSER)
             result
         end
 
-    fun load_file store iri filename =
+    fun load_string store iri string =
+        load_string' store iri string
+        handle ex => LOAD_ERROR (exnMessage ex)
+
+    fun load_file' store iri filename =
         let val stream = TextIO.openIn filename
             val result = load_stream store iri stream
         in
@@ -46,6 +50,10 @@ functor StoreIncrementalLoaderFn (P: RDF_INCREMENTAL_PARSER)
             result
         end
 
+    fun load_file store iri filename =
+        load_file' store iri filename
+        handle ex => LOAD_ERROR (exnMessage ex)
+            
     val load_stream_as_new_store = load_stream Store.empty
     val load_string_as_new_store = load_string Store.empty
     val load_file_as_new_store = load_file Store.empty
@@ -71,6 +79,7 @@ structure StoreFileLoader :> STORE_FILE_LOADER
                   | _ => raise Fail "Unknown or unsupported file extension"
         in
             loader store iri filename
+            handle ex => LOAD_ERROR (exnMessage ex)
         end
 
     val load_file_as_new_store = load_file Store.empty

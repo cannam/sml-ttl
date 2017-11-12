@@ -45,6 +45,12 @@ signature STORE_FILE_LOADER = sig
     val extensions_supported : string list
 
 end
+
+signature STORE_EXPORT_BASE = sig
+			  
+    datatype result = EXPORT_ERROR of string | OK
+
+end
                                     
 signature STORE_EXPORTER = sig
 
@@ -57,10 +63,11 @@ signature STORE_EXPORTER = sig
 
        STORE_EXPORTER raises an exception on failure. *)
 
+    include STORE_EXPORT_BASE
     type store
 
-    val save_to_file : store -> string -> unit
-    val save_to_stream : store -> TextIO.outstream -> unit
+    val save_to_file : store -> string -> result
+    val save_to_stream : store -> TextIO.outstream -> result
 
 end
 
@@ -71,11 +78,12 @@ signature STORE_STREAM_EXPORTER = sig
 
        STORE_STREAM_EXPORTER raises an exception on failure. *)
     
+    include STORE_EXPORT_BASE
     type store
 
     (* !!! todo: base iri? *)
                      
-    val save_to_stream : store -> FileType.format * TextIO.outstream -> unit
+    val save_to_stream : store -> FileType.format * TextIO.outstream -> result
     val formats_supported : FileType.format list
 
 end
@@ -90,11 +98,12 @@ signature STORE_FILE_EXPORTER = sig
 
        STORE_FILE_EXPORTER raises an exception on failure. *)
     
+    include STORE_EXPORT_BASE
     type store
 
     (* !!! todo: base iri? *)
                      
-    val save_to_file : store -> string -> unit
+    val save_to_file : store -> string -> result
     val formats_supported : FileType.format list
     val extensions_supported : string list
 

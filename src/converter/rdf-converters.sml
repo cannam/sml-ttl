@@ -30,11 +30,8 @@ structure FileExtensionDrivenConverter :> RDF_FILE_CONVERTER = struct
         let
             val instream = TextIO.openIn infile
             val outstream = TextIO.openOut outfile
-            val result = 
-                case TurtleNTriplesConverter.convert base_iri
-                                                     instream outstream of
-                    CONVERSION_ERROR e => CONVERSION_ERROR e
-                  | CONVERTED => CONVERTED
+            val result = TurtleNTriplesConverter.convert
+                             base_iri instream outstream
         in
             TextIO.closeOut outstream;
             TextIO.closeIn instream;
@@ -42,11 +39,15 @@ structure FileExtensionDrivenConverter :> RDF_FILE_CONVERTER = struct
         end
                               
     fun convert_via_store base_iri infile outfile =
-        case StoreFileLoader.load_file_as_new_store base_iri infile of
-            StoreFileLoader.LOAD_ERROR err => CONVERSION_ERROR err
-          | StoreFileLoader.OK store =>
-            (StoreFileExporter.save_to_file store outfile;
-             CONVERTED)
+        let open StoreFileLoader
+        in
+            case load_file_as_new_store base_iri infile of
+                LOAD_ERROR err => CONVERSION_ERROR err
+              | OK store =>
+                case StoreFileExporter.save_to_file store outfile of
+                    StoreFileExporter.EXPORT_ERROR err => CONVERSION_ERROR err
+                  | _ => CONVERTED
+        end
 
     fun convert base_iri infile outfile =
         if is_incremental infile outfile then

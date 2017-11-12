@@ -55,13 +55,13 @@ fun conversion_example_1 () =
         val filename = "test/other/goblin.ttl"
         val outfile = "test/out/temporary1.ntriples"
         val base_iri = "file:///" ^ filename
-        open StoreFileLoader
-        open StoreFileExporter
     in
-        case load_file_as_new_store base_iri filename of
-            LOAD_ERROR text =>
+        case StoreFileLoader.load_file_as_new_store base_iri filename of
+            StoreFileLoader.LOAD_ERROR text =>
             (print ("Load failed: " ^ text ^ "\n"); false)
-          | OK store => (save_to_file store outfile; true)
+          | StoreFileLoader.OK store =>
+            (StoreFileExporter.save_to_file store outfile =
+             StoreFileExporter.OK)
     end
 
 (* 6. Do that again but using an RDF converter *)

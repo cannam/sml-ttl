@@ -1,4 +1,12 @@
-                                            
+
+(*!!! error handling -- make consistent between these and store-io.
+
+    Currently we raise exceptions for (i) unsupported format extension
+    and (ii) system file access problems (raised by
+    e.g. TextIO.openIn), but return an error type for (iii) parse
+    errors.
+*)
+
 structure RdfFileParser :> RDF_FILE_PARSER = struct
 
     open RdfParserBase
