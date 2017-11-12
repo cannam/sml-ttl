@@ -2,4 +2,3 @@ store.mlb
 store-io/store-io.sig
 store-io/store-loader.sml
 store-io/store-exporter.sml
-store-io/rdf-converters.sml

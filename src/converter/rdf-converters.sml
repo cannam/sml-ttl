@@ -1,11 +1,11 @@
 
 structure TurtleNTriplesConverter =
-    RdfConverterIncrementalFn(struct
+    RdfIncrementalConverterFn(struct
                                structure Parser = TurtleIncrementalParser
                                structure Serialiser = NTriplesSerialiser
                                end)
 
-structure FileExtensionDrivenConverter : RDF_FILE_CONVERTER = struct
+structure FileExtensionDrivenConverter :> RDF_FILE_CONVERTER = struct
 
     type prefix = RdfTriple.prefix
     type triple = RdfTriple.triple

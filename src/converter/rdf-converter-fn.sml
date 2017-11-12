@@ -1,10 +1,10 @@
 
-signature RDF_CONVERTER_INCREMENTAL_ARG = sig
+signature RDF_INCREMENTAL_CONVERTER_ARG = sig
     structure Parser : RDF_INCREMENTAL_PARSER
     structure Serialiser : RDF_INCREMENTAL_SERIALISER
 end
 
-functor RdfConverterIncrementalFn (A: RDF_CONVERTER_INCREMENTAL_ARG)
+functor RdfIncrementalConverterFn (A: RDF_INCREMENTAL_CONVERTER_ARG)
         :> RDF_CONVERTER = struct
     
     structure P = A.Parser

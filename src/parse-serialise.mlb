@@ -15,5 +15,3 @@ parse-serialise/turtle-codepoints.sml
 parse-serialise/turtle-parser.sml
 parse-serialise/turtle-serialiser.sml
 parse-serialise/rdf-file-parser.sml
-parse-serialise/rdf-converter.sig
-parse-serialise/rdf-converter-fn.sml

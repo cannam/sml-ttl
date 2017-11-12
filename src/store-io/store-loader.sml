@@ -54,7 +54,9 @@ end
 
 structure TurtleLoader = StoreIncrementalLoaderFn(TurtleIncrementalParser)
                                             
-structure StoreFileLoader :> STORE_FILE_LOADER where type store = Store.t = struct
+structure StoreFileLoader :> STORE_FILE_LOADER
+                                 where type store = Store.t
+= struct
 
     type store = Store.t
 
