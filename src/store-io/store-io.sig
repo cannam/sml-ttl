@@ -64,6 +64,22 @@ signature STORE_EXPORTER = sig
 
 end
 
+signature STORE_STREAM_EXPORTER = sig
+
+    (* Signature for exporters that determine the format to be
+       exported based on a supplied format type.
+
+       STORE_STREAM_EXPORTER raises an exception on failure. *)
+    
+    type store
+
+    (* !!! todo: base iri? *)
+                     
+    val save_to_stream : store -> FileType.format * TextIO.outstream -> unit
+    val formats_supported : FileType.format list
+
+end
+
 signature STORE_FILE_EXPORTER = sig
 
     (* Signature for exporters that determine the format to be

@@ -2,7 +2,6 @@
 structure FileType = struct
 
     datatype format = TURTLE | NTRIPLES | RDFXML | OTHER
-    datatype t = format
 
     fun format_for_extension e =
         case e of
