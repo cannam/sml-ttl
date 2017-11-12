@@ -3,18 +3,15 @@ SCRIPTS	:= ext/sml-buildscripts
 
 BUILDER	:= ${SCRIPTS}/polybuild
 
-all:	programs/load programs/convert example test/tests
+all:	convert example test/tests
 
-programs/load:		programs/load.mlb d/load.deps 
+convert:	convert.mlb d/convert.deps 
 	${BUILDER} $<
 
-programs/convert:	programs/convert.mlb d/convert.deps 
+example:	example.mlb d/example.deps
 	${BUILDER} $<
 
-example:		example.mlb d/example.deps
-	${BUILDER} $<
-
-test/tests:		test/tests.mlb d/tests.deps
+test/tests:	test/tests.mlb d/tests.deps
 	${BUILDER} $<
 	$@
 
@@ -26,12 +23,9 @@ ext:	ext/sml-buildscripts/mlb-dependencies
 ext/sml-buildscripts/mlb-dependencies:
 	./vext install
 
-MLBS	:= programs/load.mlb programs/convert.mlb example.mlb test/tests.mlb $(wildcard src/*.mlb)
+MLBS	:= convert.mlb example.mlb test/tests.mlb $(wildcard src/*.mlb)
 
-d/load.deps:	programs/load.mlb $(MLBS)
-	${SCRIPTS}/mlb-dependencies $< > $@
-
-d/convert.deps:	programs/convert.mlb $(MLBS)
+d/convert.deps:	convert.mlb $(MLBS)
 	${SCRIPTS}/mlb-dependencies $< > $@
 
 d/example.deps:	example.mlb $(MLBS)
@@ -41,7 +35,7 @@ d/tests.deps:	test/tests.mlb $(MLBS)
 	${SCRIPTS}/mlb-dependencies $< > $@
 
 clean:
-	rm -f programs/load programs/convert example test/tests d/*
+	rm -f convert example test/tests d/*
 
 coverage:
 	${SCRIPTS}/mlb-coverage test/tests.mlb
@@ -49,8 +43,7 @@ coverage:
 MLTON_ARGS	:= -runtime 'copy-generational-ratio 10.0' -runtime 'ram-slop 0.8'
 
 release:
-	mlton $(MLTON_ARGS) programs/load.mlb
-	mlton $(MLTON_ARGS) programs/convert.mlb
+	mlton $(MLTON_ARGS) convert.mlb
 	mlton $(MLTON_ARGS) example.mlb
 	mlton $(MLTON_ARGS) test/tests.mlb
 	test/tests

@@ -1,7 +1,5 @@
 
 open RdfTriple
-
-(*!!! todo: make clear in usage how output format is selected; support turtle output to stdout (it works to file only at the mo) *)
          
 fun usage () =
     let open TextIO
@@ -21,23 +19,17 @@ fun usage () =
 	    "\nUsage:\n" ^
             "    convert infile [outfile]\n" ^
             "\nFile format is deduced from the file extension.\n" ^
-            "If outfile is absent, output will go to stdout and will be in NTriples format.\n" ^
+            "If outfile is absent, output will go to stdout " ^
+            "and will be in NTriples format.\n" ^
             "\nSupported formats are:\n" ^
-            "For import: " ^ formatDesc (StoreFileLoader.formats_supported) ^
-            "\nFor output: " ^ formatDesc (StoreFileExporter.formats_supported) ^
+            "  import: " ^ formatDesc (StoreFileLoader.formats_supported) ^
+            "\n  output: " ^ formatDesc (StoreFileExporter.formats_supported) ^
             "\n\n");
         raise Fail "Incorrect arguments specified"
     end
 
-fun report_time text start =
-    TextIO.output (TextIO.stdErr, 
-                   text ^ ": " ^
-                   (Real.toString (Time.toReal
-                                       (Time.- (Time.now (), start)))) ^ " sec\n")
-
 fun convert_stdout iri infile =
-    let val start = Time.now ()
-        val instream = TextIO.openIn infile
+    let val instream = TextIO.openIn infile
         val outstream = TextIO.stdOut
         open TurtleNTriplesConverter
         val result = convert iri instream outstream
@@ -49,8 +41,7 @@ fun convert_stdout iri infile =
     end
 
 fun convert_file iri (infile, outfile) =
-    let val start = Time.now ()
-        val instream = TextIO.openIn infile
+    let val instream = TextIO.openIn infile
         val outstream = TextIO.openOut outfile
         open FileExtensionDrivenConverter
         val result = convert iri infile outfile

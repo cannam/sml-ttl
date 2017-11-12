@@ -9,4 +9,4 @@ test-collection.sml
 test-turtle-parser.sml
 test-turtle-spec.sml
 test-all.sml
-main.sml
+../main.sml
