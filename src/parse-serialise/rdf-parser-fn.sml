@@ -1,26 +1,36 @@
 
-functor RdfParserFn (P: RDF_INCREMENTAL_PARSER) : RDF_PARSER = struct
+(** Turn an incremental parser into a one-shot parser *)
 
-    (* Turn an incremental parser into a one-shot parser *)
+functor RdfParserFn (I: RDF_INCREMENTAL_PARSER) : RDF_PARSER = struct
+    
+    type prefix = RdfTriple.prefix
+    type triple = RdfTriple.triple
+                      
+    datatype parsed =
+             PARSE_ERROR of string |
+             PARSED of {
+                 prefixes : prefix list,
+                 triples : triple list
+             }
 
-    open RdfParserBase
+    type base_iri = string
 
     fun parse iri stream : parsed =
         let fun parse' acc f =
                 case f () of
-                    P.END_OF_STREAM => PARSED acc
-                  | P.PARSE_ERROR err => PARSE_ERROR err
-                  | P.PARSE_OUTPUT ({ prefixes, triples }, f') =>
+                    I.END_OF_STREAM => PARSED acc
+                  | I.PARSE_ERROR err => PARSE_ERROR err
+                  | I.PARSE_OUTPUT ({ prefixes, triples }, f') =>
                     parse' {
                         prefixes = List.revAppend(prefixes, #prefixes acc),
                         triples = List.revAppend(triples, #triples acc)
                     } f'
         in
             case parse' { prefixes = [], triples = [] }
-                        (fn () => P.parse iri stream) of
-                PARSED { prefixes, triples } => PARSED { prefixes = rev prefixes,
-                                                         triples = rev triples }
-              | PARSE_ERROR e => PARSE_ERROR e
+                        (fn () => I.parse iri stream) of
+                PARSED { prefixes, triples } =>
+                PARSED { prefixes = rev prefixes, triples = rev triples }
+              | err => err
         end
 
 end

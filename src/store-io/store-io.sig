@@ -2,7 +2,18 @@
 signature STORE_LOAD_BASE = sig
 			  
     type base_iri = string
-    datatype result = LOAD_ERROR of string | OK of Store.t
+
+    datatype result =
+             (** Immediate failure due to unknown or unsupported format *)
+             FORMAT_NOT_SUPPORTED |
+             (** Error caught from system code, e.g. file not found *)
+             SYSTEM_ERROR of string |
+             (** Error produced during parsing, e.g. malformed syntax *)
+             PARSE_ERROR of string |
+             (** Successful load *)
+             OK of Store.t
+
+    type store
 
 end
 			  
@@ -16,7 +27,6 @@ signature STORE_LOADER = sig
        read. *)
 
     include STORE_LOAD_BASE
-    type store
                      
     val load_file : store -> base_iri -> string -> result
     val load_stream : store -> base_iri -> TextIO.instream -> result
@@ -37,7 +47,6 @@ signature STORE_FILE_LOADER = sig
        internally. *)
 
     include STORE_LOAD_BASE
-    type store
     
     val load_file : store -> base_iri -> string -> result
     val load_file_as_new_store : base_iri -> string -> result
@@ -48,7 +57,15 @@ end
 
 signature STORE_EXPORT_BASE = sig
 			  
-    datatype result = EXPORT_ERROR of string | OK
+    datatype result =
+             (** Immediate failure due to unknown or unsupported format *)
+             FORMAT_NOT_SUPPORTED |
+             (** Error caught from system code, e.g. file could not be opened *)
+             SYSTEM_ERROR of string |
+             (** Successful export *)
+             OK
+
+    type store
 
 end
                                     
@@ -64,7 +81,6 @@ signature STORE_EXPORTER = sig
        STORE_EXPORTER raises an exception on failure. *)
 
     include STORE_EXPORT_BASE
-    type store
 
     val save_to_file : store -> string -> result
     val save_to_stream : store -> TextIO.outstream -> result
@@ -79,7 +95,6 @@ signature STORE_STREAM_EXPORTER = sig
        STORE_STREAM_EXPORTER raises an exception on failure. *)
     
     include STORE_EXPORT_BASE
-    type store
 
     (* !!! todo: base iri? *)
                      
@@ -99,7 +114,6 @@ signature STORE_FILE_EXPORTER = sig
        STORE_FILE_EXPORTER raises an exception on failure. *)
     
     include STORE_EXPORT_BASE
-    type store
 
     (* !!! todo: base iri? *)
                      

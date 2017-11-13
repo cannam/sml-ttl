@@ -1,8 +1,13 @@
 
 structure StoreExportBase : STORE_EXPORT_BASE = struct
 
-    datatype result = EXPORT_ERROR of string | OK
+    datatype result =
+             FORMAT_NOT_SUPPORTED |
+             SYSTEM_ERROR of string |
+             OK
 
+    type store = Store.t
+                 
 end
 
 (*!!! The error handling is not working here -- we can provide a nonexistent filename as input to the convert program and it just silently ignores us. Investigate & fix *)
@@ -14,8 +19,6 @@ functor StoreIncrementalExporterFn (S: RDF_INCREMENTAL_SERIALISER)
 = struct
 
     open StoreExportBase
-
-    type store = Store.t
 
     fun save_to_stream store stream =
         let val serialiser = S.new stream
@@ -34,7 +37,7 @@ functor StoreIncrementalExporterFn (S: RDF_INCREMENTAL_SERIALISER)
 
     fun save_to_file store filename =
         save_to_file' store filename
-        handle ex => EXPORT_ERROR (exnMessage ex)
+        handle ex => SYSTEM_ERROR (exnMessage ex)
 end
 
 functor StoreAbbreviatingExporterFn
@@ -47,8 +50,6 @@ functor StoreAbbreviatingExporterFn
 = struct
 
     open StoreExportBase
-
-    type store = Store.t
                      
     fun save_to_stream store stream =
         let val serialiser = S.new (Store.get_prefix_table store, store) stream
@@ -67,7 +68,7 @@ functor StoreAbbreviatingExporterFn
 
     fun save_to_file store filename =
         save_to_file' store filename
-        handle ex => EXPORT_ERROR (exnMessage ex)
+        handle ex => SYSTEM_ERROR (exnMessage ex)
 end
 					    
 structure NTriplesExporter =
@@ -87,7 +88,7 @@ structure StoreStreamExporter
 
     open StoreExportBase
 
-    type store = Store.t
+    exception Unsupported
 
     fun save_to_stream store (format, stream) =
         let open FileType
@@ -95,10 +96,11 @@ structure StoreStreamExporter
                 case format of
                     TURTLE => TurtleExporter.save_to_stream
                   | NTRIPLES => NTriplesExporter.save_to_stream
-                  | _ => raise Fail "Unknown or unsupported save format"
+                  | _ => raise Unsupported
         in
             (exporter store stream; OK)
-            handle ex => EXPORT_ERROR (exnMessage ex)
+            handle Unsupported => FORMAT_NOT_SUPPORTED
+            handle ex => SYSTEM_ERROR (exnMessage ex)
         end
 
     val formats_supported = [FileType.TURTLE, FileType.NTRIPLES]
@@ -113,7 +115,7 @@ structure StoreFileExporter
 
     open StoreExportBase
 
-    type store = Store.t
+    exception Unsupported
 
     fun save_to_file store filename =
         let open FileType
@@ -121,10 +123,11 @@ structure StoreFileExporter
                 case format_of filename of
                     TURTLE => TurtleExporter.save_to_file
                   | NTRIPLES => NTriplesExporter.save_to_file
-                  | _ => raise Fail "Unknown or unsupported file extension"
+                  | _ => raise Unsupported
         in
             (exporter store filename; OK)
-            handle ex => EXPORT_ERROR (exnMessage ex)
+            handle Unsupported => FORMAT_NOT_SUPPORTED
+            handle ex => SYSTEM_ERROR (exnMessage ex)
         end
 
     val formats_supported = [FileType.TURTLE, FileType.NTRIPLES]

@@ -1,7 +1,6 @@
 
 structure TurtleIncrementalParser : RDF_INCREMENTAL_PARSER = struct
 
-    open RdfParserBase
     open RdfNode
     open RdfTriple
              

@@ -104,7 +104,7 @@ functor TestTurtleSpecFn (P: RDF_PARSER) : TESTS = struct
         let val instream = TextIO.openIn fin
             val outstream = TextIO.openOut fout
             open TurtleNTriplesConverter
-            val result = convert base instream outstream
+            val result = convert (base, instream) (base, outstream)
         in
             TextIO.closeIn instream;
             TextIO.closeOut outstream;
@@ -119,16 +119,24 @@ functor TestTurtleSpecFn (P: RDF_PARSER) : TESTS = struct
             val fout = temp_file action
             val out_ttl = fout ^ ".export.ttl"
             val out_ref = fout ^ ".ref.nt"
+            fun bail_ttl err = (print ("\n--- Conversion to \"" ^ out_ttl ^
+                                       "\" failed: " ^ err ^ "\n");
+                                false)
+            fun bail_ref err = (print ("\n--- Conversion to \"" ^ out_ref ^
+                                       "\" failed: " ^ err ^ "\n");
+                                false)
         in
-            case convert base fin out_ttl of (* the Turtle export *)
-                CONVERSION_ERROR e => (print ("\n--- Conversion to \"" ^ out_ttl ^
-                                              "\" failed: " ^ e ^ "\n");
-                                       false)
+            case convert (base, fin) (base, out_ttl) of (* the Turtle export *)
+                INPUT_FORMAT_NOT_SUPPORTED => bail_ttl "Input format not supported"
+              | OUTPUT_FORMAT_NOT_SUPPORTED => bail_ttl "Output format not supported"
+              | SYSTEM_ERROR err => bail_ttl err
+              | CONVERSION_ERROR err => bail_ttl err
               | CONVERTED =>
-                case convert base fin out_ref of (* and NTriples, as ref *)
-                    CONVERSION_ERROR e => (print ("\n--- Conversion to \"" ^ out_ref
-                                                  ^ "\" failed: " ^ e ^ "\n");
-                                           false)
+                case convert (base, fin) (base, out_ref) of (* and NTriples, as ref *)
+                    INPUT_FORMAT_NOT_SUPPORTED => bail_ref "Input format not supported"
+                  | OUTPUT_FORMAT_NOT_SUPPORTED => bail_ref "Output format not supported"
+                  | SYSTEM_ERROR err => bail_ref err
+                  | CONVERSION_ERROR err => bail_ref err
                   | CONVERTED => good_conversion (base, out_ttl, fout, out_ref)
         end
             
@@ -232,11 +240,10 @@ functor TestTurtleSpecFn (P: RDF_PARSER) : TESTS = struct
         end
             
     fun tests_from_manifest name =
-        case L.load_file_as_new_store "" (test_file name)
-             handle IO.Io { name, ... } =>
-                    L.LOAD_ERROR ("failed to open file \"" ^ name ^ "\"")
-         of
-            L.LOAD_ERROR err => [setup_failed_test err]
+        case L.load_file_as_new_store "" (test_file name) of
+            L.FORMAT_NOT_SUPPORTED => [setup_failed_test "Format not supported"]
+          | L.SYSTEM_ERROR err => [setup_failed_test err]
+          | L.PARSE_ERROR err => [setup_failed_test err]
           | L.OK store =>
             let val n1 = length (S.enumerate store)
 		val tt = tests_from_store store

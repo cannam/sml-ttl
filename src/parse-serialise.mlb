@@ -3,7 +3,6 @@ parse-serialise/source.sml
 parse-serialise/file-extension.sml
 parse-serialise/file-type.sml
 parse-serialise/rdf-parser.sig
-parse-serialise/rdf-parser-base.sml
 parse-serialise/rdf-parser-fn.sml
 parse-serialise/rdf-serialiser.sig
 parse-serialise/encode.sml
@@ -14,4 +13,3 @@ parse-serialise/ntriples-serialiser.sml
 parse-serialise/turtle-codepoints.sml
 parse-serialise/turtle-parser.sml
 parse-serialise/turtle-serialiser.sml
-parse-serialise/rdf-file-parser.sml

@@ -32,7 +32,7 @@ fun convert_stdout iri infile =
     let val instream = TextIO.openIn infile
         val outstream = TextIO.stdOut
         open TurtleNTriplesConverter
-        val result = convert iri instream outstream
+        val result = convert (iri, instream) (iri, outstream)
     in
         TextIO.closeIn instream;
         case result of
@@ -44,12 +44,17 @@ fun convert_file iri (infile, outfile) =
     let val instream = TextIO.openIn infile
         val outstream = TextIO.openOut outfile
         open FileExtensionDrivenConverter
-        val result = convert iri infile outfile
+        val result = convert (iri, infile) (iri, outfile)
     in
         TextIO.closeIn instream;
         TextIO.closeOut outstream;
         case result of
-            CONVERSION_ERROR err => raise Fail err
+            INPUT_FORMAT_NOT_SUPPORTED =>
+            raise Fail "Input format not supported"
+          | OUTPUT_FORMAT_NOT_SUPPORTED =>
+            raise Fail "Output format not supported"
+          | SYSTEM_ERROR err => raise Fail ("System error: " ^ err)
+          | CONVERSION_ERROR err => raise Fail err
           | CONVERTED => ()
     end
         

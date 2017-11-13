@@ -17,7 +17,7 @@ fun read_turtle_stream_example () =
 
 (* 2. Read all the triples from an RDF document of some sort (without
       having to specify Turtle) *)
-
+(*
 fun read_any_file_example () =
     let
         val filename = "test/other/goblin.ttl"
@@ -28,7 +28,7 @@ fun read_any_file_example () =
             PARSE_ERROR text => (print ("Parse failed: " ^ text ^ "\n"); [])
           | PARSED { prefixes, triples } => triples
     end
-
+*)
 (* 3. Read all the triples from a remote URL serving an RDF document *)
 
 (* !!! *)
@@ -39,27 +39,42 @@ fun load_to_store_example () =
     let
         val filename = "test/other/goblin.ttl"
         val base_iri = "file:///" ^ filename
-        open StoreFileLoader
+        open StoreFileLoader                                        
     in
         case load_file_as_new_store base_iri filename of
-            LOAD_ERROR text =>
-            (print ("Load failed: " ^ text ^ "\n"); Store.empty)
+            FORMAT_NOT_SUPPORTED =>
+            (print "Format not supported!\n"; Store.empty)
+          | SYSTEM_ERROR err =>
+            (print ("System error: " ^ err ^ "\n"); Store.empty)
+          | PARSE_ERROR err =>
+            (print ("Load failed: " ^ err ^ "\n"); Store.empty)
           | OK store => store
     end
 
 (* 5. Load a Turtle file into a store, query it, and save the results
       as an NTriples file *)
-
+(*!!! todo: query it *)
 fun conversion_example_1 () =
     let
         val filename = "test/other/goblin.ttl"
         val outfile = "test/out/temporary1.ntriples"
         val base_iri = "file:///" ^ filename
+        val loaded =
+            let open StoreFileLoader                                        
+            in
+                case load_file_as_new_store base_iri filename of
+                    FORMAT_NOT_SUPPORTED =>
+                    (print "Format not supported!\n"; NONE)
+                  | SYSTEM_ERROR err =>
+                    (print ("System error: " ^ err ^ "\n"); NONE)
+                  | PARSE_ERROR err =>
+                    (print ("Load failed: " ^ err ^ "\n"); NONE)
+                  | OK store => SOME store
+            end
     in
-        case StoreFileLoader.load_file_as_new_store base_iri filename of
-            StoreFileLoader.LOAD_ERROR text =>
-            (print ("Load failed: " ^ text ^ "\n"); false)
-          | StoreFileLoader.OK store =>
+        case loaded of
+            NONE => false
+          | SOME store => 
             (StoreFileExporter.save_to_file store outfile =
              StoreFileExporter.OK)
     end
@@ -73,9 +88,15 @@ fun conversion_example_2 () =
         val base_iri = "file:///" ^ filename
         open FileExtensionDrivenConverter
     in
-        case convert base_iri filename outfile of
-            CONVERSION_ERROR text =>
-            (print ("Conversion failed: " ^ text ^ "\n"); false)
+        case convert (base_iri, filename) (base_iri, outfile) of
+            INPUT_FORMAT_NOT_SUPPORTED =>
+            (print "Input format not supported!\n"; false)
+          | OUTPUT_FORMAT_NOT_SUPPORTED =>
+            (print "Input format not supported!\n"; false)
+          | SYSTEM_ERROR err =>
+            (print ("System failed: " ^ err ^ "\n"); false)
+          | CONVERSION_ERROR err =>
+            (print ("Conversion failed: " ^ err ^ "\n"); false)
           | CONVERTED => true
     end
 
@@ -84,7 +105,7 @@ fun conversion_example_2 () =
 fun main () =
     let
         val triples_from_turtle = read_turtle_stream_example ()
-        val triples_from_any = read_any_file_example ()
+(*!!!        val triples_from_any = read_any_file_example () *)
         val store_from_turtle = load_to_store_example ()
         val converted_1 = conversion_example_1 ()
         val converted_2 = conversion_example_2 ()
@@ -93,11 +114,11 @@ fun main () =
         print ("Parsed " ^
                (Int.toString (length triples_from_turtle)) ^
                " triple(s) from Turtle file\n");
-
+(*!!!
         print ("Parsed " ^
                (Int.toString (length triples_from_any)) ^
                " triple(s) from file by extension\n");
-
+*)
         print ("Loaded " ^
                (Int.toString (length (Store.enumerate store_from_turtle))) ^
                " triple(s) into store from file\n");

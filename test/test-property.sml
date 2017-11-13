@@ -16,12 +16,19 @@ functor TestPropertyFn (P: STORE_PROPERTY) :> TESTS = struct
             0wx43F, 0wx430, 0wx443, 0wx43A ]
                            
     fun load_testfile () =
-        case StoreFileLoader.load_file_as_new_store "" testfile of
-            StoreFileLoader.OK store => SOME store
-          | StoreFileLoader.LOAD_ERROR err =>
-            (print ("--- Failed to load test file \"" ^ testfile ^
-                    "\": " ^ err ^ "\n");
-             NONE)
+        let open StoreFileLoader
+        in
+            case load_file_as_new_store "" testfile of
+                FORMAT_NOT_SUPPORTED =>
+                (print "--- Test file format not supported!\n"; NONE)
+              | SYSTEM_ERROR err => 
+                (print ("--- Failed to open test file \"" ^ testfile ^
+                        "\": " ^ err ^ "\n"); NONE)
+              | PARSE_ERROR err =>
+                (print ("--- Failed to parse test file \"" ^ testfile ^
+                        "\": " ^ err ^ "\n"); NONE)
+              | OK store => SOME store
+        end
 
     fun with_codepoints s =
         s ^ " [ " ^

@@ -1,15 +1,23 @@
 
 structure StoreLoadBase : STORE_LOAD_BASE = struct
 
-    datatype result = LOAD_ERROR of string | OK of Store.t
     type base_iri = string
 
+    datatype result =
+             FORMAT_NOT_SUPPORTED |
+             SYSTEM_ERROR of string |
+             PARSE_ERROR of string |
+             OK of Store.t
+
+    type store = Store.t
+                       
 end
                                             
 functor StoreIncrementalLoaderFn (P: RDF_INCREMENTAL_PARSER)
-        : STORE_LOADER where type store = Store.t = struct
-
-    type store = Store.t
+        :> STORE_LOADER
+               where type store = Store.t
+               where type result = StoreLoadBase.result
+= struct
 
     open StoreLoadBase
 
@@ -17,7 +25,7 @@ functor StoreIncrementalLoaderFn (P: RDF_INCREMENTAL_PARSER)
 	let fun parse' acc f =
 		case f () of
 		    P.END_OF_STREAM => OK acc
-		  | P.PARSE_ERROR err => LOAD_ERROR err
+		  | P.PARSE_ERROR err => PARSE_ERROR err
 		  | P.PARSE_OUTPUT ({ prefixes, triples }, f') =>
 		    parse'
 			(foldl (fn (triple, s) => Store.add (s, triple))
@@ -40,7 +48,7 @@ functor StoreIncrementalLoaderFn (P: RDF_INCREMENTAL_PARSER)
 
     fun load_string store iri string =
         load_string' store iri string
-        handle ex => LOAD_ERROR (exnMessage ex)
+        handle ex => SYSTEM_ERROR (exnMessage ex)
 
     fun load_file' store iri filename =
         let val stream = TextIO.openIn filename
@@ -52,7 +60,7 @@ functor StoreIncrementalLoaderFn (P: RDF_INCREMENTAL_PARSER)
 
     fun load_file store iri filename =
         load_file' store iri filename
-        handle ex => LOAD_ERROR (exnMessage ex)
+        handle ex => SYSTEM_ERROR (exnMessage ex)
             
     val load_stream_as_new_store = load_stream Store.empty
     val load_string_as_new_store = load_string Store.empty
@@ -63,23 +71,24 @@ end
 structure TurtleLoader = StoreIncrementalLoaderFn(TurtleIncrementalParser)
                                             
 structure StoreFileLoader :> STORE_FILE_LOADER
-                                 where type store = Store.t
+               where type result = StoreLoadBase.result
 = struct
-
-    type store = Store.t
 
     open StoreLoadBase
 
+    exception Unsupported
+             
     fun load_file store iri filename =
         let open FileType
             val loader =
                 case format_of filename of
                     TURTLE => TurtleLoader.load_file 
                   | NTRIPLES => TurtleLoader.load_file
-                  | _ => raise Fail "Unknown or unsupported file extension"
+                  | _ => raise Unsupported
         in
             loader store iri filename
-            handle ex => LOAD_ERROR (exnMessage ex)
+            handle Unsupported => FORMAT_NOT_SUPPORTED
+            handle ex => SYSTEM_ERROR (exnMessage ex)
         end
 
     val load_file_as_new_store = load_file Store.empty

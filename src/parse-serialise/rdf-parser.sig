@@ -1,43 +1,43 @@
 
-signature RDF_PARSER_BASE = sig
-    
+(** Parser that reads from a text stream and produces a complete
+    parsed set of prefixes and triples "in one go".
+
+    Note that an RDF_PARSER parses a single format; different formats
+    would have different parser structures, and distinguishing between
+    them must be handled at a higher level. So there is no means to
+    tell the parser what format to parse.
+ *)
+signature RDF_PARSER = sig
+
     type prefix = RdfTriple.prefix
     type triple = RdfTriple.triple
     
     datatype parsed =
+             (** Error produced during parsing, e.g. malformed syntax *)
              PARSE_ERROR of string |
+             (** Successful parse *)
              PARSED of {
                  prefixes : prefix list,
                  triples : triple list
              }
 
     type base_iri = string
-
-end
-
-(** Parser that reads from a text stream and produces a complete
-    parsed set of prefixes and triples "in one go".
-
-    This signature is for parsers that parse a single format, and so
-    don't need to be told what format to parse.
- *)
-signature RDF_PARSER = sig
-
-    include RDF_PARSER_BASE
                 
-    (** does not close the input stream after parsing *)
+    (** Parse an entire document from a stream in one go. Does not close
+        the input stream after parsing. *)
     val parse : base_iri -> TextIO.instream -> parsed
 
 end
 
 (** Parser that reads from a text stream and emits prefixes and
     triples as it sees them. Only some RDF serialisation formats can
-    be parsed in this way. The parse function should normally be
-    called repeatedly on the same input stream until it returns
-    END_OF_STREAM.
+    be parsed in this way. When the parse function returns some
+    output, it is accompanied by a thunk that can be invoked to 
 
-    This signature is for parsers that parse a single format, and so
-    don't need to be told what format to parse.
+    Note that an RDF_INCREMENTAL_PARSER parses a single format;
+    different formats would have different parser structures, and
+    distinguishing between them must be handled at a higher level. So
+    there is no means to tell the parser what format to parse.
 *)
 signature RDF_INCREMENTAL_PARSER = sig
     
@@ -45,8 +45,11 @@ signature RDF_INCREMENTAL_PARSER = sig
     type triple = RdfTriple.triple
 
     datatype stream_value =
+             (** End of stream reached following successful parse *)
              END_OF_STREAM |
+             (** Error produced during parsing, e.g. malformed syntax *)
              PARSE_ERROR of string |
+             (** Some parsed output is available *)
              PARSE_OUTPUT of {
                  prefixes : prefix list,
                  triples : triple list                 
@@ -54,20 +57,10 @@ signature RDF_INCREMENTAL_PARSER = sig
 
     type base_iri = string
                      
-    (** does not close the input stream after parsing *)
+    (** Process the stream and return a batch of parsed elements. Does
+        not close the input stream after parsing; this function should
+        normally be called repeatedly on the same input stream until
+        it returns END_OF_STREAM. *)
     val parse : base_iri -> TextIO.instream -> stream_value
                      
-end
-                           
-(** Parser that reads from a file and produces a complete parsed set
-    of prefixes and triples. It uses file metadata, e.g. suffix, to
-    determine the format to be parsed, and will probably work by
-    guessing and delegating to an appropriate RDF_PARSER internally.
-*)
-signature RDF_FILE_PARSER = sig
-
-    include RDF_PARSER_BASE
-
-    val parse_file : base_iri -> string -> parsed
-                
 end
