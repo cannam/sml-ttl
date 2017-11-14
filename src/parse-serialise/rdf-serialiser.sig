@@ -43,15 +43,15 @@ signature RDF_ABBREVIATING_SERIALISER = sig
     type prefix_table
     type matcher
 
-(*!!! + base iri *)
+    (*!!! surely should be an Iri.t ? *)
+    type base_iri = string
 
     (** Construct a serialiser using a given set of prefixes and a
         matcher for collection gathering, writing to an output text
         stream. Stream must be open for writing, and it will remain
         open after serialisation has finished: it is the caller's
         responsibility to close it. *)
-    val new : prefix_table * matcher -> TextIO.outstream -> t
+    val new : base_iri * prefix_table * matcher -> TextIO.outstream -> t
 
 end
 			       
-(*!!! + file serialiser (i.e. using extension, analogous to store file exporter) *)

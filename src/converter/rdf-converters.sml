@@ -54,7 +54,7 @@ structure FileExtensionDrivenConverter :> RDF_FILE_CONVERTER = struct
           | Loader.SYSTEM_ERROR err => SYSTEM_ERROR err
           | Loader.PARSE_ERROR err => CONVERSION_ERROR err
           | Loader.OK store =>
-            case Exporter.save_to_file store outfile of (*!!! + base_iri *)
+            case Exporter.save_to_file store out_base_iri outfile of
                 Exporter.FORMAT_NOT_SUPPORTED => OUTPUT_FORMAT_NOT_SUPPORTED
               | Exporter.SYSTEM_ERROR err => SYSTEM_ERROR err
               | _ => CONVERTED

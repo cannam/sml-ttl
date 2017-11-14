@@ -1,6 +1,8 @@
 
 structure StoreExportBase : STORE_EXPORT_BASE = struct
 
+    type base_iri = string
+
     datatype result =
              FORMAT_NOT_SUPPORTED |
              SYSTEM_ERROR of string |
@@ -10,8 +12,6 @@ structure StoreExportBase : STORE_EXPORT_BASE = struct
                  
 end
 
-(*!!! The error handling is not working here -- we can provide a nonexistent filename as input to the convert program and it just silently ignores us. Investigate & fix *)
-                                                    
 functor StoreIncrementalExporterFn (S: RDF_INCREMENTAL_SERIALISER)
         :> STORE_EXPORTER
                where type store = Store.t
@@ -20,7 +20,7 @@ functor StoreIncrementalExporterFn (S: RDF_INCREMENTAL_SERIALISER)
 
     open StoreExportBase
 
-    fun save_to_stream store stream =
+    fun save_to_stream store _ stream =
         let val serialiser = S.new stream
         in
             S.finish (S.serialise (serialiser, Store.enumerate store));
@@ -35,7 +35,7 @@ functor StoreIncrementalExporterFn (S: RDF_INCREMENTAL_SERIALISER)
             OK
         end
 
-    fun save_to_file store filename =
+    fun save_to_file store _ filename =
         save_to_file' store filename
         handle ex => SYSTEM_ERROR (exnMessage ex)
 end
@@ -51,23 +51,24 @@ functor StoreAbbreviatingExporterFn
 
     open StoreExportBase
                      
-    fun save_to_stream store stream =
-        let val serialiser = S.new (Store.get_prefix_table store, store) stream
+    fun save_to_stream store base_iri stream =
+        let val serialiser =
+                S.new (base_iri, Store.get_prefix_table store, store) stream
         in
             S.finish (S.serialise (serialiser, Store.enumerate store));
             OK
         end
 
-    fun save_to_file' store filename =
+    fun save_to_file' store base_iri filename =
         let val stream = TextIO.openOut filename
-            val _ = save_to_stream store stream
+            val _ = save_to_stream store base_iri stream
         in
             TextIO.closeOut stream;
             OK
         end
 
-    fun save_to_file store filename =
-        save_to_file' store filename
+    fun save_to_file store base_iri filename =
+        save_to_file' store base_iri filename
         handle ex => SYSTEM_ERROR (exnMessage ex)
 end
 					    
@@ -90,7 +91,7 @@ structure StoreStreamExporter
 
     exception Unsupported
 
-    fun save_to_stream store (format, stream) =
+    fun save_to_stream store base_iri (format, stream) =
         let open FileType
             val exporter = 
                 case format of
@@ -98,7 +99,7 @@ structure StoreStreamExporter
                   | NTRIPLES => NTriplesExporter.save_to_stream
                   | _ => raise Unsupported
         in
-            (exporter store stream; OK)
+            (exporter store base_iri stream; OK)
             handle Unsupported => FORMAT_NOT_SUPPORTED
             handle ex => SYSTEM_ERROR (exnMessage ex)
         end
@@ -117,7 +118,7 @@ structure StoreFileExporter
 
     exception Unsupported
 
-    fun save_to_file store filename =
+    fun save_to_file store base_iri filename =
         let open FileType
             val exporter = 
                 case format_of filename of
@@ -125,7 +126,7 @@ structure StoreFileExporter
                   | NTRIPLES => NTriplesExporter.save_to_file
                   | _ => raise Unsupported
         in
-            (exporter store filename; OK)
+            (exporter store base_iri filename; OK)
             handle Unsupported => FORMAT_NOT_SUPPORTED
             handle ex => SYSTEM_ERROR (exnMessage ex)
         end

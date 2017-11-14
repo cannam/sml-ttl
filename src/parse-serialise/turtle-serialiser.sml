@@ -10,6 +10,8 @@ functor TurtleSerialiserFn (ARG : sig
 
     open RdfNode
 
+    type base_iri = string
+             
     structure PrefixTable = ARG.P
     structure Matcher = ARG.M
     structure CollectionGatherer = CollectionGathererFn(Matcher)
@@ -288,14 +290,22 @@ functor TurtleSerialiserFn (ARG : sig
         
     and serialise_prefixes stream prefixes =
         foldl (fn ((pfx, iri), t) =>
-                  (TextIO.output (t, ("@prefix " ^ pfx ^ ": <" ^
-                                      (Iri.toString iri) ^ "> .\n"));
+                  (TextIO.output (t, "@prefix " ^ pfx ^ ": <" ^
+                                     (Iri.toString iri) ^ "> .\n");
                    t))
               stream prefixes
 
-    fun new (prefixes, matcher) stream =
-        let val stream = serialise_prefixes stream
-                                            (PrefixTable.enumerate prefixes)
+    and serialise_base stream "" = stream
+      | serialise_base stream base_iri = 
+        (TextIO.output (stream, "@base <" ^ base_iri ^ "> .\n");
+         stream)
+
+(*!!! todo: actually abbreviate the base throughout *)
+            
+    fun new (base_iri, prefixes, matcher) stream =
+        let val stream = serialise_prefixes
+                             (serialise_base stream base_iri)
+                             (PrefixTable.enumerate prefixes)
             val _ = TextIO.output (stream, "\n")
         in
             { stream = stream,

@@ -75,7 +75,7 @@ fun conversion_example_1 () =
         case loaded of
             NONE => false
           | SOME store => 
-            (StoreFileExporter.save_to_file store outfile =
+            (StoreFileExporter.save_to_file store base_iri outfile =
              StoreFileExporter.OK)
     end
 

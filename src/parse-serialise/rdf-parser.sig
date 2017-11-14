@@ -55,6 +55,8 @@ signature RDF_INCREMENTAL_PARSER = sig
                  triples : triple list                 
              } * (unit -> stream_value)
 
+    (*!!! surely should be an Iri.t ? *)
+    (*!!! what if the file defines a base iri, as a ttl file can? maybe we don't even need this here, but only in export/serialise *)
     type base_iri = string
                      
     (** Process the stream and return a batch of parsed elements. Does
