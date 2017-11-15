@@ -32,6 +32,7 @@ functor TurtleSerialiserFn (ARG : sig
 
     type ser_data = {
         stream    : TextIO.outstream,
+        base      : string option,
         subject   : RdfNode.node option,
         predicate : RdfNode.node option,
         indent    : int,
@@ -52,13 +53,22 @@ functor TurtleSerialiserFn (ARG : sig
                                      Encode.backslash_encode)
                                     str
 
-    fun encode_iri iri = Iri.toString iri
+    fun encode_iri base_iri iri =
+        let val istr = Iri.toString iri
+        in
+            case base_iri of
+                NONE => istr
+              | SOME bstr => if String.isPrefix bstr istr
+                             then implode (List.drop (explode istr,
+                                                      String.size bstr))
+                             else istr
+        end
             
     fun string_of_abbr_iri (iri, d : ser_data) =
 	if iri = RdfStandardIRIs.iri_rdf_type then "a"
 	else case PrefixTable.abbreviate (#prefixes d, iri) of
                  SOME (ns, rest) => ns ^ ":" ^ encode_local rest
-               | NONE => "<" ^ (encode_iri iri) ^ ">"
+               | NONE => "<" ^ (encode_iri (#base d) iri) ^ ">"
 
     fun string_for_indent indent =
         if indent < 0 then ""
@@ -94,6 +104,7 @@ functor TurtleSerialiserFn (ARG : sig
                     indented (~1)
                              (serialise_triples {
                                    stream = #stream d,
+                                   base = #base d,
                                    subject = SOME obj,
                                    predicate = NONE,
                                    indent = 1 + #indent d,
@@ -176,6 +187,7 @@ functor TurtleSerialiserFn (ARG : sig
                         foldl (fn (t as (_, pred, obj) : RdfTriple.triple, d) =>
                                   let val d = 
                                           { stream = #stream d,
+                                            base = #base d,
                                             subject = #subject d,
                                             predicate = #predicate d,
                                             indent = #indent d,
@@ -203,6 +215,7 @@ functor TurtleSerialiserFn (ARG : sig
 
     and indented n (d : ser_data) =
         { stream = #stream d,
+          base = #base d,
           subject = #subject d,
           predicate = #predicate d,
           indent = n + #indent d,
@@ -238,6 +251,7 @@ functor TurtleSerialiserFn (ARG : sig
             val d = serialise_object_or_collection (obj, d, pr)
         in
             { stream = #stream d,
+              base = #base d,
               subject = SOME subj,
               predicate = SOME pred,
               indent = #indent d,
@@ -275,6 +289,7 @@ functor TurtleSerialiserFn (ARG : sig
                 serialise_triple_parts
                     (triple,
                      { stream = #stream d,
+                       base = #base d,
                        subject = #subject d,
                        predicate = #predicate d,
                        indent = #indent d,
@@ -300,8 +315,6 @@ functor TurtleSerialiserFn (ARG : sig
         (TextIO.output (stream, "@base <" ^ (Iri.toString iri) ^ "> .\n");
          stream)
 
-(*!!! todo: actually abbreviate the base throughout *)
-            
     fun new (base_iri, prefixes, matcher) stream =
         let val stream = serialise_prefixes
                              (serialise_base stream base_iri)
@@ -309,6 +322,11 @@ functor TurtleSerialiserFn (ARG : sig
             val _ = TextIO.output (stream, "\n")
         in
             { stream = stream,
+              base = case base_iri of
+                         NONE => NONE
+                       | SOME iri => if Iri.isEmpty iri
+                                     then NONE
+                                     else SOME (Iri.toString iri),
               subject = NONE,
               predicate = NONE,
               indent = 0,
