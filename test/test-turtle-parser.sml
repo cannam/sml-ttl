@@ -27,10 +27,10 @@ functor TestTurtleParserFn (P: RDF_PARSER) : TESTS = struct
          false)
             
     fun good_string str =
-        check_triples str (P.parse "" (TextIO.openString str))
+        check_triples str (P.parse (NONE, TextIO.openString str))
 
     fun bad_string str =
-        check_parse_failed str (P.parse "" (TextIO.openString str))
+        check_parse_failed str (P.parse (NONE, TextIO.openString str))
                 
     fun good_strings strs =
         List.all (fn x => x) (map good_string strs)
@@ -40,7 +40,7 @@ functor TestTurtleParserFn (P: RDF_PARSER) : TESTS = struct
 
     fun good_file f =
         let val s = TextIO.openIn f
-            val result = check_triples f (P.parse "" s)
+            val result = check_triples f (P.parse (NONE, s))
         in
             TextIO.closeIn s;
             result
@@ -61,7 +61,7 @@ functor TestTurtleParserFn (P: RDF_PARSER) : TESTS = struct
 
     fun check_iri_triple_parse str p =
         check_pairs string_of_parse_result
-                    [ (P.parse "" (TextIO.openString str),
+                    [ (P.parse (NONE, TextIO.openString str),
                        P.PARSED p) ]
 
     fun tests () = [

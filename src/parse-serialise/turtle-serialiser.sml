@@ -10,7 +10,7 @@ functor TurtleSerialiserFn (ARG : sig
 
     open RdfNode
 
-    type base_iri = string
+    type base_iri = BaseIri.t
              
     structure PrefixTable = ARG.P
     structure Matcher = ARG.M
@@ -295,9 +295,9 @@ functor TurtleSerialiserFn (ARG : sig
                    t))
               stream prefixes
 
-    and serialise_base stream "" = stream
-      | serialise_base stream base_iri = 
-        (TextIO.output (stream, "@base <" ^ base_iri ^ "> .\n");
+    and serialise_base stream NONE = stream
+      | serialise_base stream (SOME iri) = 
+        (TextIO.output (stream, "@base <" ^ (Iri.toString iri) ^ "> .\n");
          stream)
 
 (*!!! todo: actually abbreviate the base throughout *)

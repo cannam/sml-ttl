@@ -18,7 +18,7 @@ functor TestPropertyFn (P: STORE_PROPERTY) :> TESTS = struct
     fun load_testfile () =
         let open StoreFileLoader
         in
-            case load_file_as_new_store "" testfile of
+            case load_file_as_new_store (NONE, testfile) of
                 FORMAT_NOT_SUPPORTED =>
                 (print "--- Test file format not supported!\n"; NONE)
               | SYSTEM_ERROR err => 

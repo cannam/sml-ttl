@@ -11,23 +11,23 @@ functor RdfIncrementalConverterFn (A: RDF_INCREMENTAL_CONVERTER_ARG)
     structure S = A.Serialiser
 
     type triple = RdfTriple.triple
-
-    type base_iri = string
+    type base_iri = BaseIri.t
 
     datatype result =
              CONVERSION_ERROR of string |
-             CONVERTED
+             OK
                  
-    fun convert (in_base_iri, instream) (out_base_iri, outstream) =
+    fun convert (in_base, instream) (out_base, outstream) =
         let fun convert' s f =
                 case f () of
-                    P.END_OF_STREAM => (S.finish s; CONVERTED)
+                    P.END_OF_STREAM => (S.finish s; OK)
                   | P.PARSE_ERROR err => (S.finish s; CONVERSION_ERROR err)
                   | P.PARSE_OUTPUT ({ prefixes, triples }, f') =>
                     convert' (S.serialise (s, triples)) f'
         in
-            convert' (S.new outstream) (*!!! todo: out_base_iri *)
-                     (fn () => P.parse in_base_iri instream)
+            (* incremental serialiser doesn't use out_base iri *)
+            convert' (S.new outstream)
+                     (fn () => P.parse (in_base, instream))
         end
 
 end

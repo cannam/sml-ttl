@@ -1,8 +1,8 @@
 
 signature STORE_LOAD_BASE = sig
 
-    (*!!! surely should be an Iri.t ? see parse-serialise similarly *)
-    type base_iri = string
+    type base_iri = BaseIri.t
+    type store
 
     datatype result =
              (** Immediate failure due to unknown or unsupported format *)
@@ -12,9 +12,7 @@ signature STORE_LOAD_BASE = sig
              (** Error produced during parsing, e.g. malformed syntax *)
              PARSE_ERROR of string |
              (** Successful load *)
-             OK of Store.t
-
-    type store
+             OK of store
 
 end
 			  
@@ -28,16 +26,14 @@ signature STORE_LOADER = sig
        read. *)
 
     include STORE_LOAD_BASE
-
-(*!!! elsewhere, i.e. in parse-serialise, this is (base_iri * string) *)
                 
-    val load_file : store -> base_iri -> string -> result
-    val load_stream : store -> base_iri -> TextIO.instream -> result
-    val load_string : store -> base_iri -> string -> result
+    val load_file : store -> base_iri * string -> result
+    val load_stream : store -> base_iri * TextIO.instream -> result
+    val load_string : store -> base_iri * string -> result
                      
-    val load_file_as_new_store : base_iri -> string -> result
-    val load_stream_as_new_store : base_iri -> TextIO.instream -> result
-    val load_string_as_new_store : base_iri -> string -> result
+    val load_file_as_new_store : base_iri * string -> result
+    val load_stream_as_new_store : base_iri * TextIO.instream -> result
+    val load_string_as_new_store : base_iri * string -> result
 
 end
                              
@@ -51,8 +47,8 @@ signature STORE_FILE_LOADER = sig
 
     include STORE_LOAD_BASE
     
-    val load_file : store -> base_iri -> string -> result
-    val load_file_as_new_store : base_iri -> string -> result
+    val load_file : store -> base_iri * string -> result
+    val load_file_as_new_store : base_iri * string -> result
     val formats_supported : FileType.format list
     val extensions_supported : string list
 
@@ -60,8 +56,8 @@ end
 
 signature STORE_EXPORT_BASE = sig
 			  
-    (*!!! surely should be an Iri.t ? see parse-serialise similarly *)
-    type base_iri = string
+    type base_iri = BaseIri.t
+    type store
 
     datatype result =
              (** Immediate failure due to unknown or unsupported format *)
@@ -70,8 +66,6 @@ signature STORE_EXPORT_BASE = sig
              SYSTEM_ERROR of string |
              (** Successful export *)
              OK
-
-    type store
 
 end
                                     
@@ -88,8 +82,8 @@ signature STORE_EXPORTER = sig
 
     include STORE_EXPORT_BASE
 
-    val save_to_file : store -> base_iri -> string -> result
-    val save_to_stream : store -> base_iri -> TextIO.outstream -> result
+    val save_to_file : store -> base_iri * string -> result
+    val save_to_stream : store -> base_iri * TextIO.outstream -> result
 
 end
 
@@ -102,7 +96,9 @@ signature STORE_STREAM_EXPORTER = sig
     
     include STORE_EXPORT_BASE
 
-    val save_to_stream : store -> base_iri -> FileType.format * TextIO.outstream -> result
+    val save_to_stream : store ->
+                         base_iri * FileType.format * TextIO.outstream ->
+                         result
     val formats_supported : FileType.format list
 
 end
@@ -119,7 +115,7 @@ signature STORE_FILE_EXPORTER = sig
     
     include STORE_EXPORT_BASE
 
-    val save_to_file : store -> base_iri -> string -> result
+    val save_to_file : store -> base_iri * string -> result
     val formats_supported : FileType.format list
     val extensions_supported : string list
 

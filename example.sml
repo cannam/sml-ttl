@@ -6,11 +6,11 @@
 fun read_turtle_stream_example () =
     let
         val filename = "test/other/goblin.ttl"
-        val base_iri = "file:///" ^ filename
+        val base_iri = SOME (Iri.fromString ("file:///" ^ filename))
         val stream = TextIO.openIn filename
         open TurtleParser
     in
-        case parse base_iri stream of
+        case parse (base_iri, stream) of
             PARSE_ERROR text => (print ("Parse failed: " ^ text ^ "\n"); [])
           | PARSED { prefixes, triples } => triples
     end
@@ -38,10 +38,10 @@ fun read_any_file_example () =
 fun load_to_store_example () =
     let
         val filename = "test/other/goblin.ttl"
-        val base_iri = "file:///" ^ filename
+        val base_iri = SOME (Iri.fromString ("file:///" ^ filename))
         open StoreFileLoader                                        
     in
-        case load_file_as_new_store base_iri filename of
+        case load_file_as_new_store (base_iri, filename) of
             FORMAT_NOT_SUPPORTED =>
             (print "Format not supported!\n"; Store.empty)
           | SYSTEM_ERROR err =>
@@ -58,11 +58,11 @@ fun conversion_example_1 () =
     let
         val filename = "test/other/goblin.ttl"
         val outfile = "test/out/temporary1.ntriples"
-        val base_iri = "file:///" ^ filename
+        val base_iri = SOME (Iri.fromString ("file:///" ^ filename))
         val loaded =
             let open StoreFileLoader                                        
             in
-                case load_file_as_new_store base_iri filename of
+                case load_file_as_new_store (base_iri, filename) of
                     FORMAT_NOT_SUPPORTED =>
                     (print "Format not supported!\n"; NONE)
                   | SYSTEM_ERROR err =>
@@ -75,7 +75,7 @@ fun conversion_example_1 () =
         case loaded of
             NONE => false
           | SOME store => 
-            (StoreFileExporter.save_to_file store base_iri outfile =
+            (StoreFileExporter.save_to_file store (base_iri, outfile) =
              StoreFileExporter.OK)
     end
 
@@ -85,7 +85,7 @@ fun conversion_example_2 () =
     let
         val filename = "test/other/goblin.ttl"
         val outfile = "test/out/temporary2.ntriples"
-        val base_iri = "file:///" ^ filename
+        val base_iri = SOME (Iri.fromString ("file:///" ^ filename))
         open FileExtensionDrivenConverter
     in
         case convert (base_iri, filename) (base_iri, outfile) of

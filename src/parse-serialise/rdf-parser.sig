@@ -11,7 +11,8 @@ signature RDF_PARSER = sig
 
     type prefix = RdfTriple.prefix
     type triple = RdfTriple.triple
-    
+    type base_iri = BaseIri.t
+                
     datatype parsed =
              (** Error produced during parsing, e.g. malformed syntax *)
              PARSE_ERROR of string |
@@ -21,11 +22,9 @@ signature RDF_PARSER = sig
                  triples : triple list
              }
 
-    type base_iri = string
-                
     (** Parse an entire document from a stream in one go. Does not close
         the input stream after parsing. *)
-    val parse : base_iri -> TextIO.instream -> parsed
+    val parse : base_iri * TextIO.instream -> parsed
 
 end
 
@@ -43,6 +42,7 @@ signature RDF_INCREMENTAL_PARSER = sig
     
     type prefix = RdfTriple.prefix
     type triple = RdfTriple.triple
+    type base_iri = BaseIri.t
 
     datatype stream_value =
              (** End of stream reached following successful parse *)
@@ -55,14 +55,10 @@ signature RDF_INCREMENTAL_PARSER = sig
                  triples : triple list                 
              } * (unit -> stream_value)
 
-    (*!!! surely should be an Iri.t ? *)
-    (*!!! what if the file defines a base iri, as a ttl file can? maybe we don't even need this here, but only in export/serialise *)
-    type base_iri = string
-                     
     (** Process the stream and return a batch of parsed elements. Does
         not close the input stream after parsing; this function should
         normally be called repeatedly on the same input stream until
         it returns END_OF_STREAM. *)
-    val parse : base_iri -> TextIO.instream -> stream_value
+    val parse : base_iri * TextIO.instream -> stream_value
                      
 end

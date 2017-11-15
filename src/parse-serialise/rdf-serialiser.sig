@@ -43,8 +43,7 @@ signature RDF_ABBREVIATING_SERIALISER = sig
     type prefix_table
     type matcher
 
-    (*!!! surely should be an Iri.t ? *)
-    type base_iri = string
+    type base_iri = BaseIri.t
 
     (** Construct a serialiser using a given set of prefixes and a
         matcher for collection gathering, writing to an output text

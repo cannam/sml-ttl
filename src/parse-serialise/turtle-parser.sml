@@ -6,7 +6,7 @@ structure TurtleIncrementalParser : RDF_INCREMENTAL_PARSER = struct
              
     open TurtleCodepoints
 
-    type base_iri = string
+    type base_iri = BaseIri.t
 
     datatype stream_value =
              END_OF_STREAM |
@@ -987,8 +987,14 @@ structure TurtleIncrementalParser : RDF_INCREMENTAL_PARSER = struct
               | ERROR e => PARSE_ERROR (extended_error_message d e)
         end
 
-    fun split_base iristring : (token * token) =
-        let fun slash_fields s = String.fields (fn x => x = #"/") iristring
+(*!!! need extensive tests for base iris (i) read from the file; (ii)
+      supplied to the parser as argument; (iii) absent entirely. in
+      what circumstances should we truncate the base to make a
+      relative uri? *)
+            
+    fun split_base iri : (token * token) =
+        let val iristring = Iri.toString iri
+            fun slash_fields s = String.fields (fn x => x = #"/") iristring
             and split' i = 
                 case slash_fields i of
                     [] => ("", i)
@@ -1001,10 +1007,10 @@ structure TurtleIncrementalParser : RDF_INCREMENTAL_PARSER = struct
             (token_of_string base_iri, token_of_string file_part)
         end
             
-    fun parse iri stream =
+    fun parse (base_iri, stream) =
         parse_document {
             source = Source.from_stream stream,
-            base = split_base iri,
+            base = split_base (getOpt (base_iri, Iri.empty)),
             prefixes = TokenMap.empty,
             blank_nodes = TokenMap.empty,
             new_triples = [],

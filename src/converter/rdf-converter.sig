@@ -1,7 +1,7 @@
 
 signature RDF_CONVERTER_BASE = sig
     
-    type base_iri = string
+    type base_iri = BaseIri.t
 
 end
 
@@ -21,8 +21,8 @@ signature RDF_CONVERTER = sig
     datatype result =
              (** Error produced during parsing or serialisation *)
              CONVERSION_ERROR of string |
-             (** Successful conversion *) (*!!! should be OK like the store io stuff? *)
-             CONVERTED
+             (** Successful conversion *)
+             OK
     
     val convert : base_iri * TextIO.instream ->
                   base_iri * TextIO.outstream ->
@@ -48,7 +48,7 @@ signature RDF_FILE_CONVERTER = sig
              (** Error produced during parsing or serialisation *)
              CONVERSION_ERROR of string |
              (** Successful conversion *)
-             CONVERTED
+             OK
 
     val convert : base_iri * string -> (* input iri + filename *)
                   base_iri * string -> (* output iri + filename *)

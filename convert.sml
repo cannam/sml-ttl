@@ -61,8 +61,10 @@ fun convert_file iri (infile, outfile) =
 fun handle_args args =
     case args of
         "-v"::rest => (Log.setLogLevel Log.INFO ; handle_args rest)
-      | [infile, outfile] => convert_file "blah" (infile, outfile) (*!!! + base iri *)
-      | [infile] => convert_stdout "blah" infile (*!!! + base iri *)
+      | [infile, outfile] =>
+        convert_file NONE (infile, outfile) (*!!! + base iri *)
+      | [infile] =>
+        convert_stdout NONE infile (*!!! + base iri *)
       | _ => usage ()
            
 fun main () =

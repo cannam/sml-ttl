@@ -46,7 +46,7 @@ functor TestTurtleSpecFn (P: RDF_PARSER) : TESTS = struct
 
     fun good_file f =
         let val s = TextIO.openIn f
-            val result = check_parse_succeeded f (P.parse "" s)
+            val result = check_parse_succeeded f (P.parse (NONE, s))
         in
             TextIO.closeIn s;
             result
@@ -54,7 +54,7 @@ functor TestTurtleSpecFn (P: RDF_PARSER) : TESTS = struct
 
     fun bad_file f =
         let val s = TextIO.openIn f
-            val result = check_parse_failed f (P.parse "" s)
+            val result = check_parse_failed f (P.parse (NONE, s))
         in
             TextIO.closeIn s;
             result
@@ -193,7 +193,7 @@ functor TestTurtleSpecFn (P: RDF_PARSER) : TESTS = struct
                 bad_file (test_file action)
 
               | eval_test ({ action, result, ... } : testmeta) EVAL =
-                (good_conversion (base_iri ^ action,
+                (good_conversion (SOME (Iri.fromString (base_iri ^ action)),
                                   test_file action,
                                   temp_file result,
                                   test_file result)
@@ -202,7 +202,7 @@ functor TestTurtleSpecFn (P: RDF_PARSER) : TESTS = struct
                          false))
 
               | eval_test ({ action, result, ... } : testmeta) TURTLE_EXPORT =
-                (good_export (base_iri ^ action,
+                (good_export (SOME (Iri.fromString (base_iri ^ action)),
                               test_file action,
                               action)
                  handle IO.Io { name, ... } =>
@@ -240,7 +240,7 @@ functor TestTurtleSpecFn (P: RDF_PARSER) : TESTS = struct
         end
             
     fun tests_from_manifest name =
-        case L.load_file_as_new_store "" (test_file name) of
+        case L.load_file_as_new_store (NONE, test_file name) of
             L.FORMAT_NOT_SUPPORTED => [setup_failed_test "Format not supported"]
           | L.SYSTEM_ERROR err => [setup_failed_test err]
           | L.PARSE_ERROR err => [setup_failed_test err]

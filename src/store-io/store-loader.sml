@@ -1,15 +1,14 @@
 
 structure StoreLoadBase : STORE_LOAD_BASE = struct
 
-    type base_iri = string
+    type base_iri = BaseIri.t
+    type store = Store.t
 
     datatype result =
              FORMAT_NOT_SUPPORTED |
              SYSTEM_ERROR of string |
              PARSE_ERROR of string |
-             OK of Store.t
-
-    type store = Store.t
+             OK of store
                        
 end
                                             
@@ -21,7 +20,7 @@ functor StoreIncrementalLoaderFn (P: RDF_INCREMENTAL_PARSER)
 
     open StoreLoadBase
 
-    fun load_stream store iri stream : result =
+    fun load_stream store (base_iri, stream) : result =
 	let fun parse' acc f =
 		case f () of
 		    P.END_OF_STREAM => OK acc
@@ -35,31 +34,31 @@ functor StoreIncrementalLoaderFn (P: RDF_INCREMENTAL_PARSER)
 			       triples)
 			f'
 	in
-	    parse' Store.empty (fn () => P.parse iri stream)
+	    parse' Store.empty (fn () => P.parse (base_iri, stream))
 	end
 								  
-    fun load_string' store iri string =
+    fun load_string' store (base_iri, string) =
         let val stream = TextIO.openString string
-            val result = load_stream store iri stream
+            val result = load_stream store (base_iri, stream)
         in
             TextIO.closeIn stream;
             result
         end
 
-    fun load_string store iri string =
-        load_string' store iri string
+    fun load_string store (base_iri, string) =
+        load_string' store (base_iri, string)
         handle ex => SYSTEM_ERROR (exnMessage ex)
 
-    fun load_file' store iri filename =
+    fun load_file' store (base_iri, filename) =
         let val stream = TextIO.openIn filename
-            val result = load_stream store iri stream
+            val result = load_stream store (base_iri, stream)
         in
             TextIO.closeIn stream;
             result
         end
 
-    fun load_file store iri filename =
-        load_file' store iri filename
+    fun load_file store (base_iri, filename) =
+        load_file' store (base_iri, filename)
         handle ex => SYSTEM_ERROR (exnMessage ex)
             
     val load_stream_as_new_store = load_stream Store.empty
@@ -71,6 +70,7 @@ end
 structure TurtleLoader = StoreIncrementalLoaderFn(TurtleIncrementalParser)
                                             
 structure StoreFileLoader :> STORE_FILE_LOADER
+               where type store = Store.t
                where type result = StoreLoadBase.result
 = struct
 
@@ -78,7 +78,7 @@ structure StoreFileLoader :> STORE_FILE_LOADER
 
     exception Unsupported
              
-    fun load_file store iri filename =
+    fun load_file store (base_iri, filename) =
         let open FileType
             val loader =
                 case format_of filename of
@@ -86,7 +86,7 @@ structure StoreFileLoader :> STORE_FILE_LOADER
                   | NTRIPLES => TurtleLoader.load_file
                   | _ => raise Unsupported
         in
-            loader store iri filename
+            loader store (base_iri, filename)
             handle Unsupported => FORMAT_NOT_SUPPORTED
             handle ex => SYSTEM_ERROR (exnMessage ex)
         end
