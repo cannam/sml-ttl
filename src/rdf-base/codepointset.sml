@@ -7,7 +7,6 @@ signature CODEPOINT_SET = sig
     val from_ascii_range : char -> char -> t
     val from_word : word -> t
     val union : t list -> t
-    val difference : t * t -> t
     val equal : t * t -> bool
 
     val contains : t -> word -> bool
@@ -21,50 +20,70 @@ end
 			   
 structure CodepointSet :> CODEPOINT_SET = struct
 
-    structure CP = RedBlackSetFn (struct
-			           type ord_key = Word.word
-			           val compare = Word.compare
-			           end)
+(*!!! if this is going to have its own custom implementation, it's going to need its own custom tests *)
 
-    type t = CP.set * string
-	         
+    type t = word vector * string
+
+    fun condense ww =
+        Vector.fromList (ListMergeSort.sort Word.> ww)
+          
+    fun plode v =
+        rev (Vector.foldl (op::) [] v)
+
+    fun find (v, w) = (* binary search for w in v *)
+        let fun find' (a, b) =
+                if a >= b then false
+                else
+                    let val mid = a + ((b - a) div 2)
+                    in
+                        case Word.compare (w, Vector.sub (v, mid)) of
+                            EQUAL => true
+                          | LESS => find' (a, mid)
+                          | GREATER => find' (mid + 1, b)
+                    end
+            val len = Vector.length v
+        in
+            if len = 0 orelse
+               Word.< (w, Vector.sub (v, 0)) orelse
+               Word.> (w, Vector.sub (v, len - 1))
+            then false
+            else find' (0, len)
+        end 
+            
     fun ascii c =
         Word.fromInt (Char.ord c)
 	             
     fun from_string str =
-        (foldl CP.add' CP.empty (WdString.explodeUtf8 str), "")
+        (condense (WdString.explodeUtf8 str), "")
 
     fun from_word w =
-        (CP.add (CP.empty, w), "")
+        (Vector.fromList [w], "")
 	       
     fun from_range a b =
-        let fun range_aux a b cp =
-	        if a > b then cp
-	        else range_aux (a + 0w1) b (CP.add (cp, a))
+        let fun range_aux a b acc =
+	        if a > b then Vector.fromList (rev acc)
+	        else range_aux (a + 0w1) b (a :: acc)
         in
-	    (range_aux a b CP.empty, "")
+	    (range_aux a b [], "")
         end
 
     fun from_ascii_range start finish =
         from_range (ascii start) (ascii finish)
 
     fun union (cps : t list) =
-        (foldl CP.union CP.empty (map #1 cps), "")
-
-    fun difference ((cp1, _), (cp2, _)) =
-        (CP.difference (cp1, cp2), "")
+        (condense (List.concat (map (fn (v, _) => plode v) cps)), "")
 
     fun equal ((cp1, _), (cp2, _)) =
-        CP.equal (cp1, cp2)
+        Vector.collate Word.compare (cp1, cp2) = EQUAL
 		 
     fun contains (cp, _) w =
-        CP.member (cp, w)
+        find (cp, w)
 
     fun to_string (cp, _) =
-        WdString.implodeToUtf8 (CP.listItems cp)
+        WdString.implodeToUtf8 (plode cp)
 
     fun to_text (cp, _) =
-        String.concatWith "," (map Word.toString (CP.listItems cp))
+        String.concatWith "," (map Word.toString (plode cp))
 
     fun with_name name (cp, _) =
         (cp, name)
