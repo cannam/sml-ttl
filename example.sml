@@ -1,7 +1,8 @@
 
 (* This assumes src/sml-ttl.mlb *)
 
-(* 1. Read all the triples from an RDF/Turtle file *)
+(* 1. Read all the triples from an RDF/Turtle file and do something
+   with them, e.g. print them out *)
 
 fun read_turtle_stream_example () =
     let
@@ -11,8 +12,11 @@ fun read_turtle_stream_example () =
         open TurtleParser
     in
         case parse (base_iri, stream) of
-            PARSE_ERROR text => (print ("Parse failed: " ^ text ^ "\n"); [])
-          | PARSED { prefixes, triples } => triples
+            PARSE_ERROR text => print ("Parse failed: " ^ text ^ "\n")
+          | PARSED { prefixes, triples } =>
+	    print ("Parse succeeded, have " ^ (Int.toString (length triples)) ^
+		   " triple(s) as follows:\n" ^
+		   (RdfTriple.string_of_triples triples) ^ "\n")
     end
 
 (* 2. Read all the triples from an RDF document of some sort (without
@@ -104,16 +108,12 @@ fun conversion_example_2 () =
         
 fun main () =
     let
-        val triples_from_turtle = read_turtle_stream_example ()
+        val _ = read_turtle_stream_example ()
 (*!!!        val triples_from_any = read_any_file_example () *)
         val store_from_turtle = load_to_store_example ()
         val converted_1 = conversion_example_1 ()
         val converted_2 = conversion_example_2 ()
     in
-
-        print ("Parsed " ^
-               (Int.toString (length triples_from_turtle)) ^
-               " triple(s) from Turtle file\n");
 (*!!!
         print ("Parsed " ^
                (Int.toString (length triples_from_any)) ^
