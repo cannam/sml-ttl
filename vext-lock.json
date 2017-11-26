@@ -1,7 +1,7 @@
 {
   "libraries": {
     "sml-smlnj-containers": {
-      "pin": "220a82fb4318"
+      "pin": "a3020aba4db0"
     },
     "sml-utf8": {
       "pin": "b850e99fe8e7"

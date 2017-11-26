@@ -1,7 +1,6 @@
 
-SML-TTL
+sml-ttl
 =======
-
 
 Simple RDF store and RDF/Turtle parser/serialiser written in Standard ML
 ------------------------------------------------------------------------
@@ -33,29 +32,29 @@ build time using the Vext tool included.
 
 To build and run tests using Poly/ML:
 
-$ make
+    $ make
 
 To build and run tests using MLton (slower compiling, faster runtime):
 
-$ make release
+    $ make release
 
-Or you can build the bundled programs (e.g. example.sml, convert.sml)
-directly with MLton using the supplied .mlb files:
+Or you can build the bundled programs (e.g. `example.sml`,
+`convert.sml`) directly with MLton using the supplied `.mlb` files:
 
-$ mlton example.mlb
-$ mlton convert.mlb
+    $ mlton example.mlb
+    $ mlton convert.mlb
 
-To extract the API documentation (must have smldoc installed,
+To extract the API documentation (must have `smldoc` installed,
 e.g. from the fork at https://github.com/cannam/smldoc):
 
-$ make doc
+    $ make doc
 
 
 Origin
 ------
 
-Written by Chris Cannam, cannam@all-day-breakfast.com. MIT licence,
-see the file COPYING for details.
+Written by Chris Cannam, `cannam@all-day-breakfast.com`. MIT licence,
+see the file `COPYING` for details.
 
 This code has something in common with the Yertle library I wrote a
 couple of years previously, which provided a very similar set of
