@@ -7,18 +7,18 @@ functor TestPropertyFn (P: STORE_PROPERTY) :> TESTS = struct
     val name = "property";
 
     val testfile = "test/other/goblin.ttl"
-    val goblin_iri = Iri.fromString "http://example.org/#green-goblin"
-    val spider_iri = Iri.fromString "http://example.org/#spiderman"
-    val goblin_node = IRI goblin_iri
-    val spider_node = IRI spider_iri
-    val spider_ru = WdString.implodeToUtf8 [
+    val goblinIri = Iri.fromString "http://example.org/#green-goblin"
+    val spiderIri = Iri.fromString "http://example.org/#spiderman"
+    val goblinNode = IRI goblinIri
+    val spiderNode = IRI spiderIri
+    val spiderRu = WdString.implodeToUtf8 [
             0wx427, 0wx435, 0wx43B, 0wx43E, 0wx432, 0wx435, 0wx43A, 0wx2D,
             0wx43F, 0wx430, 0wx443, 0wx43A ]
                            
-    fun load_testfile () =
+    fun loadTestfile () =
         let open StoreFileLoader
         in
-            case load_file_as_new_store (NONE, testfile) of
+            case loadFileAsNewStore (NONE, testfile) of
                 FORMAT_NOT_SUPPORTED =>
                 (print "--- Test file format not supported!\n"; NONE)
               | SYSTEM_ERROR err => 
@@ -30,7 +30,7 @@ functor TestPropertyFn (P: STORE_PROPERTY) :> TESTS = struct
               | OK store => SOME store
         end
 
-    fun with_codepoints s =
+    fun withCodepoints s =
         s ^ " [ " ^
         (String.concatWith " " (map Word.toString (WdString.explodeUtf8 s)))
         ^ " ]";
@@ -40,58 +40,58 @@ functor TestPropertyFn (P: STORE_PROPERTY) :> TESTS = struct
     fun tests () = [
         ("text",
          fn () =>
-            case load_testfile () of
+            case loadTestfile () of
                 NONE => false
               | SOME store =>
                 check (fn x => x)
-                      (P.text (store, goblin_node, "foaf:name"),
+                      (P.text (store, goblinNode, "foaf:name"),
                        "Green Goblin")),
         ("text list",
          fn () =>
-            case load_testfile () of
+            case loadTestfile () of
                 NONE => false
               | SOME store =>
-                check (fn x => with_codepoints (String.concatWith "," x))
+                check (fn x => withCodepoints (String.concatWith "," x))
                       (Sort.sort String.>
-                       (P.text_list (store, spider_node, "foaf:name")),
-                       ["Spiderman", spider_ru])),
+                       (P.textList (store, spiderNode, "foaf:name")),
+                       ["Spiderman", spiderRu])),
         ("iri",
          fn () =>
-            case load_testfile () of
+            case loadTestfile () of
                 NONE => false
               | SOME store =>
                 check Iri.toString
-                      (case P.iri (store, goblin_node, "rel:enemyOf") of
+                      (case P.iri (store, goblinNode, "rel:enemyOf") of
                            SOME iri => iri
                          | NONE => Iri.empty,
-                       spider_iri)),
-        ("iri_list",
+                       spiderIri)),
+        ("iriList",
          fn () =>
-            case load_testfile () of
+            case loadTestfile () of
                 NONE => false
               | SOME store =>
                 check (fn x => String.concatWith "," (map Iri.toString x))
-                      (P.iri_list (store, spider_node, "rel:enemyOf"),
-                       [goblin_iri])),
+                      (P.iriList (store, spiderNode, "rel:enemyOf"),
+                       [goblinIri])),
         ("node",
          fn () =>
-            case load_testfile () of
+            case loadTestfile () of
                 NONE => false
               | SOME store =>
                 check (fn x => x)
-                      (case P.node (store, goblin_node, "rel:enemyOf") of
-                           SOME node => RdfNode.string_of_node node
+                      (case P.node (store, goblinNode, "rel:enemyOf") of
+                           SOME node => RdfNode.stringOfNode node
                          | NONE => "",
-                       RdfNode.string_of_node spider_node)),
-        ("node_list",
+                       RdfNode.stringOfNode spiderNode)),
+        ("nodeList",
          fn () =>
-            case load_testfile () of
+            case loadTestfile () of
                 NONE => false
               | SOME store =>
                 check (fn x => String.concatWith
-                                   "," (map RdfNode.string_of_node x))
-                      (P.node_list (store, spider_node, "rel:enemyOf"),
-                       [goblin_node]))
+                                   "," (map RdfNode.stringOfNode x))
+                      (P.nodeList (store, spiderNode, "rel:enemyOf"),
+                       [goblinNode]))
     ]
 
 end

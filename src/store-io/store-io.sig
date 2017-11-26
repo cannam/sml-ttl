@@ -1,7 +1,7 @@
 
 signature STORE_LOAD_BASE = sig
 
-    type base_iri = BaseIri.t
+    type baseIri = BaseIri.t
     type store
 
     datatype result =
@@ -27,13 +27,13 @@ signature STORE_LOADER = sig
 
     include STORE_LOAD_BASE
                 
-    val load_file : store -> base_iri * string -> result
-    val load_stream : store -> base_iri * TextIO.instream -> result
-    val load_string : store -> base_iri * string -> result
+    val loadFile : store -> baseIri * string -> result
+    val loadStream : store -> baseIri * TextIO.instream -> result
+    val loadString : store -> baseIri * string -> result
                      
-    val load_file_as_new_store : base_iri * string -> result
-    val load_stream_as_new_store : base_iri * TextIO.instream -> result
-    val load_string_as_new_store : base_iri * string -> result
+    val loadFileAsNewStore : baseIri * string -> result
+    val loadStreamAsNewStore : baseIri * TextIO.instream -> result
+    val loadStringAsNewStore : baseIri * string -> result
 
 end
                              
@@ -47,16 +47,16 @@ signature STORE_FILE_LOADER = sig
 
     include STORE_LOAD_BASE
     
-    val load_file : store -> base_iri * string -> result
-    val load_file_as_new_store : base_iri * string -> result
-    val formats_supported : FileType.format list
-    val extensions_supported : string list
+    val loadFile : store -> baseIri * string -> result
+    val loadFileAsNewStore : baseIri * string -> result
+    val formatsSupported : FileType.format list
+    val extensionsSupported : string list
 
 end
 
 signature STORE_EXPORT_BASE = sig
 			  
-    type base_iri = BaseIri.t
+    type baseIri = BaseIri.t
     type store
 
     datatype result =
@@ -82,8 +82,8 @@ signature STORE_EXPORTER = sig
 
     include STORE_EXPORT_BASE
 
-    val save_to_file : store -> base_iri * string -> result
-    val save_to_stream : store -> base_iri * TextIO.outstream -> result
+    val saveToFile : store -> baseIri * string -> result
+    val saveToStream : store -> baseIri * TextIO.outstream -> result
 
 end
 
@@ -96,10 +96,10 @@ signature STORE_STREAM_EXPORTER = sig
     
     include STORE_EXPORT_BASE
 
-    val save_to_stream : store ->
-                         base_iri * FileType.format * TextIO.outstream ->
+    val saveToStream : store ->
+                         baseIri * FileType.format * TextIO.outstream ->
                          result
-    val formats_supported : FileType.format list
+    val formatsSupported : FileType.format list
 
 end
 
@@ -115,9 +115,9 @@ signature STORE_FILE_EXPORTER = sig
     
     include STORE_EXPORT_BASE
 
-    val save_to_file : store -> base_iri * string -> result
-    val formats_supported : FileType.format list
-    val extensions_supported : string list
+    val saveToFile : store -> baseIri * string -> result
+    val formatsSupported : FileType.format list
+    val extensionsSupported : string list
 
 end
 

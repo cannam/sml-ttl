@@ -63,15 +63,15 @@ structure PrefixTable :> PREFIX_TABLE = struct
                         
     val empty : t = (AbbrMap.empty, IriMap.empty, IriTrie.empty)
 
-    fun remove_with (remover, map, key) =
+    fun removeWith (remover, map, key) =
 	case remover (map, key) of (map', _) => map' handle NotFound => map
 
     fun remove (table as (forward, reverse, trie) : t, abbr) =
 	case AbbrMap.find (forward, abbr) of
 	    NONE => table
 	  | SOME expansion =>
-	    (remove_with (AbbrMap.remove, forward, abbr),
-             remove_with (IriMap.remove, reverse, expansion),
+	    (removeWith (AbbrMap.remove, forward, abbr),
+             removeWith (IriMap.remove, reverse, expansion),
 	     IriTrie.remove (trie, expansion))
 
     fun add ((forward, reverse, trie) : t, (abbr, expansion)) =
@@ -79,7 +79,7 @@ structure PrefixTable :> PREFIX_TABLE = struct
 	 IriMap.insert (reverse, expansion, abbr),
 	 IriTrie.add (trie, expansion))
 
-    fun from_prefixes prefixes =
+    fun fromPrefixes prefixes =
         List.foldl (fn ((abbr, e), tab) => add (tab, (abbr, e))) empty prefixes
                     
     fun contains (table : t, abbr) =
@@ -100,7 +100,7 @@ structure PrefixTable :> PREFIX_TABLE = struct
     fun abbreviate ((_, reverse, trie) : t, iri) =
       let val prefix = IriTrie.prefixOf (trie, iri)
 	  open WdString
-	  fun drop_prefix (iri, n) =
+	  fun dropPrefix (iri, n) =
   	      implode (List.drop (explode (Iri.toWideString iri), n))
       in
 	  if Iri.isEmpty prefix
@@ -110,7 +110,7 @@ structure PrefixTable :> PREFIX_TABLE = struct
 		  NONE => raise Fail ("internal error: prefix found in trie " ^
                                       "but not in reverse map")
 		| SOME abbr =>
-	          SOME (abbr, toUtf8 (drop_prefix (iri, Iri.size prefix)))
+	          SOME (abbr, toUtf8 (dropPrefix (iri, Iri.size prefix)))
       end
 		   
 end

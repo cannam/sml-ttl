@@ -7,84 +7,84 @@ structure TurtleIncrementalParser : RDF_INCREMENTAL_PARSER = struct
              
     open TurtleCodepoints
 
-    type base_iri = BaseIri.t
+    type baseIri = BaseIri.t
 
-    datatype stream_value =
+    datatype streamValue =
              END_OF_STREAM |
              PARSE_ERROR of string |
              PARSE_OUTPUT of {
                  prefixes : prefix list,
                  triples : triple list
-             } * (unit -> stream_value)
+             } * (unit -> streamValue)
 
     (* individual tokens are read as codepoint sequences, but they're
        encoded back to utf8 strings when constructing nodes or iris *)
     type token = word list
 
-    val token_of_string = WdString.explodeUtf8
-    val string_of_token = WdString.implodeToUtf8
+    val tokenOfString = WdString.explodeUtf8
+    val stringOfToken = WdString.implodeToUtf8
 
-    val iri_of_token = Iri.fromWideString o WdString.implode
-    val token_of_iri = WdString.explode o Iri.toWideString
+    val iriOfToken = Iri.fromWideString o WdString.implode
+    val tokenOfIri = WdString.explode o Iri.toWideString
 
     structure TokenMap = RedBlackMapFn (struct
                                          type ord_key = token
                                          val compare = List.collate Word.compare
                                          end)
 
-    type parse_data = {
+    type parseData = {
         source : Source.t,                  (* contains mutable state *)
         base : token * token,               (* without filename, filename only *)
         prefixes : token TokenMap.map,      (* prefix -> expansion *)
-        blank_nodes : int TokenMap.map,     (* token -> blank node id *)
-        new_triples : triple list,
-        new_prefixes : prefix list
+        blankNodes : int TokenMap.map,     (* token -> blank node id *)
+        newTriples : triple list,
+        newPrefixes : prefix list
     }
 
-    type match_state = parse_data * token
-    type parse_state = parse_data * node option
+    type matchState = parseData * token
+    type parseState = parseData * node option
                       
     datatype 'a result = ERROR of string | OK of 'a
 
-    type match_result = match_state result
-    type parse_result = parse_state result
+    type matchResult = matchState result
+    type parseResult = parseState result
 
-    fun from_ascii a = Word.fromInt (Char.ord a)
+    fun fromAscii a = Word.fromInt (Char.ord a)
 
-    fun add_triple (d : parse_data) (t : triple) =
+    fun addTriple (d : parseData) (t : triple) =
         {
           source = #source d,
           base = #base d,
           prefixes = #prefixes d,
-          blank_nodes = #blank_nodes d,
-          new_triples = t :: #new_triples d,
-          new_prefixes = #new_prefixes d
+          blankNodes = #blankNodes d,
+          newTriples = t :: #newTriples d,
+          newPrefixes = #newPrefixes d
         }
                      
-    fun add_prefix (d : parse_data) (p, e) =
+    fun addPrefix (d : parseData) (p, e) =
         {
           source = #source d,
           base = #base d,
           prefixes = TokenMap.insert (#prefixes d, p, e),
-          blank_nodes = #blank_nodes d,
-          new_triples = #new_triples d,
-          new_prefixes = (string_of_token p, iri_of_token e) ::
-                         (#new_prefixes d)
+          blankNodes = #blankNodes d,
+          newTriples = #newTriples d,
+          newPrefixes = (stringOfToken p, iriOfToken e) ::
+                         (#newPrefixes d)
         }
                      
-    fun add_bnode (d : parse_data) (b, id) =
+    fun addBnode (d : parseData) (b, id) =
         {
           source = #source d,
           base = #base d,
           prefixes = #prefixes d,
-          blank_nodes = TokenMap.insert (#blank_nodes d, b, id),
-          new_triples = #new_triples d,
-          new_prefixes = #new_prefixes d
+          blankNodes = TokenMap.insert (#blankNodes d, b, id),
+          newTriples = #newTriples d,
+          newPrefixes = #newPrefixes d
         }
 
-    fun emit_with_subject (d : parse_data, subject, polist) =
+    fun emitWithSubject (d : parseData, subject, polist) =
         foldl (fn ((predicate, object), data) =>
-                  add_triple data (subject, predicate, object))
+                  addTriple data (subject, predicate, object))
               d polist
 
     fun composePartial (f, g) =
@@ -100,52 +100,52 @@ structure TurtleIncrementalParser : RDF_INCREMENTAL_PARSER = struct
         in (foldl composePartial (hd rf) (tl rf)) s
         end
                                 
-    fun new_boolean_literal b =
+    fun newBooleanLiteral b =
         LITERAL {
             value = if b then "true" else "false",
             lang = "",
-            dtype = RdfStandardIRIs.iri_type_boolean
+            dtype = RdfStandardIRIs.iriTypeBoolean
         }
-    val true_token = token_of_string "true"
-    val false_token = token_of_string "false"
+    val trueToken = tokenOfString "true"
+    val falseToken = tokenOfString "false"
 			      
-    fun blank_node_for (d: parse_data, token) =
-	case TokenMap.find (#blank_nodes d, token) of
+    fun blankNodeFor (d: parseData, token) =
+	case TokenMap.find (#blankNodes d, token) of
 	    SOME id => (d, BLANK id)
 	  | NONE =>
-	    case new_blank_node () of
-		BLANK id => (add_bnode d (token, id), BLANK id)
-              | _ => raise Fail "new_blank_node returned non-blank node"
+	    case newBlankNode () of
+		BLANK id => (addBnode d (token, id), BLANK id)
+              | _ => raise Fail "newBlankNode returned non-blank node"
 
-    fun peek (d : parse_data, _) = Source.peek (#source d)
-    fun peek_n n (d : parse_data, _) = Source.peek_n n (#source d)
-    fun read (d : parse_data, _) = Source.read (#source d)
-    fun read_n n (d : parse_data, _) = Source.read_n n (#source d)
-    fun location (d : parse_data, _) = Source.location (#source d)
-    fun eof (d : parse_data, _) = Source.eof (#source d)
+    fun peek (d : parseData, _) = Source.peek (#source d)
+    fun peekN n (d : parseData, _) = Source.peekN n (#source d)
+    fun read (d : parseData, _) = Source.read (#source d)
+    fun readN n (d : parseData, _) = Source.readN n (#source d)
+    fun location (d : parseData, _) = Source.location (#source d)
+    fun eof (d : parseData, _) = Source.eof (#source d)
 
-    fun looking_at cps st =
+    fun lookingAt cps st =
         not (eof st) andalso CodepointSet.contains cps (peek st)
 
-    fun looking_at_token tok st =
-	peek_n (List.length tok) st = tok
+    fun lookingAtToken tok st =
+	peekN (List.length tok) st = tok
 
-    fun peek_ttl s =
+    fun peekTtl s =
         let val w = peek s in
-            case CharMap.find (significant_char_map, w) of
+            case CharMap.find (significantCharMap, w) of
                 SOME significant => significant
               | NONE => C_NOTHING_INTERESTING
         end
 						  
-    fun mismatch_message cps found =
+    fun mismatchMessage cps found =
         "expected " ^ (CodepointSet.name cps) ^ ", found \"" ^
-        (string_of_token [found]) ^ "\""
+        (stringOfToken [found]) ^ "\""
 						  
-    fun mismatch_message_ttl c found =
-        "expected " ^ (significant_char_name c) ^ ", found \"" ^
-        (string_of_token [found]) ^ "\""
+    fun mismatchMessageTtl c found =
+        "expected " ^ (significantCharName c) ^ ", found \"" ^
+        (stringOfToken [found]) ^ "\""
 
-    fun split_at (lst, elt) =
+    fun splitAt (lst, elt) =
         let fun split' ([], acc) = NONE
               | split' (x::xs, acc) = if x = elt then SOME (rev acc, xs)
                                       else split' (xs, x::acc)
@@ -153,78 +153,78 @@ structure TurtleIncrementalParser : RDF_INCREMENTAL_PARSER = struct
             split' (lst, [])
         end
 
-    fun resolve_iri (data : parse_data, token) =
-        let val (base_iri, file_part) = #base data
-            fun like_absolute_iri [] = false
-              | like_absolute_iri (first::rest) = 
+    fun resolveIri (data : parseData, token) =
+        let val (baseIri, filePart) = #base data
+            fun likeAbsoluteIri [] = false
+              | likeAbsoluteIri (first::rest) = 
                 if CodepointSet.contains alpha first
-                then like_absolute_iri rest
-                else first = from_ascii #":"
+                then likeAbsoluteIri rest
+                else first = fromAscii #":"
         in
-            iri_of_token
+            iriOfToken
                 (case token of
-                     [] => base_iri
+                     [] => baseIri
                    | first::rest =>
-                     if first = from_ascii #"#"
-                     then base_iri @ file_part @ token
-                     else if first = from_ascii #"/" then base_iri @ rest
-                     else if like_absolute_iri token then token
-                     else base_iri @ token)
+                     if first = fromAscii #"#"
+                     then baseIri @ filePart @ token
+                     else if first = fromAscii #"/" then baseIri @ rest
+                     else if likeAbsoluteIri token then token
+                     else baseIri @ token)
         end
 
-    fun prefix_expand (d, token) =
-        let fun unescape_local_percent acc _ [] = ERROR "hex digits expected"
-              | unescape_local_percent acc _ [a] = ERROR "two hex digits expected"
-              | unescape_local_percent acc pc (a::b::rest) =
+    fun prefixExpand (d, token) =
+        let fun unescapeLocalPercent acc _ [] = ERROR "hex digits expected"
+              | unescapeLocalPercent acc _ [a] = ERROR "two hex digits expected"
+              | unescapeLocalPercent acc pc (a::b::rest) =
             (* "%-encoded sequences are in the character range for
                 IRIs and are explicitly allowed in local names. These
                 appear as a '%' followed by two hex characters and
                 represent that same sequence of three
                 characters. These sequences are not decoded during
-                processing." [see also match_percent_escape] *)
+                processing." [see also matchPercentEscape] *)
                 if CodepointSet.contains hex a andalso
                    CodepointSet.contains hex b
                 then (* remember we're building the string in reverse *)
-                    unescape_local_tail (b::a::pc::acc) rest
+                    unescapeLocalTail (b::a::pc::acc) rest
                 else ERROR "hex digits expected after %" 
 
-            and unescape_local_backslash acc _ [] = ERROR "escaped char expected"
-              | unescape_local_backslash acc bs (first::rest) =
-                if CodepointSet.contains pname_local_escapable first
-                then unescape_local_tail (first::acc) rest
+            and unescapeLocalBackslash acc _ [] = ERROR "escaped char expected"
+              | unescapeLocalBackslash acc bs (first::rest) =
+                if CodepointSet.contains pnameLocalEscapable first
+                then unescapeLocalTail (first::acc) rest
                 else ERROR "escapable character expected"
                            
-            and unescape_local_tail acc [] = OK acc
-              | unescape_local_tail acc [single] =
-                if CodepointSet.contains pname_char_or_colon single
+            and unescapeLocalTail acc [] = OK acc
+              | unescapeLocalTail acc [single] =
+                if CodepointSet.contains pnameCharOrColon single
                 then OK (single::acc)
                 else ERROR ("invalid trailing character \"" ^
-                            (string_of_token [single]) ^
+                            (stringOfToken [single]) ^
                             "\" in local part of name")
-              | unescape_local_tail acc (first::rest) =
-                if CodepointSet.contains pname_char_colon_or_dot first
-                then unescape_local_tail (first::acc) rest
-                else if CodepointSet.contains pname_char_percent first
-                then unescape_local_percent acc first rest
-                else if CodepointSet.contains pname_char_backslash first
-                then unescape_local_backslash acc first rest
+              | unescapeLocalTail acc (first::rest) =
+                if CodepointSet.contains pnameCharColonOrDot first
+                then unescapeLocalTail (first::acc) rest
+                else if CodepointSet.contains pnameCharPercent first
+                then unescapeLocalPercent acc first rest
+                else if CodepointSet.contains pnameCharBackslash first
+                then unescapeLocalBackslash acc first rest
                 else ERROR ("unexpected character \"" ^
-                            (string_of_token [first]) ^
+                            (stringOfToken [first]) ^
                             "\" in local part of name")
 
-            and unescape_local [] = OK [] (* empty local part is allowed *)
-              | unescape_local (first::rest) =
-                if CodepointSet.contains pname_char_initial_local first
-                then unescape_local_tail [first] rest
-                else if CodepointSet.contains pname_char_percent first
-                then unescape_local_percent [] first rest
-                else if CodepointSet.contains pname_char_backslash first
-                then unescape_local_backslash [] first rest
+            and unescapeLocal [] = OK [] (* empty local part is allowed *)
+              | unescapeLocal (first::rest) =
+                if CodepointSet.contains pnameCharInitialLocal first
+                then unescapeLocalTail [first] rest
+                else if CodepointSet.contains pnameCharPercent first
+                then unescapeLocalPercent [] first rest
+                else if CodepointSet.contains pnameCharBackslash first
+                then unescapeLocalBackslash [] first rest
                 else ERROR ("unexpected character \"" ^
-                            (string_of_token [first]) ^ 
+                            (stringOfToken [first]) ^ 
                             "\" in local part of name")
 
-            and prefix_expand' (pre, post) =
+            and prefixExpand' (pre, post) =
                 (* We don't check the prefix for well-formedness,
                    because if it isn't well-formed, it won't match
                    anything in our namespace map -- because we did
@@ -233,17 +233,17 @@ structure TurtleIncrementalParser : RDF_INCREMENTAL_PARSER = struct
                    while unescaping it. *)
                 case TokenMap.find (#prefixes d, pre) of
                     NONE => ERROR ("unknown namespace prefix \"" ^
-                                   (string_of_token pre) ^ "\"")
+                                   (stringOfToken pre) ^ "\"")
                   | SOME ex =>
-                    case unescape_local post of
+                    case unescapeLocal post of
                         ERROR err => ERROR err
                       | OK reversed =>
-                        OK (d, SOME (IRI (resolve_iri (d, ex @ (rev reversed)))))
+                        OK (d, SOME (IRI (resolveIri (d, ex @ (rev reversed)))))
                 
         in
-            case split_at (token, from_ascii #":") of
+            case splitAt (token, fromAscii #":") of
                 NONE => ERROR "prefixed name expected"
-              | SOME (pre, post) => prefix_expand' (pre, post)
+              | SOME (pre, post) => prefixExpand' (pre, post)
         end
 
     (* 
@@ -253,46 +253,46 @@ structure TurtleIncrementalParser : RDF_INCREMENTAL_PARSER = struct
 
      require -> reads 1 or more of something, throws it away, fails if not present
 
-     match -> reads something, appends it to token part of match_state
+     match -> reads something, appends it to token part of matchState
               tuple, fails if not matched
 
-     parse -> reads something, possibly stashes it in parse_data
-              and/or returns in parse_state, fails if not matched
+     parse -> reads something, possibly stashes it in parseData
+              and/or returns in parseState, fails if not matched
      *)
 
-    fun discard (d : parse_data, t) = (Source.discard (#source d); (d, t))
+    fun discard (d : parseData, t) = (Source.discard (#source d); (d, t))
 
-    fun discard_greedy cps s =
+    fun discardGreedy cps s =
         if eof s then OK s
         else
             if CodepointSet.contains cps (peek s)
-            then discard_greedy cps (discard s)
+            then discardGreedy cps (discard s)
             else OK s
             
-    fun discard_greedy_ttl c s =
+    fun discardGreedyTtl c s =
         if eof s then OK s
         else
-            if peek_ttl s = c
-            then discard_greedy_ttl c (discard s)
+            if peekTtl s = c
+            then discardGreedyTtl c (discard s)
             else OK s
                                      
-    fun discard_to_eol s =
+    fun discardToEol s =
         if eof s then OK s
         else
             if CodepointSet.contains eol (read s)
-            then discard_greedy eol s
-            else discard_to_eol s
+            then discardGreedy eol s
+            else discardToEol s
 
-    fun discard_whitespace s =
+    fun discardWhitespace s =
         if eof s then OK s
         else
             let val c = peek s in
                 if CodepointSet.contains comment c then
-                    case discard_to_eol (discard s) of
-                        OK s => discard_whitespace s
+                    case discardToEol (discard s) of
+                        OK s => discardWhitespace s
                       | ERROR e => ERROR e
-                else if CodepointSet.contains whitespace_eol c then
-                    discard_whitespace (discard s)
+                else if CodepointSet.contains whitespaceEol c then
+                    discardWhitespace (discard s)
                 else OK s
             end
 
@@ -300,42 +300,42 @@ structure TurtleIncrementalParser : RDF_INCREMENTAL_PARSER = struct
         if eof s then ERROR "unexpected end of input"
         else let val c = read s in
                  if CodepointSet.contains cps c then OK s
-                 else ERROR (mismatch_message cps c)
+                 else ERROR (mismatchMessage cps c)
              end
 
-    fun require_nothing s = OK s
+    fun requireNothing s = OK s
                  
-    fun require_ttl c s =
+    fun requireTtl c s =
         if eof s then ERROR "unexpected end of input"
-        else if CharMap.find (significant_char_map, peek s) = SOME c
+        else if CharMap.find (significantCharMap, peek s) = SOME c
         then OK (discard s)
-        else ERROR (mismatch_message_ttl c (peek s))
+        else ERROR (mismatchMessageTtl c (peek s))
 
-    fun require_whitespace s =
-	if looking_at whitespace_eol s orelse
-	   looking_at comment s
-	then discard_whitespace s
+    fun requireWhitespace s =
+	if lookingAt whitespaceEol s orelse
+	   lookingAt comment s
+	then discardWhitespace s
 	else ERROR "whitespace expected"
 		
-    fun require_punctuation c s =
-        sequence s [ discard_whitespace, require_ttl c ]
+    fun requirePunctuation c s =
+        sequence s [ discardWhitespace, requireTtl c ]
 
-    fun match cps (s as (d, tok)) : match_result =
+    fun match cps (s as (d, tok)) : matchResult =
         let val w = read s in
             if CodepointSet.contains cps w
             then OK (d, tok @ [w])
-            else ERROR (mismatch_message cps w)
+            else ERROR (mismatchMessage cps w)
         end
 
-    fun match_ttl c (s as (d, tok)) : match_result =
+    fun matchTtl c (s as (d, tok)) : matchResult =
         let val w = read s in
-            if CharMap.find (significant_char_map, w) = SOME c
+            if CharMap.find (significantCharMap, w) = SOME c
             then OK (d, tok @ [w])
-            else ERROR (mismatch_message_ttl c w)
+            else ERROR (mismatchMessageTtl c w)
         end
 
     (* May return an empty token *)
-    fun match_token cps (s as (d, tok)) : match_result =
+    fun matchToken cps (s as (d, tok)) : matchResult =
         let fun match' () =
                 if eof s then []
                 else
@@ -347,7 +347,7 @@ structure TurtleIncrementalParser : RDF_INCREMENTAL_PARSER = struct
         end
 
     (* May return an empty token *)
-    fun match_token_excl cps (s as (d, tok)) : match_result =
+    fun matchTokenExcl cps (s as (d, tok)) : matchResult =
         let fun match' () =
                 if eof s orelse CodepointSet.contains cps (peek s)
                 then []
@@ -359,79 +359,79 @@ structure TurtleIncrementalParser : RDF_INCREMENTAL_PARSER = struct
     (* Read something structured like a prefixed name. The caller is
        expected to test whether the result is properly formed depending
        on context. *)
-    fun match_prefixed_name_candidate s : match_result =
+    fun matchPrefixedNameCandidate s : matchResult =
 	let fun match' s =
-		case match_token_excl pname_excluded s of
+		case matchTokenExcl pnameExcluded s of
 		    ERROR e => ERROR e
 		  | OK (s as (d, [])) => ERROR "token expected"
 		  | OK (s as (d, token)) =>
-                    case peek_ttl s of
+                    case peekTtl s of
                         C_DOT => 
-                        (case peek_n 2 s of
+                        (case peekN 2 s of
                              dot::next::[] =>
-                             if CodepointSet.contains pname_after_dot next
+                             if CodepointSet.contains pnameAfterDot next
                              then let val c = read s (* the dot *) in
 				      match' (d, token @ [c])
                                   end
                              else OK (d, token)
-                           | anything_else => OK (d, token))
+                           | anythingElse => OK (d, token))
                       | C_BACKSLASH =>
                      (* preserve the backslash and the following
-                        character (even if it is in pname_excluded)
+                        character (even if it is in pnameExcluded)
                         and let the caller check that we have a valid
                         escape sequence *)
-                        (case peek_n 2 s of
+                        (case peekN 2 s of
                              slash::next::[] =>
-                             let val esc = read_n 2 s
+                             let val esc = readN 2 s
                              in match' (d, token @ esc)
                              end
-                          | anything_else => ERROR "escaped character expected")
-                      | anything_else => OK (d, token)
+                          | anythingElse => ERROR "escaped character expected")
+                      | anythingElse => OK (d, token)
 	in
 	    match' s
 	end
 
-    fun match_percent_escape s : match_result =
+    fun matchPercentEscape s : matchResult =
         (* "%-encoded sequences are in the character range for IRIs
             and are explicitly allowed in local names. These appear as
             a '%' followed by two hex characters and represent that
             same sequence of three characters. These sequences are not
-            decoded during processing." [see also prefix_expand] *)
-        sequence s [ match_ttl C_PERCENT,
+            decoded during processing." [see also prefixExpand] *)
+        sequence s [ matchTtl C_PERCENT,
                      match hex,
                      match hex ]
         
-    fun unescape_unicode_escape s = (* !!! inconsistent name with match_percent_escape *)
-        let val n = case peek_ttl s of
+    fun unescapeUnicodeEscape s = (* !!! inconsistent name with matchPercentEscape *)
+        let val n = case peekTtl s of
                         C_LC_U => 4
                       | C_UC_U => 8
                       | other => 0
             val _ = discard s
-            val u = read_n n s
-            val ustr = string_of_token u
+            val u = readN n s
+            val ustr = stringOfToken u
         in
             case Word.fromString ("0wx" ^ ustr) of
                 SOME w => (s, w)
               | NONE => (s, 0wx0)
         end
             
-    fun match_iriref s : match_result =
+    fun matchIriref s : matchResult =
         let fun match' s =
-                case match_token_excl iri_excluded s of
+                case matchTokenExcl iriExcluded s of
                     ERROR e => ERROR e
                   | OK (s as (d, token)) => 
-                    case peek_ttl s of
+                    case peekTtl s of
                         C_PERCENT =>
-                        (case match_percent_escape (d, []) of
+                        (case matchPercentEscape (d, []) of
                              ERROR e => ERROR e
                            | OK (d, pe) => match' (d, token @ pe))
                       | C_BACKSLASH =>
                         (discard s;
-                         if looking_at unicode_u s
-                         then let val (s, w) = unescape_unicode_escape s
+                         if lookingAt unicodeU s
+                         then let val (s, w) = unescapeUnicodeEscape s
                               in if w = 0wx0
                                  then ERROR "invalid Unicode escape"
-                                 else if CodepointSet.contains iri_excluded w
+                                 else if CodepointSet.contains iriExcluded w
                                  then ERROR ("illegal Unicode escaped character " ^
                                              "codepoint 0x" ^ (Word.toString w) ^
                                              " in IRI")
@@ -440,16 +440,16 @@ structure TurtleIncrementalParser : RDF_INCREMENTAL_PARSER = struct
                          else ERROR "expected Unicode escape")
                       | other => OK (d, token)
         in
-            sequence s [ require_ttl C_OPEN_ANGLE,
+            sequence s [ requireTtl C_OPEN_ANGLE,
                          match',
-                         require_ttl C_CLOSE_ANGLE ]
+                         requireTtl C_CLOSE_ANGLE ]
         end
 
-    fun match_prefixed_name_namespace s : match_result =
-	case match_prefixed_name_candidate s of
+    fun matchPrefixedNameNamespace s : matchResult =
+	case matchPrefixedNameCandidate s of
 	    ERROR e => ERROR e
 	  | OK (d, []) => ERROR "malformed prefix"
-	  | OK (d, [w]) => if w = from_ascii #":"
+	  | OK (d, [w]) => if w = fromAscii #":"
 			           then OK (d, [])
 			           else ERROR "expected \":\" at end of prefix"
 	  | OK (d, all) => 
@@ -459,67 +459,67 @@ structure TurtleIncrementalParser : RDF_INCREMENTAL_PARSER = struct
 		val last = hd (tl r)
 		val token = rev (tl r)
 	    in
-		if colon = from_ascii #":"
+		if colon = fromAscii #":"
 		then
-		    if CodepointSet.contains base_pname_char first
+		    if CodepointSet.contains basePnameChar first
 		       andalso List.all (CodepointSet.contains
-					     pname_char_or_dot) token
-		       andalso CodepointSet.contains pname_char last
+					     pnameCharOrDot) token
+		       andalso CodepointSet.contains pnameChar last
 		    then OK (d, token)
-		    else ERROR ("malformed prefix \"" ^ (string_of_token token) ^ "\"")
+		    else ERROR ("malformed prefix \"" ^ (stringOfToken token) ^ "\"")
 		else ERROR "expected \":\" at end of prefix"
 	    end
 
     datatype quote = NO_QUOTE |
-                     SHORT_STRING of turtle_significant_char |
-                     LONG_STRING of turtle_significant_char
+                     SHORT_STRING of turtleSignificantChar |
+                     LONG_STRING of turtleSignificantChar
 
-    fun have_three s =
-	case peek_n 3 s of [a,b,c] => a = b andalso b = c
-			 | anything_else => false
+    fun haveThree s =
+	case peekN 3 s of [a,b,c] => a = b andalso b = c
+			 | anythingElse => false
 
-    fun match_quote s =
-	let fun short_or_long s q =
-		if have_three s
+    fun matchQuote s =
+	let fun shortOrLong s q =
+		if haveThree s
 		then LONG_STRING q
 		else SHORT_STRING q
 	in		
-	    case peek_ttl s of
-		C_QUOTE_DOUBLE => short_or_long s C_QUOTE_DOUBLE
-	      | C_QUOTE_SINGLE => short_or_long s C_QUOTE_SINGLE
+	    case peekTtl s of
+		C_QUOTE_DOUBLE => shortOrLong s C_QUOTE_DOUBLE
+	      | C_QUOTE_SINGLE => shortOrLong s C_QUOTE_SINGLE
 	      | other => NO_QUOTE
 	end
                  
-    fun unescape_string_escape s =
+    fun unescapeStringEscape s =
         let val e = read s in
-            case CharMap.find (string_escape_map, e) of
+            case CharMap.find (stringEscapeMap, e) of
                 SOME w => (s, w)
               | NONE => (s, e)
         end
 		     
-    fun match_string_body_type q s : match_result =
+    fun matchStringBodyType q s : matchResult =
         let
-	    val quote_codepoint =
+	    val quoteCodepoint =
                 case q of
-                    LONG_STRING C_QUOTE_SINGLE => long_string_single_excluded
-                  | LONG_STRING C_QUOTE_DOUBLE => long_string_double_excluded
-                  | SHORT_STRING C_QUOTE_SINGLE => short_string_single_excluded
-                  | SHORT_STRING C_QUOTE_DOUBLE => short_string_double_excluded
-                  | _ => raise Fail "non-quote passed to match_string_body_type"
+                    LONG_STRING C_QUOTE_SINGLE => longStringSingleExcluded
+                  | LONG_STRING C_QUOTE_DOUBLE => longStringDoubleExcluded
+                  | SHORT_STRING C_QUOTE_SINGLE => shortStringSingleExcluded
+                  | SHORT_STRING C_QUOTE_DOUBLE => shortStringDoubleExcluded
+                  | _ => raise Fail "non-quote passed to matchStringBodyType"
 
 	    fun match' s =
-                case match_token_excl quote_codepoint s of
+                case matchTokenExcl quoteCodepoint s of
                     ERROR e => ERROR e
                   | OK (s as (d, body)) =>
                     if eof s then ERROR "end-of-file reached in string"
-                    else if peek_ttl s = C_BACKSLASH
+                    else if peekTtl s = C_BACKSLASH
                     then (discard s;
-                          if looking_at string_escape s
-                          then let val (s, w) = unescape_string_escape s
+                          if lookingAt stringEscape s
+                          then let val (s, w) = unescapeStringEscape s
                                in match' (d, body @ [w])
                                end
-                          else if looking_at unicode_u s
-                          then let val (s, w) = unescape_unicode_escape s
+                          else if lookingAt unicodeU s
+                          then let val (s, w) = unescapeUnicodeEscape s
                                in if w = 0wx0
                                   then ERROR "invalid Unicode escape"
                                   else match' (d, body @ [w])
@@ -527,36 +527,36 @@ structure TurtleIncrementalParser : RDF_INCREMENTAL_PARSER = struct
                           else ERROR "expected escape sequence")
                     else case q of
                              LONG_STRING _ => 
-                             (if have_three s then OK s
+                             (if haveThree s then OK s
                               else match' (d, body @ [read s]))
                            | SHORT_STRING _ => OK s
-                           | _ => raise Fail "non-quote passed to match_string_body_type"
+                           | _ => raise Fail "non-quote passed to matchStringBodyType"
 
-            val quote_seq =
+            val quoteSeq =
                 case q of
-                    LONG_STRING c => [require_ttl c, require_ttl c, require_ttl c]
-                  | SHORT_STRING c => [require_ttl c]
-                  | _ => raise Fail "non-quote passed to match_string_body_type"
+                    LONG_STRING c => [requireTtl c, requireTtl c, requireTtl c]
+                  | SHORT_STRING c => [requireTtl c]
+                  | _ => raise Fail "non-quote passed to matchStringBodyType"
         in
-            sequence s (quote_seq @ [match'] @ quote_seq)
+            sequence s (quoteSeq @ [match'] @ quoteSeq)
         end
             
-    fun match_string_body s : match_result =
-	case match_quote s of
+    fun matchStringBody s : matchResult =
+	case matchQuote s of
 	    NO_QUOTE => ERROR "expected quotation mark"
-	  | quote => match_string_body_type quote s
+	  | quote => matchStringBodyType quote s
 
-    fun match_language_tag s : match_result =
+    fun matchLanguageTag s : matchResult =
         let fun match' s =
-                case match_token alpha s of
+                case matchToken alpha s of
                     ERROR e => ERROR e
                   | OK (s as (d, token)) =>
-                    case peek_ttl s of
+                    case peekTtl s of
                         C_DASH => match' (d, token @ [read s])
                       | other => OK s
         in
             sequence s [
-                require_ttl C_AT,
+                requireTtl C_AT,
                 match',
                 fn (d, []) => ERROR "non-empty language tag expected"
                   | s => OK s
@@ -565,427 +565,427 @@ structure TurtleIncrementalParser : RDF_INCREMENTAL_PARSER = struct
             
     (* helper for piping match function output into parse function
        input *)
-    fun match_parse_seq d match_seq parse_fn =
-        case (sequence (d, []) match_seq) of
+    fun matchParseSeq d matchSeq parseFn =
+        case (sequence (d, []) matchSeq) of
             ERROR e => ERROR e
-          | OK (d, token) => parse_fn (d, token)
+          | OK (d, token) => parseFn (d, token)
             
-    fun parse_base is_sparql d : parse_result =
-        match_parse_seq d [
-	    require_whitespace,
-            match_iriref,
-            if is_sparql then require_nothing else require_punctuation C_DOT
+    fun parseBase isSparql d : parseResult =
+        matchParseSeq d [
+	    requireWhitespace,
+            matchIriref,
+            if isSparql then requireNothing else requirePunctuation C_DOT
         ] (fn (d, token) =>
-              let val base = token_of_iri (resolve_iri (d, token))
+              let val base = tokenOfIri (resolveIri (d, token))
               in
                   OK ({ source = #source d,
                         base = (base, []),
                         prefixes = #prefixes d,
-                        blank_nodes = #blank_nodes d,
-                        new_triples = #new_triples d,
-                        new_prefixes = #new_prefixes d
+                        blankNodes = #blankNodes d,
+                        newTriples = #newTriples d,
+                        newPrefixes = #newPrefixes d
                       }, NONE)
               end)
             
-    fun parse_prefix is_sparql d : parse_result =
-        match_parse_seq d [
-	    require_whitespace,
-            match_prefixed_name_namespace,
-            require_whitespace
+    fun parsePrefix isSparql d : parseResult =
+        matchParseSeq d [
+	    requireWhitespace,
+            matchPrefixedNameNamespace,
+            requireWhitespace
         ] (fn (d, prefix) =>
-              match_parse_seq d [
-		  match_iriref,
-                  if is_sparql then require_nothing else require_punctuation C_DOT
-	      ] (fn (d, iri) => OK (add_prefix d (prefix, iri), NONE)))
+              matchParseSeq d [
+		  matchIriref,
+                  if isSparql then requireNothing else requirePunctuation C_DOT
+	      ] (fn (d, iri) => OK (addPrefix d (prefix, iri), NONE)))
 
-    fun is_prefix_tag token =
+    fun isPrefixTag token =
         "prefix" = String.implode (map Char.toLower
                                        (String.explode
-                                            (string_of_token token)))
-    fun is_base_tag token =
+                                            (stringOfToken token)))
+    fun isBaseTag token =
         "base" = String.implode (map Char.toLower
                                      (String.explode
-                                          (string_of_token token)))
+                                          (stringOfToken token)))
                         
-    fun parse_sparql_base d : parse_result =
-        match_parse_seq d [
-            match_prefixed_name_candidate
+    fun parseSparqlBase d : parseResult =
+        matchParseSeq d [
+            matchPrefixedNameCandidate
         ] (fn (d, token) =>
-              if is_base_tag token then parse_base true d
+              if isBaseTag token then parseBase true d
               else ERROR "expected \"BASE\"")
 	
-    fun parse_sparql_prefix d : parse_result =
-        match_parse_seq d [
-            match_prefixed_name_candidate
+    fun parseSparqlPrefix d : parseResult =
+        matchParseSeq d [
+            matchPrefixedNameCandidate
         ] (fn (d, token) =>
-              if is_prefix_tag token then parse_prefix true d
+              if isPrefixTag token then parsePrefix true d
               else ERROR "expected \"PREFIX\"")
         
-    fun parse_directive d : parse_result =
+    fun parseDirective d : parseResult =
         let val s = (d, []) in
-	    case peek_ttl s of
-	        C_LETTER_B => parse_sparql_base d
-	      | C_LETTER_P => parse_sparql_prefix d
+	    case peekTtl s of
+	        C_LETTER_B => parseSparqlBase d
+	      | C_LETTER_P => parseSparqlPrefix d
 	      | C_AT =>
-                match_parse_seq d
-                    [ require_ttl C_AT, match_token alpha ]
+                matchParseSeq d
+                    [ requireTtl C_AT, matchToken alpha ]
                     (fn (d, token) => 
-                        case string_of_token token of
-                            "prefix" => parse_prefix false d
-                          | "base" => parse_base false d
+                        case stringOfToken token of
+                            "prefix" => parsePrefix false d
+                          | "base" => parseBase false d
 		          | other => ERROR ("expected \"prefix\" or \"base\" " ^
                                             "after @, not \"" ^ other ^ "\""))
 	      | other => ERROR "expected @prefix, @base, PREFIX, or BASE"
         end
 	    
     (* [15] collection ::= '(' object* ')' *)
-    fun parse_collection d : parse_result =
-	let fun read_objects acc d =
-                case (discard_whitespace (d, []);
-		      peek_ttl (d, [])) of
+    fun parseCollection d : parseResult =
+	let fun readObjects acc d =
+                case (discardWhitespace (d, []);
+		      peekTtl (d, [])) of
 		    C_CLOSE_PAREN =>
 		    (discard (d, []);
 		     if null acc
-		     then OK (d, SOME (IRI RdfStandardIRIs.iri_rdf_nil))
-		     else let val c = CollectionExpander.collection_of_nodes acc
-			      val d = foldl (fn (t, data) => add_triple data t) d c
+		     then OK (d, SOME (IRI RdfStandardIRIs.iriRdfNil))
+		     else let val c = CollectionExpander.collectionOfNodes acc
+			      val d = foldl (fn (t, data) => addTriple data t) d c
 			  in
 			      OK (d, SOME (#1 (hd c)))
 			  end)
-		  | _ => case parse_object d of
+		  | _ => case parseObject d of
 			     ERROR e => ERROR e
-			   | OK (d, SOME obj) => read_objects (acc @ [obj]) d
+			   | OK (d, SOME obj) => readObjects (acc @ [obj]) d
 			   | OK (d, NONE) => ERROR "object expected"
 	in
-	    match_parse_seq d [
-		require_ttl C_OPEN_PAREN
-	    ] (fn (d, _) => read_objects [] d)
+	    matchParseSeq d [
+		requireTtl C_OPEN_PAREN
+	    ] (fn (d, _) => readObjects [] d)
         end
 
-    and parse_blank_node d : parse_result =
-	match_parse_seq d [
-	    require_ttl C_UNDERSCORE,
-	    require_ttl C_COLON,
-	    match_prefixed_name_candidate
+    and parseBlankNode d : parseResult =
+	matchParseSeq d [
+	    requireTtl C_UNDERSCORE,
+	    requireTtl C_COLON,
+	    matchPrefixedNameCandidate
 	] (fn (d, candidate) => 
 	      (* !!! check that we match the blank node pattern. that is:
-                   one initial_bnode_char
-                   zero or more pname_char_or_dot
-                   if there were any of those, then finally one pname_char *)
-	      case blank_node_for (d, candidate) of
+                   one initialBnodeChar
+                   zero or more pnameCharOrDot
+                   if there were any of those, then finally one pnameChar *)
+	      case blankNodeFor (d, candidate) of
 		  (d, node) => OK (d, SOME node))
 	    
-    and parse_prefixed_name d : parse_result =
-        match_parse_seq d [
-            match_prefixed_name_candidate
+    and parsePrefixedName d : parseResult =
+        matchParseSeq d [
+            matchPrefixedNameCandidate
         ] (fn (d, token) =>
               (* We can't tell the difference, until we get here,
                  between a prefixed name and the bare literals true
                  or false *)
-              if token = true_token
-	      then OK (d, SOME (new_boolean_literal true))
-              else if token = false_token
-	      then OK (d, SOME (new_boolean_literal false))
-              else prefix_expand (d, token))
+              if token = trueToken
+	      then OK (d, SOME (newBooleanLiteral true))
+              else if token = falseToken
+	      then OK (d, SOME (newBooleanLiteral false))
+              else prefixExpand (d, token))
 
-    and parse_iriref d : parse_result =
-        match_parse_seq d [
-            match_iriref
+    and parseIriref d : parseResult =
+        matchParseSeq d [
+            matchIriref
         ] (fn (d, token) => 
-	      OK (d, SOME (IRI (resolve_iri (d, token)))))
+	      OK (d, SOME (IRI (resolveIri (d, token)))))
             
-    and parse_iri d : parse_result = 
-        if peek_ttl (d, []) = C_OPEN_ANGLE
-        then parse_iriref d
-        else parse_prefixed_name d
+    and parseIri d : parseResult = 
+        if peekTtl (d, []) = C_OPEN_ANGLE
+        then parseIriref d
+        else parsePrefixedName d
 
-    and parse_a_or_prefixed_name d : parse_result =
-        match_parse_seq d [
-            match_prefixed_name_candidate
+    and parseAOrPrefixedName d : parseResult =
+        matchParseSeq d [
+            matchPrefixedNameCandidate
         ] (fn (d, token) =>
-	      if token = [ from_ascii #"a" ]
-	      then OK (d, SOME (IRI RdfStandardIRIs.iri_rdf_type))
-	      else prefix_expand (d, token))
+	      if token = [ fromAscii #"a" ]
+	      then OK (d, SOME (IRI RdfStandardIRIs.iriRdfType))
+	      else prefixExpand (d, token))
 
-    and parse_blank_node_property_list d : parse_result =
-	case require_ttl C_OPEN_SQUARE (d, []) of
+    and parseBlankNodePropertyList d : parseResult =
+	case requireTtl C_OPEN_SQUARE (d, []) of
 	    ERROR e => ERROR e
 	  | OK (d, _) => 
-	    case parse_predicate_object_list d of
+	    case parsePredicateObjectList d of
                 ERROR e => ERROR e
 	      | OK (d, p) =>  (* p may legitimately be empty *)
-		let val blank_node = new_blank_node ()
-		    val d = emit_with_subject (d, blank_node, p)
+		let val blankNode = newBlankNode ()
+		    val d = emitWithSubject (d, blankNode, p)
 		in
-		    case require_ttl C_CLOSE_SQUARE (d, []) of
+		    case requireTtl C_CLOSE_SQUARE (d, []) of
 			ERROR e => ERROR e
-		      | OK (d, _) => OK (d, SOME blank_node)
+		      | OK (d, _) => OK (d, SOME blankNode)
 		end
 
     (* [133s] BooleanLiteral ::= 'true' | 'false' *)
-    and parse_boolean_literal d : parse_result =
-	if looking_at_token true_token (d, [])
-	then OK (d, SOME (new_boolean_literal true))
-	else if looking_at_token false_token (d, [])
-	then OK (d, SOME (new_boolean_literal false))
+    and parseBooleanLiteral d : parseResult =
+	if lookingAtToken trueToken (d, [])
+	then OK (d, SOME (newBooleanLiteral true))
+	else if lookingAtToken falseToken (d, [])
+	then OK (d, SOME (newBooleanLiteral false))
 	else ERROR "expected \"true\" or \"false\""
 
-    and parse_datatype d : parse_result =
-        match_parse_seq d [
-	    require_ttl C_CARET,
-	    require_ttl C_CARET
-	] (fn (d, _) => parse_iri d)
+    and parseDatatype d : parseResult =
+        matchParseSeq d [
+	    requireTtl C_CARET,
+	    requireTtl C_CARET
+	] (fn (d, _) => parseIri d)
                    
-    and parse_rdf_literal d : parse_result =
-        match_parse_seq d [
-            match_string_body
+    and parseRdfLiteral d : parseResult =
+        matchParseSeq d [
+            matchStringBody
         ] (fn (d, body) =>
-              case peek_ttl (d, []) of
+              case peekTtl (d, []) of
                   C_AT =>
-                  match_parse_seq d [
-                      match_language_tag
+                  matchParseSeq d [
+                      matchLanguageTag
                   ] (fn (d, tag) =>
                         OK (d, SOME (LITERAL {
-					  value = string_of_token body,
-					  lang = string_of_token tag,
+					  value = stringOfToken body,
+					  lang = stringOfToken tag,
 					  dtype = Iri.empty
 		    })))
                 | C_CARET =>
-                  (case parse_datatype d of
+                  (case parseDatatype d of
                        ERROR e => ERROR e
                      | OK (d, SOME (IRI tag)) =>
                        OK (d, SOME (LITERAL {
-					 value = string_of_token body,
+					 value = stringOfToken body,
 					 lang = "",
 					 dtype = tag
 			  }))
                      | other => ERROR "internal error")
                 | other => OK (d, SOME (LITERAL {
-					     value = string_of_token body,
+					     value = stringOfToken body,
 					     lang = "",
 					     dtype = Iri.empty
 			      })))
 	
-    and parse_numeric_literal d =
-        let val point = from_ascii #"."
+    and parseNumericLiteral d =
+        let val point = fromAscii #"."
 
             val candidate =
-                case match_token number (d, []) of
+                case matchToken number (d, []) of
                     ERROR e => []
                   | OK (s as (d, n0)) =>
-                    case peek_n 2 s of
+                    case peekN 2 s of
                         [a,b] => if a = point andalso
                                     CodepointSet.contains
-                                        number_after_point b
+                                        numberAfterPoint b
                                  then
 				     (discard s; (* the point *)
-                                      case match_token number (d, []) of
+                                      case matchToken number (d, []) of
                                           OK (d, n1) => (n0 @ [point] @ n1)
 					| ERROR e => [])
                                  else n0
                       | _ => n0
 
-	    val candidate_str = string_of_token candidate
+	    val candidateStr = stringOfToken candidate
 
-	    val contains_e =
+	    val containsE =
 		isSome (List.find
 			    (CodepointSet.contains exponent) candidate)
-	    val contains_dot =
-		isSome (List.find (fn c => c = from_ascii #".") candidate)
+	    val containsDot =
+		isSome (List.find (fn c => c = fromAscii #".") candidate)
 
-	    val dtype = if contains_e then RdfStandardIRIs.iri_type_double
-			else if contains_dot then RdfStandardIRIs.iri_type_decimal
-			else RdfStandardIRIs.iri_type_integer
+	    val dtype = if containsE then RdfStandardIRIs.iriTypeDouble
+			else if containsDot then RdfStandardIRIs.iriTypeDecimal
+			else RdfStandardIRIs.iriTypeInteger
         in
 	    (* spec says we store the literal as it appears in the
                file, don't canonicalise: we only convert it to check
                that it really is a number. Because SML's number
                conversion is slightly different from the Turtle spec,
                we need the odd additional test as well *)
-            if String.isSuffix "e" candidate_str orelse
-               String.isSuffix "E" candidate_str
+            if String.isSuffix "e" candidateStr orelse
+               String.isSuffix "E" candidateStr
             then ERROR ("double numeric literal must have digits after exponent")
             else
-	        case Real.fromString candidate_str of
+	        case Real.fromString candidateStr of
 		    SOME i => OK (d, SOME (LITERAL {
-						value = candidate_str,
+						value = candidateStr,
 						lang = "",
 						dtype = dtype
 				 }))
 	          | NONE => ERROR ("expected numeric literal, found \"" ^
-			           candidate_str ^ "\"")
+			           candidateStr ^ "\"")
         end
             
     (* [13] literal ::= RDFLiteral | NumericLiteral | BooleanLiteral *)
-    and parse_literal d =
-	case peek_ttl (d, []) of
-	    C_QUOTE_SINGLE => parse_rdf_literal d
-	  | C_QUOTE_DOUBLE => parse_rdf_literal d
-	  | C_LETTER_T => parse_boolean_literal d
-	  | C_LETTER_F => parse_boolean_literal d
-	  | C_DOT => parse_numeric_literal d
+    and parseLiteral d =
+	case peekTtl (d, []) of
+	    C_QUOTE_SINGLE => parseRdfLiteral d
+	  | C_QUOTE_DOUBLE => parseRdfLiteral d
+	  | C_LETTER_T => parseBooleanLiteral d
+	  | C_LETTER_F => parseBooleanLiteral d
+	  | C_DOT => parseNumericLiteral d
 	  | other => if CodepointSet.contains number (peek (d, []))
-		     then parse_numeric_literal d
+		     then parseNumericLiteral d
 		     else (* not literal after all! *) ERROR "object node expected"
 					
-    and parse_non_literal_object d =
-	case peek_ttl (d, []) of
-	    C_UNDERSCORE => parse_blank_node d
-	  | C_OPEN_PAREN => parse_collection d
-	  | C_OPEN_SQUARE => parse_blank_node_property_list d
-	  | other => parse_iri d
+    and parseNonLiteralObject d =
+	case peekTtl (d, []) of
+	    C_UNDERSCORE => parseBlankNode d
+	  | C_OPEN_PAREN => parseCollection d
+	  | C_OPEN_SQUARE => parseBlankNodePropertyList d
+	  | other => parseIri d
                                
-    and parse_object d =
-        if looking_at not_a_literal (d, [])
-        then parse_non_literal_object d
-        else parse_literal d
+    and parseObject d =
+        if lookingAt notALiteral (d, [])
+        then parseNonLiteralObject d
+        else parseLiteral d
                                
-    and parse_verb d =
-	if peek_ttl (d, []) = C_OPEN_ANGLE then parse_iri d
-	else parse_a_or_prefixed_name d
+    and parseVerb d =
+	if peekTtl (d, []) = C_OPEN_ANGLE then parseIri d
+	else parseAOrPrefixedName d
 					    
     (* [7] predicateObjectList ::= verb objectList (';' (verb objectList)?)*
        NB we permit an empty list here; caller must reject if its rule
        demands predicateObjectList rather than predicateObjectList? *)
 
-    and parse_predicate_object_list d =
+    and parsePredicateObjectList d =
 	let
-	    fun parse_object_list (d, nodes) =
+	    fun parseObjectList (d, nodes) =
                 (* would be better for these if the require/discard functions just took d/source *)
-		case (ignore (require_whitespace (d, []));
-                      parse_object d) of
+		case (ignore (requireWhitespace (d, []));
+                      parseObject d) of
 		    ERROR e => ERROR e
 		  | OK (d, NONE) => ERROR "object node not found"
 		  | OK (d, SOME node) =>
-		    if (discard_whitespace (d, []);
-                        peek_ttl (d, [])) = C_COMMA
+		    if (discardWhitespace (d, []);
+                        peekTtl (d, [])) = C_COMMA
 		    then (discard (d, []);
-                          parse_object_list (d, node::nodes))
+                          parseObjectList (d, node::nodes))
 		    else OK (d, rev (node::nodes))
 
-	    fun parse_verb_object_list d =
-		case parse_verb d of
+	    fun parseVerbObjectList d =
+		case parseVerb d of
 		    ERROR e => ERROR ("verb IRI not found: " ^ e)
 		  | OK (d, SOME (IRI iri)) =>
-		    (case parse_object_list (d, []) of
+		    (case parseObjectList (d, []) of
 			 ERROR e => ERROR e
 		       | OK (d, nodes) =>
 			 OK (d, map (fn n => (IRI iri, n)) nodes))
 		  | OK other => ERROR "IRI expected for verb"
 
-	    and parse_predicate_object_list' (d, volist) =
-                case (discard_whitespace (d, []);
-		      peek_ttl (d, [])) of
+	    and parsePredicateObjectList' (d, volist) =
+                case (discardWhitespace (d, []);
+		      peekTtl (d, [])) of
                     C_DOT => OK (d, volist)
                   | C_CLOSE_SQUARE => OK (d, volist)
                   | other => 
-		    case parse_verb_object_list d of
+		    case parseVerbObjectList d of
 			ERROR e => ERROR e
 		      | OK (d, vos) =>
-			if (discard_whitespace (d, []);
-			    peek_ttl (d, [])) = C_SEMICOLON
-			then (discard_greedy_ttl C_SEMICOLON (d, []);
-			      parse_predicate_object_list' (d, volist @ vos))
+			if (discardWhitespace (d, []);
+			    peekTtl (d, [])) = C_SEMICOLON
+			then (discardGreedyTtl C_SEMICOLON (d, []);
+			      parsePredicateObjectList' (d, volist @ vos))
 			else OK (d, volist @ vos)
 	in
-	    parse_predicate_object_list' (d, [])
+	    parsePredicateObjectList' (d, [])
 	end
           
     (* [10] subject ::= iri | blank *)
-    and parse_subject_node d =
-	case peek_ttl (d, []) of
-	    C_UNDERSCORE => parse_blank_node d
-	  | C_OPEN_PAREN => parse_collection d
-	  | other => parse_iri d
+    and parseSubjectNode d =
+	case peekTtl (d, []) of
+	    C_UNDERSCORE => parseBlankNode d
+	  | C_OPEN_PAREN => parseCollection d
+	  | other => parseIri d
 
     (* [6] triples ::= subject predicateObjectList |
                        blankNodePropertyList predicateObjectList?
        Handles the blankNodePropertyList part of that alternation *)
-    and parse_blank_node_triples d =
-	case parse_blank_node_property_list d of
+    and parseBlankNodeTriples d =
+	case parseBlankNodePropertyList d of
 	    ERROR e => ERROR e
           (* !!! when do we return NONE from a parser? *)
 	  | OK (d, NONE) => ERROR "node expected"
-	  | OK (d, SOME blank_subject) =>
-	    case parse_predicate_object_list d of
+	  | OK (d, SOME blankSubject) =>
+	    case parsePredicateObjectList d of
 		ERROR e => ERROR e
 	      | OK (d, polist) =>
-                OK (emit_with_subject (d, blank_subject, polist))
+                OK (emitWithSubject (d, blankSubject, polist))
 
     (* [6] triples ::= subject predicateObjectList |
                        blankNodePropertyList predicateObjectList?
        Handles the subject part of that alternation *)
-    and parse_subject_triples d =
-        case parse_subject_node d of
+    and parseSubjectTriples d =
+        case parseSubjectNode d of
             ERROR e => ERROR e
           | OK (d, NONE) => ERROR "node expected"
           | OK (d, SOME (LITERAL _)) => ERROR "subject may not be a literal"
-          | OK (d, SOME subject_node) =>
-            case parse_predicate_object_list d of
+          | OK (d, SOME subjectNode) =>
+            case parsePredicateObjectList d of
                 ERROR e => ERROR e
               | OK (d, []) => ERROR "predicate missing"
               | OK (d, polist) =>
-                OK (emit_with_subject (d, subject_node, polist))
+                OK (emitWithSubject (d, subjectNode, polist))
                                         
-    and parse_triples d =
-        if peek_ttl (d, []) = C_OPEN_SQUARE
-	then parse_blank_node_triples d
-        else parse_subject_triples d
+    and parseTriples d =
+        if peekTtl (d, []) = C_OPEN_SQUARE
+	then parseBlankNodeTriples d
+        else parseSubjectTriples d
                                         
     (* [2] statement ::= directive | triples '.' *)
-    and parse_statement d =
-        case discard_whitespace (d, []) of
+    and parseStatement d =
+        case discardWhitespace (d, []) of
             ERROR e => ERROR e
           | OK (s as (d, _)) => 
             if eof s then OK (d, NONE)
             else
-                if peek_ttl s = C_AT
+                if peekTtl s = C_AT
                    orelse
-                   (peek_ttl s = C_LETTER_P andalso is_prefix_tag (peek_n 6 s))
+                   (peekTtl s = C_LETTER_P andalso isPrefixTag (peekN 6 s))
                    orelse
-                   (peek_ttl s = C_LETTER_B andalso is_base_tag (peek_n 4 s))
-                then parse_directive d
-                else case parse_triples d of
+                   (peekTtl s = C_LETTER_B andalso isBaseTag (peekN 4 s))
+                then parseDirective d
+                else case parseTriples d of
                          ERROR e => ERROR e
-               (* !!! inconsistency: this returns only one value, parse_directive returns three (with NONE) *)
+               (* !!! inconsistency: this returns only one value, parseDirective returns three (with NONE) *)
                        | OK d =>
-                         case require_punctuation C_DOT (d, []) of
+                         case requirePunctuation C_DOT (d, []) of
                              ERROR e => ERROR e
                            | OK _ => OK (d, NONE)
 
-    fun extended_error_message d e =
+    fun extendedErrorMessage d e =
 	let val message = e ^ " at " ^ (location (d, []))
-	    val next_bit =
-                case peek_n 8 (d, []) of
-                    [] => peek_n 4 (d, [])
+	    val nextBit =
+                case peekN 8 (d, []) of
+                    [] => peekN 4 (d, [])
                   | p => p
 	in
-	    if next_bit = []
+	    if nextBit = []
 	    then message
-	    else message ^ " (before \"" ^ (string_of_token next_bit) ^ "...\")"
+	    else message ^ " (before \"" ^ (stringOfToken nextBit) ^ "...\")"
 	end
 
-    fun parse_document (d : parse_data) : stream_value =
-        let fun parse' (d : parse_data) = fn () =>
-                              parse_document
+    fun parseDocument (d : parseData) : streamValue =
+        let fun parse' (d : parseData) = fn () =>
+                              parseDocument
                                   {
                                     source = #source d,
                                     base = #base d,
                                     prefixes = #prefixes d,
-                                    blank_nodes = #blank_nodes d,
-                                    new_triples = [],
-                                    new_prefixes = []
+                                    blankNodes = #blankNodes d,
+                                    newTriples = [],
+                                    newPrefixes = []
                                   }
         in
-            case parse_statement d of
+            case parseStatement d of
                 OK (d, _) => if eof (d, []) andalso
-                                null (#new_triples d) andalso
-                                null (#new_prefixes d)
+                                null (#newTriples d) andalso
+                                null (#newPrefixes d)
                              then END_OF_STREAM
-                             else PARSE_OUTPUT ({ prefixes = #new_prefixes d,
-                                                  triples = #new_triples d
+                             else PARSE_OUTPUT ({ prefixes = #newPrefixes d,
+                                                  triples = #newTriples d
                                                 }, parse' d)
-              | ERROR e => PARSE_ERROR (extended_error_message d e)
+              | ERROR e => PARSE_ERROR (extendedErrorMessage d e)
         end
 
 (*!!! need extensive tests for base iris (i) read from the file; (ii)
@@ -993,29 +993,29 @@ structure TurtleIncrementalParser : RDF_INCREMENTAL_PARSER = struct
       what circumstances should we truncate the base to make a
       relative uri? *)
             
-    fun split_base iri : (token * token) =
+    fun splitBase iri : (token * token) =
         let val iristring = Iri.toString iri
-            fun slash_fields s = String.fields (fn x => x = #"/") iristring
+            fun slashFields s = String.fields (fn x => x = #"/") iristring
             and split' i = 
-                case slash_fields i of
+                case slashFields i of
                     [] => ("", i)
                   | [single] => (single, "")
                   | bits =>
                     ((String.concatWith "/" (rev (tl (rev bits)))) ^ "/",
                      hd (rev bits))
-            val (base_iri, file_part) = split' iristring
+            val (baseIri, filePart) = split' iristring
         in
-            (token_of_string base_iri, token_of_string file_part)
+            (tokenOfString baseIri, tokenOfString filePart)
         end
             
-    fun parse (base_iri, stream) =
-        parse_document {
-            source = Source.from_stream stream,
-            base = split_base (getOpt (base_iri, Iri.empty)),
+    fun parse (baseIri, stream) =
+        parseDocument {
+            source = Source.fromStream stream,
+            base = splitBase (getOpt (baseIri, Iri.empty)),
             prefixes = TokenMap.empty,
-            blank_nodes = TokenMap.empty,
-            new_triples = [],
-            new_prefixes = []
+            blankNodes = TokenMap.empty,
+            newTriples = [],
+            newPrefixes = []
         }
             
 end

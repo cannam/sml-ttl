@@ -1,7 +1,7 @@
 
 structure StoreExportBase : STORE_EXPORT_BASE = struct
 
-    type base_iri = BaseIri.t
+    type baseIri = BaseIri.t
     type store = Store.t
                  
     datatype result =
@@ -19,30 +19,30 @@ functor StoreIncrementalExporterFn (S: RDF_INCREMENTAL_SERIALISER)
 
     open StoreExportBase
 
-    fun save_to_stream store (base_iri, stream) =
-        (* incremental serialiser doesn't use out_base iri *)
+    fun saveToStream store (baseIri, stream) =
+        (* incremental serialiser doesn't use outBase iri *)
         let val serialiser = S.new stream
         in
             S.finish (S.serialise (serialiser, Store.enumerate store));
             OK
         end
             
-    fun save_to_file' store (base_iri, filename) =
+    fun saveToFile' store (baseIri, filename) =
         let val stream = TextIO.openOut filename
-            val _ = save_to_stream store (base_iri, stream)
+            val _ = saveToStream store (baseIri, stream)
         in
             TextIO.closeOut stream;
             OK
         end
 
-    fun save_to_file store (base_iri, filename) =
-        save_to_file' store (base_iri, filename)
+    fun saveToFile store (baseIri, filename) =
+        saveToFile' store (baseIri, filename)
         handle ex => SYSTEM_ERROR (exnMessage ex)
 end
 
 functor StoreAbbreviatingExporterFn
             (S: RDF_ABBREVIATING_SERIALISER
-                    where type prefix_table = PrefixTable.t
+                    where type prefixTable = PrefixTable.t
                     where type matcher = Store.t)
         :> STORE_EXPORTER
                where type store = Store.t
@@ -51,24 +51,24 @@ functor StoreAbbreviatingExporterFn
 
     open StoreExportBase
                      
-    fun save_to_stream store (base_iri, stream) =
+    fun saveToStream store (baseIri, stream) =
         let val serialiser =
-                S.new (base_iri, Store.get_prefix_table store, store) stream
+                S.new (baseIri, Store.getPrefixTable store, store) stream
         in
             S.finish (S.serialise (serialiser, Store.enumerate store));
             OK
         end
 
-    fun save_to_file' store (base_iri, filename) =
+    fun saveToFile' store (baseIri, filename) =
         let val stream = TextIO.openOut filename
-            val _ = save_to_stream store (base_iri, stream)
+            val _ = saveToStream store (baseIri, stream)
         in
             TextIO.closeOut stream;
             OK
         end
 
-    fun save_to_file store args =
-        save_to_file' store args
+    fun saveToFile store args =
+        saveToFile' store args
         handle ex => SYSTEM_ERROR (exnMessage ex)
 end
 					    
@@ -91,20 +91,20 @@ structure StoreStreamExporter
 
     exception Unsupported
 
-    fun save_to_stream store (base_iri, format, stream) =
+    fun saveToStream store (baseIri, format, stream) =
         let open FileType
             val exporter = 
                 case format of
-                    TURTLE => TurtleExporter.save_to_stream
-                  | NTRIPLES => NTriplesExporter.save_to_stream
+                    TURTLE => TurtleExporter.saveToStream
+                  | NTRIPLES => NTriplesExporter.saveToStream
                   | _ => raise Unsupported
         in
-            (exporter store (base_iri, stream); OK)
+            (exporter store (baseIri, stream); OK)
             handle Unsupported => FORMAT_NOT_SUPPORTED
             handle ex => SYSTEM_ERROR (exnMessage ex)
         end
 
-    val formats_supported = [FileType.TURTLE, FileType.NTRIPLES]
+    val formatsSupported = [FileType.TURTLE, FileType.NTRIPLES]
             
 end
 
@@ -118,23 +118,23 @@ structure StoreFileExporter
 
     exception Unsupported
 
-    fun save_to_file store (base_iri, filename) =
+    fun saveToFile store (baseIri, filename) =
         let open FileType
             val exporter = 
-                case format_of filename of
-                    TURTLE => TurtleExporter.save_to_file
-                  | NTRIPLES => NTriplesExporter.save_to_file
+                case formatOf filename of
+                    TURTLE => TurtleExporter.saveToFile
+                  | NTRIPLES => NTriplesExporter.saveToFile
                   | _ => raise Unsupported
         in
-            (exporter store (base_iri, filename); OK)
+            (exporter store (baseIri, filename); OK)
             handle Unsupported => FORMAT_NOT_SUPPORTED
             handle ex => SYSTEM_ERROR (exnMessage ex)
         end
 
-    val formats_supported = [FileType.TURTLE, FileType.NTRIPLES]
+    val formatsSupported = [FileType.TURTLE, FileType.NTRIPLES]
             
-    val extensions_supported = 
-        List.concat (map FileType.extensions_for_format formats_supported)
+    val extensionsSupported = 
+        List.concat (map FileType.extensionsForFormat formatsSupported)
             
 end
 

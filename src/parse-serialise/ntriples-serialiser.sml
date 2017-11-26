@@ -7,30 +7,30 @@ structure NTriplesSerialiser :> RDF_INCREMENTAL_SERIALISER = struct
 
     fun new t = t
 
-    fun encode_iri iri =
-        Encode.encode_wdstring (NTriplesCodepoints.ok_in_iris,
-                                Encode.percent_or_u_encode)
+    fun encodeIri iri =
+        Encode.encodeWdstring (NTriplesCodepoints.okInIris,
+                                Encode.percentOrUEncode)
                                (Iri.toWideString iri)
             
-    fun encode_literal_value value =
-        Encode.encode_string (NTriplesCodepoints.ok_in_strings,
-                              Encode.ascii_encode)
+    fun encodeLiteralValue value =
+        Encode.encodeString (NTriplesCodepoints.okInStrings,
+                              Encode.asciiEncode)
                              value
 				  
-    fun string_of_node (RdfNode.IRI iri) = "<" ^ (encode_iri iri) ^ ">"
-      | string_of_node (RdfNode.BLANK n) = "_:blank" ^ (Int.toString n)
-      | string_of_node (RdfNode.LITERAL lit) =
-	"\"" ^ (encode_literal_value (#value lit)) ^ "\"" ^
+    fun stringOfNode (RdfNode.IRI iri) = "<" ^ (encodeIri iri) ^ ">"
+      | stringOfNode (RdfNode.BLANK n) = "_:blank" ^ (Int.toString n)
+      | stringOfNode (RdfNode.LITERAL lit) =
+	"\"" ^ (encodeLiteralValue (#value lit)) ^ "\"" ^
         (if #lang lit = "" then "" else "@" ^ (#lang lit)) ^
         (if Iri.isEmpty (#dtype lit) then ""
-	 else "^^" ^ (string_of_node (RdfNode.IRI (#dtype lit))))
+	 else "^^" ^ (stringOfNode (RdfNode.IRI (#dtype lit))))
 	    
     (** Add a series of triples to the output. *)
     fun serialise (t, []) = t
       | serialise (t, (a, b, c)::rest) =
-	let val str = string_of_node a ^ " " ^
-		      string_of_node b ^ " " ^
-		      string_of_node c
+	let val str = stringOfNode a ^ " " ^
+		      stringOfNode b ^ " " ^
+		      stringOfNode c
 	in
 	    TextIO.output (t, str ^ " .\n");
 	    serialise (t, rest)

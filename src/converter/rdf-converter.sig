@@ -1,7 +1,7 @@
 
 signature RDF_CONVERTER_BASE = sig
     
-    type base_iri = BaseIri.t
+    type baseIri = BaseIri.t
 
 end
 
@@ -24,8 +24,8 @@ signature RDF_CONVERTER = sig
              (** Successful conversion *)
              OK
     
-    val convert : base_iri * TextIO.instream ->
-                  base_iri * TextIO.outstream ->
+    val convert : baseIri * TextIO.instream ->
+                  baseIri * TextIO.outstream ->
                   result
 
 end
@@ -50,8 +50,8 @@ signature RDF_FILE_CONVERTER = sig
              (** Successful conversion *)
              OK
 
-    val convert : base_iri * string -> (* input iri + filename *)
-                  base_iri * string -> (* output iri + filename *)
+    val convert : baseIri * string -> (* input iri + filename *)
+                  baseIri * string -> (* output iri + filename *)
                   result
 
 end

@@ -12,7 +12,7 @@ structure TestCollection :> TESTS = struct
     val name = "collection"
 
     (* Renumber blank nodes, starting from 1 each time this is called *)
-    fun reduce_blanks tt =
+    fun reduceBlanks tt =
         let open IntRedBlackMap
             val map = ref empty
             val n = ref 0
@@ -28,65 +28,65 @@ structure TestCollection :> TESTS = struct
             List.map (fn (subj, pred, obj) => (reduce subj, pred, reduce obj)) tt
         end
                               
-    fun check_triples (a, b) =
-        check RdfTriple.string_of_triples (reduce_blanks a, reduce_blanks b)
+    fun checkTriples (a, b) =
+        check RdfTriple.stringOfTriples (reduceBlanks a, reduceBlanks b)
 
-    fun test_make_empty () =
-        check_triples
-            (E.collection_of_nodes [], [])
+    fun testMakeEmpty () =
+        checkTriples
+            (E.collectionOfNodes [], [])
 
-    fun test_make_single () =
-        check_triples
-            (E.collection_of_nodes [IRI (Iri.fromString "x")],
-             [(BLANK 1, IRI iri_rdf_first, IRI (Iri.fromString "x")),
-              (BLANK 1, IRI iri_rdf_rest, IRI iri_rdf_nil)])
+    fun testMakeSingle () =
+        checkTriples
+            (E.collectionOfNodes [IRI (Iri.fromString "x")],
+             [(BLANK 1, IRI iriRdfFirst, IRI (Iri.fromString "x")),
+              (BLANK 1, IRI iriRdfRest, IRI iriRdfNil)])
 
-    fun test_make_collection () =
-        check_triples
-            (E.collection_of_nodes [IRI (Iri.fromString "x"),
+    fun testMakeCollection () =
+        checkTriples
+            (E.collectionOfNodes [IRI (Iri.fromString "x"),
                                     IRI (Iri.fromString "y")],
-             [(BLANK 1, IRI iri_rdf_first, IRI (Iri.fromString "x")),
-              (BLANK 1, IRI iri_rdf_rest, BLANK 2),
-              (BLANK 2, IRI iri_rdf_first, IRI (Iri.fromString "y")),
-              (BLANK 2, IRI iri_rdf_rest, IRI iri_rdf_nil)])
+             [(BLANK 1, IRI iriRdfFirst, IRI (Iri.fromString "x")),
+              (BLANK 1, IRI iriRdfRest, BLANK 2),
+              (BLANK 2, IRI iriRdfFirst, IRI (Iri.fromString "y")),
+              (BLANK 2, IRI iriRdfRest, IRI iriRdfNil)])
 
-    fun test_start_of_collection () =
-        let val tt = E.collection_of_nodes [IRI (Iri.fromString "x"),
+    fun testStartOfCollection () =
+        let val tt = E.collectionOfNodes [IRI (Iri.fromString "x"),
                                             IRI (Iri.fromString "y"),
                                             IRI (Iri.fromString "z")]
             val store = foldl (fn (t, s) => Store.add (s, t)) Store.empty tt
-            val first_link_node = #1 (hd tt) (* subj node of "x" triple *)
-            val last_link_node = #1 (hd (rev tt)) (* subj node of "z" triple *)
+            val firstLinkNode = #1 (hd tt) (* subj node of "x" triple *)
+            val lastLinkNode = #1 (hd (rev tt)) (* subj node of "z" triple *)
         in
-            check RdfNode.string_of_node
-                  (G.start_of_collection (store, last_link_node),
-                   first_link_node)
+            check RdfNode.stringOfNode
+                  (G.startOfCollection (store, lastLinkNode),
+                   firstLinkNode)
             andalso
-            check RdfNode.string_of_node
-                  (G.start_of_collection (store, first_link_node),
-                   first_link_node)
+            check RdfNode.stringOfNode
+                  (G.startOfCollection (store, firstLinkNode),
+                   firstLinkNode)
         end
             
-    fun test_triples_of_collection () =
-        let val tt = E.collection_of_nodes [IRI (Iri.fromString "x"),
+    fun testTriplesOfCollection () =
+        let val tt = E.collectionOfNodes [IRI (Iri.fromString "x"),
                                             IRI (Iri.fromString "y")]
             val store = foldl (fn (t, s) => Store.add (s, t)) Store.empty tt
-            val last_link_node = #1 (hd (rev tt)) (* subj node of "y" triple *)
+            val lastLinkNode = #1 (hd (rev tt)) (* subj node of "y" triple *)
         in
-            check_triples
-                (G.triples_of_collection (store, last_link_node),
-                 [(BLANK 1, IRI iri_rdf_first, IRI (Iri.fromString "x")),
-                  (BLANK 1, IRI iri_rdf_rest, BLANK 2),
-                  (BLANK 2, IRI iri_rdf_first, IRI (Iri.fromString "y")),
-                  (BLANK 2, IRI iri_rdf_rest, IRI iri_rdf_nil)])
+            checkTriples
+                (G.triplesOfCollection (store, lastLinkNode),
+                 [(BLANK 1, IRI iriRdfFirst, IRI (Iri.fromString "x")),
+                  (BLANK 1, IRI iriRdfRest, BLANK 2),
+                  (BLANK 2, IRI iriRdfFirst, IRI (Iri.fromString "y")),
+                  (BLANK 2, IRI iriRdfRest, IRI iriRdfNil)])
         end
             
     fun tests () = [
-        ("make-empty", test_make_empty),
-        ("make-single", test_make_single),
-        ("make-collection", test_make_collection),
-        ("start-of-collection", test_start_of_collection),
-        ("triples-of-collection", test_triples_of_collection)
+        ("make-empty", testMakeEmpty),
+        ("make-single", testMakeSingle),
+        ("make-collection", testMakeCollection),
+        ("start-of-collection", testStartOfCollection),
+        ("triples-of-collection", testTriplesOfCollection)
     ]
 
 end

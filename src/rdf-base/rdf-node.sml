@@ -14,11 +14,11 @@ structure RdfNode :> RDF_NODE where type iri = Iri.t = struct
              BLANK of int |
              LITERAL of literal
 
-    val bnode_counter = ref 0
+    val bnodeCounter = ref 0
 		
-    fun new_blank_node () =
-	let val id = !bnode_counter in
-	    bnode_counter := id + 1;
+    fun newBlankNode () =
+	let val id = !bnodeCounter in
+	    bnodeCounter := id + 1;
 	    BLANK id
 	end
 
@@ -38,9 +38,9 @@ structure RdfNode :> RDF_NODE where type iri = Iri.t = struct
       | compare (BLANK _, _) = LESS
       | compare (LITERAL _, _) = GREATER
                                
-    fun string_of_node (IRI iri) = "<" ^ (Iri.toString iri) ^ ">"
-      | string_of_node (BLANK n) = "_:blank" ^ (Int.toString n)
-      | string_of_node (LITERAL lit) =
+    fun stringOfNode (IRI iri) = "<" ^ (Iri.toString iri) ^ ">"
+      | stringOfNode (BLANK n) = "_:blank" ^ (Int.toString n)
+      | stringOfNode (LITERAL lit) =
         "\"" ^ (#value lit) ^ "\"" ^
         (if #dtype lit = Iri.empty then ""
 	 else "^^" ^ (Iri.toString (#dtype lit))) ^

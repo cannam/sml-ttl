@@ -21,51 +21,51 @@ structure Store :> STORE = struct
 	prefixes = let open PrefixTable RdfStandardIRIs
                    in
 	               add (add (empty,
-                                 ("rdf", prefix_rdf)),
-                            ("xsd", prefix_xsd))
+                                 ("rdf", prefixRdf)),
+                            ("xsd", prefixXsd))
                    end,
 	indexes = [ Index.new Index.SPO,
 		    Index.new Index.POS,
 		    Index.new Index.OPS ]
     }
 
-    fun string_of_patnode NONE = "*"
-      | string_of_patnode (SOME n) = RdfNode.string_of_node n
+    fun stringOfPatnode NONE = "*"
+      | stringOfPatnode (SOME n) = RdfNode.stringOfNode n
                     
-    fun string_of_pattern (a,b,c) =
-	"(" ^ (string_of_patnode a) ^
-	"," ^ (string_of_patnode b) ^
-	"," ^ (string_of_patnode c) ^
+    fun stringOfPattern (a,b,c) =
+	"(" ^ (stringOfPatnode a) ^
+	"," ^ (stringOfPatnode b) ^
+	"," ^ (stringOfPatnode c) ^
 	")"
                     
-    fun any_index ({ indexes, ... } : t) = hd indexes (* when any index is ok *)
+    fun anyIndex ({ indexes, ... } : t) = hd indexes (* when any index is ok *)
 
     fun contains (store, triple) =
-	Index.contains (any_index store, triple)
+	Index.contains (anyIndex store, triple)
 
-    fun map_indexes f ({ prefixes, indexes } : t) =
+    fun mapIndexes f ({ prefixes, indexes } : t) =
 	{ prefixes = prefixes, indexes = map f indexes }
 	  
     fun add (store, triple) =
-	map_indexes (fn ix => Index.add (ix, triple)) store 
+	mapIndexes (fn ix => Index.add (ix, triple)) store 
 
     fun remove (store, triple) =
-	map_indexes (fn ix => Index.remove (ix, triple)) store
+	mapIndexes (fn ix => Index.remove (ix, triple)) store
 
-    fun foldl_match f acc ({ prefixes, indexes } : t, pattern) =
-        let val index = IndexPicker.pick_index (indexes, pattern)
+    fun foldlMatch f acc ({ prefixes, indexes } : t, pattern) =
+        let val index = IndexPicker.pickIndex (indexes, pattern)
         in
             Log.info (fn () => ["Store: pattern %, index \"%\"",
-                                Log.S (string_of_pattern pattern),
+                                Log.S (stringOfPattern pattern),
                                 Log.S (Index.name index)]);
-            Index.foldl_match f acc (index, pattern)
+            Index.foldlMatch f acc (index, pattern)
         end
 
     fun foldl f acc store =
-        Index.foldl_match f acc (any_index store, (NONE, NONE, NONE))
+        Index.foldlMatch f acc (anyIndex store, (NONE, NONE, NONE))
                          
     fun match pattern =
-        let val result = foldl_match (op::) [] pattern
+        let val result = foldlMatch (op::) [] pattern
         in
             Log.info (fn () => ["Store: matched % results",
                                 Log.I (length result)]);
@@ -74,18 +74,18 @@ structure Store :> STORE = struct
 
     val enumerate = foldl (op::) []
 
-    fun add_prefix ({ prefixes, indexes } : t, prefix) =
+    fun addPrefix ({ prefixes, indexes } : t, prefix) =
         { prefixes = PrefixTable.add (prefixes, prefix),
           indexes = indexes }
 	    
-    fun remove_prefix (store as { prefixes, indexes } : t, abbr) =
+    fun removePrefix (store as { prefixes, indexes } : t, abbr) =
         { prefixes = PrefixTable.remove (prefixes, abbr),
           indexes = indexes }
 
-    fun contains_prefix ({ prefixes, ... } : t, abbr) =
+    fun containsPrefix ({ prefixes, ... } : t, abbr) =
         PrefixTable.contains (prefixes, abbr)
 		    
-    fun enumerate_prefixes ({ prefixes, ... } : t) =
+    fun enumeratePrefixes ({ prefixes, ... } : t) =
         PrefixTable.enumerate prefixes
 
     fun expand ({ prefixes, ... } : t, curie) =
@@ -94,7 +94,7 @@ structure Store :> STORE = struct
     fun abbreviate ({ prefixes, ... } : t, iri) =
         PrefixTable.abbreviate (prefixes, iri)
 
-    fun get_prefix_table ({ prefixes, ... } : t) =
+    fun getPrefixTable ({ prefixes, ... } : t) =
         prefixes
                                
 end

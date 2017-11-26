@@ -40,17 +40,17 @@ signature RDF_ABBREVIATING_SERIALISER = sig
 
     include RDF_SERIALISER
     
-    type prefix_table
+    type prefixTable
     type matcher
 
-    type base_iri = BaseIri.t
+    type baseIri = BaseIri.t
 
     (** Construct a serialiser using a given set of prefixes and a
         matcher for collection gathering, writing to an output text
         stream. Stream must be open for writing, and it will remain
         open after serialisation has finished: it is the caller's
         responsibility to close it. *)
-    val new : base_iri * prefix_table * matcher -> TextIO.outstream -> t
+    val new : baseIri * prefixTable * matcher -> TextIO.outstream -> t
 
 end
 			       

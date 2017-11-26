@@ -3,7 +3,7 @@ structure FileType = struct
 
     datatype format = TURTLE | NTRIPLES | RDFXML | OTHER
 
-    fun format_for_extension e =
+    fun formatForExtension e =
         case e of
             "ttl" => TURTLE
           | "n3" => TURTLE
@@ -12,25 +12,25 @@ structure FileType = struct
           | "rdf" => RDFXML
           | other => OTHER
                               
-    fun extensions_for_format t =
+    fun extensionsForFormat t =
         case t of
             TURTLE => ["ttl","n3"]
           | NTRIPLES => ["ntriples", "nt"]
           | RDFXML => ["rdf"]
           | OTHER => []
 
-    fun name_for_format t =
+    fun nameForFormat t =
         case t of
             TURTLE => "Turtle"
           | NTRIPLES => "NTriples"
           | RDFXML => "RDF/XML"
           | OTHER => ""
 
-    fun name_for_extension e =
-        name_for_format (format_for_extension e)
+    fun nameForExtension e =
+        nameForFormat (formatForExtension e)
         
-    fun format_of filename =
-        format_for_extension (FileExtension.extension_of filename)
+    fun formatOf filename =
+        formatForExtension (FileExtension.extensionOf filename)
 
 end
                               

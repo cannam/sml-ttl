@@ -4,31 +4,31 @@
 (* 1. Read all the triples from an RDF/Turtle file, using the Turtle
    parser directly, and do something with them (print them out, in
    this case) *)
-fun read_turtle_stream_example () =
+fun readTurtleStreamExample () =
     let
         val filename = "test/other/goblin.ttl"
-        val base_iri = SOME (Iri.fromString ("file:///" ^ filename))
+        val baseIri = SOME (Iri.fromString ("file:///" ^ filename))
         val stream = TextIO.openIn filename
         open TurtleParser
     in
-        case parse (base_iri, stream) of
+        case parse (baseIri, stream) of
             PARSE_ERROR text =>
             print ("Parse failed: " ^ text ^ "\n")
           | PARSED { triples, ... } =>
 	    print ("Parse succeeded, have " ^
                    (Int.toString (length triples)) ^
 		   " triple(s) as follows:\n" ^
-		   (RdfTriple.string_of_triples triples) ^ "\n")
+		   (RdfTriple.stringOfTriples triples) ^ "\n")
     end
 
 (* 2. Load an RDF file of any supported format into a store and
    extract all the triples from it *)
-fun load_to_store_example () =
+fun loadToStoreExample () =
     let
         val filename = "test/other/goblin.ttl"
         open StoreFileLoader                                        
     in
-        case load_file_as_new_store (NONE, filename) of
+        case loadFileAsNewStore (NONE, filename) of
             FORMAT_NOT_SUPPORTED =>
             print "Format not supported!\n"
           | SYSTEM_ERROR err =>
@@ -41,12 +41,12 @@ fun load_to_store_example () =
                 print ("Load succeeded, have " ^
                        (Int.toString (length triples)) ^
 		   " triple(s) as follows:\n" ^
-		   (RdfTriple.string_of_triples triples) ^ "\n")
+		   (RdfTriple.stringOfTriples triples) ^ "\n")
             end
     end
 
 (* 3. Convert between two RDF file formats *)
-fun conversion_example () =
+fun conversionExample () =
     let
         val infile = "test/other/goblin.ttl"
         val outfile = "test/out/temporary2.ntriples"
@@ -67,9 +67,9 @@ fun conversion_example () =
 
 fun main () =
     let
-        val _ = read_turtle_stream_example ()
-        val _ = load_to_store_example ()
-        val _ = conversion_example ()
+        val _ = readTurtleStreamExample ()
+        val _ = loadToStoreExample ()
+        val _ = conversionExample ()
     in
         ()              
     end

@@ -1,13 +1,13 @@
 
 structure FileExtension = struct
 
-    fun extension_of filename =
-        let val to_lower =
+    fun extensionOf filename =
+        let val toLower =
                 String.implode o (List.map Char.toLower) o String.explode
         in
             case String.tokens (fn x => x = #".") filename of
                 [] => ""
-              | bits => to_lower (hd (rev bits))
+              | bits => toLower (hd (rev bits))
         end
 
 end

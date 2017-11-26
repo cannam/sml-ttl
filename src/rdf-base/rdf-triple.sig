@@ -12,10 +12,10 @@ signature RDF_TRIPLE = sig
     val compare : triple * triple -> order
 
     (* Debug streaming, not guaranteed to match a standard format *)
-    val string_of_triple : triple -> string
+    val stringOfTriple : triple -> string
 
     (* Debug streaming, not guaranteed to match a standard format *)
-    val string_of_triples : triple list -> string
+    val stringOfTriples : triple list -> string
 
 end
 

@@ -3,213 +3,213 @@ structure TurtleCodepoints = struct
 
     open CodepointSet
 
-    val alpha_lower =
-        with_name "lower-case alphanumeric"
-                  (from_ascii_range #"a" #"z")
+    val alphaLower =
+        withName "lower-case alphanumeric"
+                  (fromAsciiRange #"a" #"z")
 
     val alpha =
-	with_name "alphanumeric"
+	withName "alphanumeric"
                   (union [
-	                from_ascii_range #"A" #"Z",
-	                alpha_lower
+	                fromAsciiRange #"A" #"Z",
+	                alphaLower
 	          ])
 
     val digit =
-        with_name "digit"
-                  (from_ascii_range #"0" #"9")
+        withName "digit"
+                  (fromAsciiRange #"0" #"9")
                   
     val exponent =
-        with_name "exponent"
-                  (from_string "eE")
+        withName "exponent"
+                  (fromString "eE")
 
-    val unicode_u =
-        with_name "character u"
-                  (from_string "uU")
+    val unicodeU =
+        withName "character u"
+                  (fromString "uU")
                   
-    val number_after_point =
-        with_name "numeric character"
+    val numberAfterPoint =
+        withName "numeric character"
 	          (union [
 	                digit,
                         exponent
                   ])
 
     val number =
-        with_name "numeric character or sign"
+        withName "numeric character or sign"
 	          (union [
-                        number_after_point,
-                        from_string "+-"
+                        numberAfterPoint,
+                        fromString "+-"
                   ])
                   
     val hex =
-        with_name "hex digit"
+        withName "hex digit"
 	          (union [
                         digit,
-	                from_ascii_range #"A" #"F",
-	                from_ascii_range #"a" #"f" 
+	                fromAsciiRange #"A" #"F",
+	                fromAsciiRange #"a" #"f" 
 	            ])
 
     val whitespace =
-        with_name "whitespace"
-                  (from_string "\t ")
+        withName "whitespace"
+                  (fromString "\t ")
 
     val eol =
-        with_name "end of line"
-                  (from_string "\n\r")
+        withName "end of line"
+                  (fromString "\n\r")
 
-    val whitespace_eol =
-        with_name "whitespace or end of line"
+    val whitespaceEol =
+        withName "whitespace or end of line"
                   (union [
                         whitespace,
                         eol
                   ])
 
     val comment =
-        with_name "comment character"
-                  (from_string "#")
+        withName "comment character"
+                  (fromString "#")
                   
-    val base_pname_char =
-        with_name "initial prefixed-name character"
+    val basePnameChar =
+        withName "initial prefixed-name character"
                   (union [
 	                alpha,
-	                from_range 0wx00C0 0wx00D6,
-	                from_range 0wx00D8 0wx00F6,
-	                from_range 0wx00F8 0wx02FF,
-	                from_range 0wx0370 0wx037D,
-	                from_range 0wx037F 0wx1FFF,
-	                from_range 0wx200C 0wx200D,
-	                from_range 0wx2070 0wx218F,
-	                from_range 0wx2C00 0wx2FEF,
-	                from_range 0wx3001 0wxD7FF,
-	                from_range 0wxF900 0wxFDCF,
-	                from_range 0wxFDF0 0wxFFFD
+	                fromRange 0wx00C0 0wx00D6,
+	                fromRange 0wx00D8 0wx00F6,
+	                fromRange 0wx00F8 0wx02FF,
+	                fromRange 0wx0370 0wx037D,
+	                fromRange 0wx037F 0wx1FFF,
+	                fromRange 0wx200C 0wx200D,
+	                fromRange 0wx2070 0wx218F,
+	                fromRange 0wx2C00 0wx2FEF,
+	                fromRange 0wx3001 0wxD7FF,
+	                fromRange 0wxF900 0wxFDCF,
+	                fromRange 0wxFDF0 0wxFFFD
 	            ])
 
-    val base_pname_char_uscore =
-        with_name "initial local part character"
+    val basePnameCharUscore =
+        withName "initial local part character"
 	          (union [
-	                base_pname_char,
-	                from_string "_"
+	                basePnameChar,
+	                fromString "_"
 	          ])
 
-    val pname_char =
-        with_name "prefixed-name character"
+    val pnameChar =
+        withName "prefixed-name character"
 	          (union [
-	                base_pname_char_uscore,
+	                basePnameCharUscore,
                         digit,
-	                from_word 0wx00B7,
-	                from_range 0wx0300 0wx036F,
-	                from_range 0wx203F 0wx2040,
-	                from_string "-"
+	                fromWord 0wx00B7,
+	                fromRange 0wx0300 0wx036F,
+	                fromRange 0wx203F 0wx2040,
+	                fromString "-"
 	            ])
 
-    val pname_char_initial_local =
-        with_name "initial char in prefixed-name local part"
+    val pnameCharInitialLocal =
+        withName "initial char in prefixed-name local part"
                   (union [
-                        base_pname_char_uscore,
+                        basePnameCharUscore,
                         digit,
-                        from_string ":"
+                        fromString ":"
                   ])
                   
-    val pname_char_or_dot =
-        with_name "prefixed-name character or dot"
+    val pnameCharOrDot =
+        withName "prefixed-name character or dot"
 		  (union [
-			pname_char,
-			from_string "."
+			pnameChar,
+			fromString "."
 		    ])
 
-    val pname_char_or_colon =
-        with_name "prefixed-name character or colon"
+    val pnameCharOrColon =
+        withName "prefixed-name character or colon"
 		  (union [
-			pname_char,
-			from_string ":"
+			pnameChar,
+			fromString ":"
 		    ])
 
-    val pname_char_colon_or_dot =
-        with_name "prefixed-name character, colon, or dot"
+    val pnameCharColonOrDot =
+        withName "prefixed-name character, colon, or dot"
 		  (union [
-			pname_char,
-			from_string ".:"
+			pnameChar,
+			fromString ".:"
 		    ])
 
-    val pname_char_backslash =
-        with_name "prefixed-name backslash escape"
-		  (from_string "\\")
+    val pnameCharBackslash =
+        withName "prefixed-name backslash escape"
+		  (fromString "\\")
 
-    val pname_char_percent =
-        with_name "prefixed-name percent escape"
-		  (from_string "%")
+    val pnameCharPercent =
+        withName "prefixed-name percent escape"
+		  (fromString "%")
 
-    val initial_bnode_char =
-        with_name "initial unescaped blank node character"
+    val initialBnodeChar =
+        withName "initial unescaped blank node character"
 	          (union [
-	                base_pname_char_uscore,
+	                basePnameCharUscore,
                         digit
 	          ])
 
-    val iri_excluded =
-        with_name "character not permitted in iri ref"
+    val iriExcluded =
+        withName "character not permitted in iri ref"
                   (union [
-	                from_range 0wx0000 0wx0020,
-	                from_string "<>\"{}|^`\\"
+	                fromRange 0wx0000 0wx0020,
+	                fromString "<>\"{}|^`\\"
 	            ])
 	
-    val pname_local_to_escape =
-        with_name "character that must be escaped in local part"
+    val pnameLocalToEscape =
+        withName "character that must be escaped in local part"
                   (* not sure about this one? we definitely don't have
                      to escape e.g. underscore, even though we can *)
-                  (from_string "~!$&'()*+,;=/?#@-")
+                  (fromString "~!$&'()*+,;=/?#@-")
 	
-    val pname_local_escapable =
-        with_name "character that can be escaped in local part"
+    val pnameLocalEscapable =
+        withName "character that can be escaped in local part"
                   (union [
-                        pname_local_to_escape,
-                        from_string "_%."
+                        pnameLocalToEscape,
+                        fromString "_%."
                   ])
 
-    val pname_excluded =
-	with_name "prefixed-name excluded character"
-		  (from_string "#;,)].\\\n\t\r ")
+    val pnameExcluded =
+	withName "prefixed-name excluded character"
+		  (fromString "#;,)].\\\n\t\r ")
 
-    val pname_after_dot =
-        with_name "prefixed-name candidate character following dot"
+    val pnameAfterDot =
+        withName "prefixed-name candidate character following dot"
                   (union [
-                        pname_char,
-                        from_string ":%.\\"
+                        pnameChar,
+                        fromString ":%.\\"
                   ])
 
-    val not_a_literal =
-        with_name "initial character from non-literal value"
+    val notALiteral =
+        withName "initial character from non-literal value"
                   (union [
-                        base_pname_char,
-                        from_string "_([<:"
+                        basePnameChar,
+                        fromString "_([<:"
                   ])
 
-    val short_string_single_excluded =
-	with_name "syntactic character in single-quoted string"
-		  (from_string "\n\r'\\")
+    val shortStringSingleExcluded =
+	withName "syntactic character in single-quoted string"
+		  (fromString "\n\r'\\")
 
-    val short_string_double_excluded =
-	with_name "syntactic character in double-quoted string"
-		  (from_string "\n\r\"\\")
+    val shortStringDoubleExcluded =
+	withName "syntactic character in double-quoted string"
+		  (fromString "\n\r\"\\")
 
-    val long_string_single_excluded =
-	with_name "syntactic character in long single-quoted string"
-		  (from_string "'\\")
+    val longStringSingleExcluded =
+	withName "syntactic character in long single-quoted string"
+		  (fromString "'\\")
 
-    val long_string_double_excluded =
-	with_name "syntactic character in long double-quoted string"
-		  (from_string "\"\\")
+    val longStringDoubleExcluded =
+	withName "syntactic character in long double-quoted string"
+		  (fromString "\"\\")
 
-    val string_escape =
-	with_name "character that can be escaped in string"
-		  (from_string "tbnrf\\\"'")
+    val stringEscape =
+	withName "character that can be escaped in string"
+		  (fromString "tbnrf\\\"'")
 
     structure CharMap = RedBlackMapFn (struct
                                         type ord_key = Word.word
                                         val compare = Word.compare
                                         end)
 
-    val string_escape_map =
+    val stringEscapeMap =
         let val pairings = [
                 ( #"t", #"\t" ), ( #"b", #"\b" ), ( #"n", #"\n" ),
                 ( #"r", #"\r" ), ( #"f", #"\f" ), ( #"\\", #"\\" ),
@@ -222,7 +222,7 @@ structure TurtleCodepoints = struct
                 CharMap.empty pairings
         end
 
-    datatype turtle_significant_char =
+    datatype turtleSignificantChar =
              C_UNDERSCORE |
              C_OPEN_PAREN |
              C_OPEN_SQUARE |
@@ -249,7 +249,7 @@ structure TurtleCodepoints = struct
              C_LETTER_F |  (* for false *)
              C_NOTHING_INTERESTING
 
-    val significant_char_map =
+    val significantCharMap =
         let val pairings = [
              ( [ #"_"  ], C_UNDERSCORE ),
              ( [ #"("  ], C_OPEN_PAREN ),
@@ -279,18 +279,18 @@ structure TurtleCodepoints = struct
             fun ascii f = Word.fromInt (Char.ord f)
         in
             List.foldl
-                (fn ((from_list, to), map) =>
+                (fn ((fromList, to), map) =>
                     List.foldl (fn (from, map) => 
                                    CharMap.insert (map, ascii from, to))
-                               map from_list)
+                               map fromList)
                 CharMap.empty pairings
         end
             
-    fun significant_char_name c =
+    fun significantCharName c =
         (* Slow, but that doesn't matter as long as this is only used once 
            for constructing an error message *)
         case List.filter (fn (k, v) => v = c)
-                         (CharMap.listItemsi significant_char_map) of
+                         (CharMap.listItemsi significantCharMap) of
             [] => raise Fail "internal error: unknown character"
           | pairs =>
             String.concatWith " or "

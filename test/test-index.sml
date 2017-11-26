@@ -18,122 +18,122 @@ functor TestIndexFn (Arg : TEST_INDEX_ARG) :> TESTS = struct
     fun known i = SOME (RdfNode.IRI (Iri.fromString i))
     val wildcard = NONE
 
-    fun make_test_triple "aaa" = (iri "fred", iri "loves", iri "cheese")
-      | make_test_triple "aab" = (iri "fred", iri "loves", iri "fruit")
-      | make_test_triple "abc" = (iri "fred", iri "hates", iri "vinegar")
-      | make_test_triple "bba" = (iri "jodie", iri "hates", iri "cheese")
-      | make_test_triple "bca" = (iri "jodie", iri "tolerates", iri "fred")
-      | make_test_triple x = raise Fail ("Unsupported triple template " ^ x)
+    fun makeTestTriple "aaa" = (iri "fred", iri "loves", iri "cheese")
+      | makeTestTriple "aab" = (iri "fred", iri "loves", iri "fruit")
+      | makeTestTriple "abc" = (iri "fred", iri "hates", iri "vinegar")
+      | makeTestTriple "bba" = (iri "jodie", iri "hates", iri "cheese")
+      | makeTestTriple "bca" = (iri "jodie", iri "tolerates", iri "fred")
+      | makeTestTriple x = raise Fail ("Unsupported triple template " ^ x)
                        
-    fun make_test_pattern "***" = (wildcard, wildcard, wildcard)
-      | make_test_pattern "aaa" = (known "fred", known "loves", known "cheese")
-      | make_test_pattern "aa*" = (known "fred", known "loves", wildcard)
-      | make_test_pattern "a**" = (known "fred", wildcard, wildcard)
-      | make_test_pattern "*a*" = (wildcard, known "loves", wildcard)
-      | make_test_pattern "a*a" = (known "fred", wildcard, known "cheese")
-      | make_test_pattern "**a" = (wildcard, wildcard, known "cheese")
-      | make_test_pattern x = raise Fail ("Unsupported wildcard template " ^ x)
+    fun makeTestPattern "***" = (wildcard, wildcard, wildcard)
+      | makeTestPattern "aaa" = (known "fred", known "loves", known "cheese")
+      | makeTestPattern "aa*" = (known "fred", known "loves", wildcard)
+      | makeTestPattern "a**" = (known "fred", wildcard, wildcard)
+      | makeTestPattern "*a*" = (wildcard, known "loves", wildcard)
+      | makeTestPattern "a*a" = (known "fred", wildcard, known "cheese")
+      | makeTestPattern "**a" = (wildcard, wildcard, known "cheese")
+      | makeTestPattern x = raise Fail ("Unsupported wildcard template " ^ x)
 
-    val index_names = [ "spo", "pos", "ops", "sop", "pso", "osp" ]
+    val indexNames = [ "spo", "pos", "ops", "sop", "pso", "osp" ]
 
     fun match (index, pattern) =
-        IX.foldl_match (fn (t, acc) => t :: acc)
+        IX.foldlMatch (fn (t, acc) => t :: acc)
                        []
                        (index, pattern)
 
     fun enumerate index =
-        match (index, make_test_pattern "***")
+        match (index, makeTestPattern "***")
 
-    fun new_index_for name =
-        IX.new (IX.order_of_name name)
+    fun newIndexFor name =
+        IX.new (IX.orderOfName name)
 
-    fun build_index name templates =
-        List.foldl (fn (t, ix) => IX.add (ix, make_test_triple t))
-                   (new_index_for name)
+    fun buildIndex name templates =
+        List.foldl (fn (t, ix) => IX.add (ix, makeTestTriple t))
+                   (newIndexFor name)
                    templates
 
-    fun check_triple_lists (a, b) =
-        check_sets RdfTriple.string_of_triple
+    fun checkTripleLists (a, b) =
+        checkSets RdfTriple.stringOfTriple
                    (fn (t1, t2) => RdfTriple.compare (t1, t2) = GREATER)
                    (a, b)
 
-    fun index_tests name = [
+    fun indexTests name = [
 
         (name ^ "-empty",
-         fn () => check_triple_lists
-                      (enumerate (new_index_for name),
+         fn () => checkTripleLists
+                      (enumerate (newIndexFor name),
                        [])),
         
         (name ^ "-simple",
-         fn () => check_triple_lists
-                      (enumerate (build_index name ["aaa"]),
-                       [make_test_triple "aaa"])),
+         fn () => checkTripleLists
+                      (enumerate (buildIndex name ["aaa"]),
+                       [makeTestTriple "aaa"])),
 
         (name ^ "-duplicate",
-         fn () => check_triple_lists
-                      (enumerate (build_index name ["aaa", "aaa"]),
-                       [make_test_triple "aaa"])),
+         fn () => checkTripleLists
+                      (enumerate (buildIndex name ["aaa", "aaa"]),
+                       [makeTestTriple "aaa"])),
 
         (name ^ "-common",
-         fn () => check_triple_lists
-                      (enumerate (build_index name ["aaa", "aab"]),
-                       [make_test_triple "aab", make_test_triple "aaa"])),
+         fn () => checkTripleLists
+                      (enumerate (buildIndex name ["aaa", "aab"]),
+                       [makeTestTriple "aab", makeTestTriple "aaa"])),
 
         (name ^ "-diverging",
-         fn () => check_triple_lists
-                      (enumerate (build_index name ["aaa", "aab", "abc", "bba"]),
-                       [make_test_triple "abc",
-                        make_test_triple "aaa",
-                        make_test_triple "aab",
-                        make_test_triple "bba"])),
+         fn () => checkTripleLists
+                      (enumerate (buildIndex name ["aaa", "aab", "abc", "bba"]),
+                       [makeTestTriple "abc",
+                        makeTestTriple "aaa",
+                        makeTestTriple "aab",
+                        makeTestTriple "bba"])),
         
         (name ^ "-contains",
          fn () =>
-            let val ix = build_index name ["aaa", "aab", "abc", "bba"]
+            let val ix = buildIndex name ["aaa", "aab", "abc", "bba"]
             in
-                check_pairs Bool.toString
-                          [(IX.contains (ix, make_test_triple "aaa"), true),
-                           (IX.contains (ix, make_test_triple "aab"), true),
-                           (IX.contains (ix, make_test_triple "abc"), true),
-                           (IX.contains (ix, make_test_triple "bba"), true),
-                           (IX.contains (ix, make_test_triple "bca"), false)]
+                checkPairs Bool.toString
+                          [(IX.contains (ix, makeTestTriple "aaa"), true),
+                           (IX.contains (ix, makeTestTriple "aab"), true),
+                           (IX.contains (ix, makeTestTriple "abc"), true),
+                           (IX.contains (ix, makeTestTriple "bba"), true),
+                           (IX.contains (ix, makeTestTriple "bca"), false)]
             end),
         
         (name ^ "-remove",
          fn () =>
-            let val ix = build_index name ["aaa", "aab", "abc", "bba"]
-                val ix_r = IX.remove (ix, make_test_triple "aaa")
-                val ix_rr = IX.remove (IX.remove (ix, make_test_triple "aaa"),
-                                       make_test_triple "aaa")
+            let val ix = buildIndex name ["aaa", "aab", "abc", "bba"]
+                val ixR = IX.remove (ix, makeTestTriple "aaa")
+                val ixRr = IX.remove (IX.remove (ix, makeTestTriple "aaa"),
+                                       makeTestTriple "aaa")
             in
-                check_pairs Bool.toString
-                          [(IX.contains (ix, make_test_triple "aaa"), true),
-                           (IX.contains (ix_r, make_test_triple "aaa"), false),
-                           (IX.contains (ix_rr, make_test_triple "aaa"), false),
-                           (IX.contains (ix_r, make_test_triple "abc"), true),
-                           (IX.contains (ix_rr, make_test_triple "bba"), true)]
+                checkPairs Bool.toString
+                          [(IX.contains (ix, makeTestTriple "aaa"), true),
+                           (IX.contains (ixR, makeTestTriple "aaa"), false),
+                           (IX.contains (ixRr, makeTestTriple "aaa"), false),
+                           (IX.contains (ixR, makeTestTriple "abc"), true),
+                           (IX.contains (ixRr, makeTestTriple "bba"), true)]
             end),
 
         (name ^ "-match",
          fn () =>
-            let val ix = build_index name ["aaa", "aab", "abc", "bba"]
+            let val ix = buildIndex name ["aaa", "aab", "abc", "bba"]
             in
-                check_triple_lists
-                    (match (ix, make_test_pattern "***"),
+                checkTripleLists
+                    (match (ix, makeTestPattern "***"),
                      enumerate ix)
                 andalso
-                check_triple_lists
-                    (match (ix, make_test_pattern "**a"),
-                     [make_test_triple "aaa", make_test_triple "bba"])
+                checkTripleLists
+                    (match (ix, makeTestPattern "**a"),
+                     [makeTestTriple "aaa", makeTestTriple "bba"])
             end)
     ]
                           
-    val named_tests = List.concat (map index_tests index_names)
+    val namedTests = List.concat (map indexTests indexNames)
 
-    fun check_picked_index ixs pattern names =
+    fun checkPickedIndex ixs pattern names =
         (* Check that the index picked from ixs for a pattern is one
            of the expected set given by names *)
-        let val ix = P.pick_index (ixs, make_test_pattern pattern)
+        let val ix = P.pickIndex (ixs, makeTestPattern pattern)
         in
             case List.find (fn n => (IX.name ix = n)) names of
                 SOME _ => true
@@ -143,33 +143,33 @@ functor TestIndexFn (Arg : TEST_INDEX_ARG) :> TESTS = struct
                          false)
         end
                                   
-    fun test_choose_index_from_all () =
-        let val ixs = List.map new_index_for index_names
+    fun testChooseIndexFromAll () =
+        let val ixs = List.map newIndexFor indexNames
         in
-            check_picked_index ixs "aa*" ["spo", "pso"] andalso
-            check_picked_index ixs "a**" ["spo", "sop"] andalso
-            check_picked_index ixs "aaa" index_names andalso
-            check_picked_index ixs "a*a" ["sop", "osp"] andalso
-            check_picked_index ixs "***" index_names andalso
-            check_picked_index ixs "*a*" ["pso", "pos"]
+            checkPickedIndex ixs "aa*" ["spo", "pso"] andalso
+            checkPickedIndex ixs "a**" ["spo", "sop"] andalso
+            checkPickedIndex ixs "aaa" indexNames andalso
+            checkPickedIndex ixs "a*a" ["sop", "osp"] andalso
+            checkPickedIndex ixs "***" indexNames andalso
+            checkPickedIndex ixs "*a*" ["pso", "pos"]
         end
 
-    fun test_choose_index_from_subset () =
-        let val ixs = List.map new_index_for [ "spo", "pos", "ops" ]
+    fun testChooseIndexFromSubset () =
+        let val ixs = List.map newIndexFor [ "spo", "pos", "ops" ]
         in
-            check_picked_index ixs "aa*" ["spo"] andalso
-            check_picked_index ixs "a**" ["spo"] andalso
-            check_picked_index ixs "aaa" ["spo", "pos", "ops"] andalso
-            check_picked_index ixs "a*a" ["ops", "spo"] andalso
-            check_picked_index ixs "***" ["spo", "pos", "ops"] andalso
-            check_picked_index ixs "*a*" ["pos"]
+            checkPickedIndex ixs "aa*" ["spo"] andalso
+            checkPickedIndex ixs "a**" ["spo"] andalso
+            checkPickedIndex ixs "aaa" ["spo", "pos", "ops"] andalso
+            checkPickedIndex ixs "a*a" ["ops", "spo"] andalso
+            checkPickedIndex ixs "***" ["spo", "pos", "ops"] andalso
+            checkPickedIndex ixs "*a*" ["pos"]
         end
                                   
     fun tests () =
-        (named_tests @
+        (namedTests @
          [
-           ("choose-index-from-all", test_choose_index_from_all),
-           ("choose-index-from-subset", test_choose_index_from_subset)
+           ("choose-index-from-all", testChooseIndexFromAll),
+           ("choose-index-from-subset", testChooseIndexFromSubset)
         ])
              
 end

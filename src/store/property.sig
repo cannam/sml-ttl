@@ -6,13 +6,13 @@ signature PROPERTY = sig
     type store
     
     val text : store * node * string -> string
-    val text_list : store * node * string -> string list
+    val textList : store * node * string -> string list
 
     val iri : store * node * string -> iri option
-    val iri_list : store * node * string -> iri list
+    val iriList : store * node * string -> iri list
 
     val node : store * node * string -> node option
-    val node_list : store * node * string -> node list
+    val nodeList : store * node * string -> node list
 
 end
 
