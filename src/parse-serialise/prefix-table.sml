@@ -44,50 +44,54 @@ end
 
 structure PrefixTable :> PREFIX_TABLE = struct
 
-    structure StringMap = RedBlackMapFn (struct
-                                          type ord_key = string
-                                          val compare = String.compare
-                                          end)
+    type iri = Iri.t
+    type prefix = Prefix.prefix
+    type abbreviation = Prefix.abbreviation
+    type curie = Prefix.curie
+
+    structure AbbrMap = RedBlackMapFn (struct
+                                        type ord_key = abbreviation
+                                        val compare = String.compare
+                                        end)
 
     structure IriMap = RedBlackMapFn (struct
-                                       type ord_key = Iri.t
+                                       type ord_key = iri
                                        val compare = Iri.compare
                                        end)
 
-    type iri = Iri.t
-    type t = iri StringMap.map * string IriMap.map * IriTrie.t
+    type t = iri AbbrMap.map * abbreviation IriMap.map * IriTrie.t
                         
-    val empty : t = (StringMap.empty, IriMap.empty, IriTrie.empty)
+    val empty : t = (AbbrMap.empty, IriMap.empty, IriTrie.empty)
 
     fun remove_with (remover, map, key) =
 	case remover (map, key) of (map', _) => map' handle NotFound => map
 
-    fun remove (table as (forward, reverse, trie) : t, namespace) =
-	case StringMap.find (forward, namespace) of
+    fun remove (table as (forward, reverse, trie) : t, abbr) =
+	case AbbrMap.find (forward, abbr) of
 	    NONE => table
 	  | SOME expansion =>
-	    (remove_with (StringMap.remove, forward, namespace),
+	    (remove_with (AbbrMap.remove, forward, abbr),
              remove_with (IriMap.remove, reverse, expansion),
 	     IriTrie.remove (trie, expansion))
 
-    fun add ((forward, reverse, trie) : t, namespace, expansion) =
-	(StringMap.insert (forward, namespace, expansion),
-	 IriMap.insert (reverse, expansion, namespace),
+    fun add ((forward, reverse, trie) : t, (abbr, expansion)) =
+	(AbbrMap.insert (forward, abbr, expansion),
+	 IriMap.insert (reverse, expansion, abbr),
 	 IriTrie.add (trie, expansion))
 
     fun from_prefixes prefixes =
-        List.foldl (fn ((ns, e), tab) => add (tab, ns, e)) empty prefixes
+        List.foldl (fn ((abbr, e), tab) => add (tab, (abbr, e))) empty prefixes
                     
-    fun contains (table : t, namespace) =
-	isSome (StringMap.find (#1 table, namespace))
+    fun contains (table : t, abbr) =
+	isSome (AbbrMap.find (#1 table, abbr))
 		    
-    fun enumerate (table : t) = StringMap.listItemsi (#1 table)
+    fun enumerate (table : t) = AbbrMap.listItemsi (#1 table)
                                                      
-    fun expand ((forward, _, _) : t, curie : string) =
+    fun expand ((forward, _, _) : t, curie) =
 	case String.fields (fn x => x = #":") curie of
 	    [] => Iri.fromString curie
-	  | namespace::rest =>
-	    case StringMap.find (forward, namespace) of
+	  | abbr::rest =>
+	    case AbbrMap.find (forward, abbr) of
 		NONE => Iri.fromString curie
 	      | SOME expansion =>
                 Iri.addSuffix (expansion,
@@ -103,9 +107,10 @@ structure PrefixTable :> PREFIX_TABLE = struct
 	  then NONE
 	  else
 	      case IriMap.find (reverse, prefix) of
-		  NONE => raise Fail "error: prefix in trie but not reverse map"
-		| SOME ns =>
-	          SOME (ns, toUtf8 (drop_prefix (iri, Iri.size prefix)))
+		  NONE => raise Fail ("internal error: prefix found in trie " ^
+                                      "but not in reverse map")
+		| SOME abbr =>
+	          SOME (abbr, toUtf8 (drop_prefix (iri, Iri.size prefix)))
       end
 		   
 end

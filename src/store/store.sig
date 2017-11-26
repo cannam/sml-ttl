@@ -4,6 +4,9 @@ signature STORE = sig
     include MATCHER
 
     type iri = Iri.t
+    type prefix = Prefix.prefix
+    type abbreviation = Prefix.abbreviation
+    type curie = string
 
     val empty : t
     val add : t * triple -> t
@@ -14,12 +17,12 @@ signature STORE = sig
     val enumerate : t -> triple list
     (* + match from MATCHER *)
 
-    val add_prefix : t * string * iri -> t (*!!! or use existing prefix type? *)
-    val contains_prefix : t * string -> bool
-    val remove_prefix : t * string -> t
-    val enumerate_prefixes : t -> (string * iri) list
-    val expand : t * string -> iri
-    val abbreviate : t * iri -> (string * string) option (* NONE if no prefix matches *)
+    val add_prefix : t * prefix -> t
+    val contains_prefix : t * abbreviation -> bool
+    val remove_prefix : t * abbreviation -> t
+    val enumerate_prefixes : t -> prefix list
+    val expand : t * curie -> iri
+    val abbreviate : t * iri -> (abbreviation * string) option (* NONE if no prefix matches *)
     val get_prefix_table : t -> PrefixTable.t
 	     
 end

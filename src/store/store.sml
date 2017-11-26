@@ -6,7 +6,11 @@ structure Store :> STORE = struct
     type patnode = node option
     type triple = node * node * node
     type pattern = patnode * patnode * patnode
+
     type iri = Iri.t
+    type prefix = Prefix.prefix
+    type abbreviation = Prefix.abbreviation
+    type curie = string
 					   
     type t = {
 	prefixes : PrefixTable.t,
@@ -16,7 +20,9 @@ structure Store :> STORE = struct
     val empty = {
 	prefixes = let open PrefixTable RdfStandardIRIs
                    in
-	               add (add (empty, "rdf", prefix_rdf), "xsd", prefix_xsd)
+	               add (add (empty,
+                                 ("rdf", prefix_rdf)),
+                            ("xsd", prefix_xsd))
                    end,
 	indexes = [ Index.new Index.SPO,
 		    Index.new Index.POS,
@@ -68,16 +74,16 @@ structure Store :> STORE = struct
 
     val enumerate = foldl (op::) []
 
-    fun add_prefix ({ prefixes, indexes } : t, prefix, expansion) =
-        { prefixes = PrefixTable.add (prefixes, prefix, expansion),
+    fun add_prefix ({ prefixes, indexes } : t, prefix) =
+        { prefixes = PrefixTable.add (prefixes, prefix),
           indexes = indexes }
 	    
-    fun remove_prefix (store as { prefixes, indexes } : t, prefix) =
-        { prefixes = PrefixTable.remove (prefixes, prefix),
+    fun remove_prefix (store as { prefixes, indexes } : t, abbr) =
+        { prefixes = PrefixTable.remove (prefixes, abbr),
           indexes = indexes }
 
-    fun contains_prefix ({ prefixes, ... } : t, prefix) =
-        PrefixTable.contains (prefixes, prefix)
+    fun contains_prefix ({ prefixes, ... } : t, abbr) =
+        PrefixTable.contains (prefixes, abbr)
 		    
     fun enumerate_prefixes ({ prefixes, ... } : t) =
         PrefixTable.enumerate prefixes

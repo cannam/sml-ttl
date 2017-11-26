@@ -28,8 +28,8 @@ functor StoreIncrementalLoaderFn (P: RDF_INCREMENTAL_PARSER)
 		  | P.PARSE_OUTPUT ({ prefixes, triples }, f') =>
 		    parse'
 			(foldl (fn (triple, s) => Store.add (s, triple))
-			       (foldl (fn ((pfx, exp), s) =>
-					  Store.add_prefix (s, pfx, exp))
+			       (foldl (fn ((abbr, exp), s) =>
+					  Store.add_prefix (s, (abbr, exp)))
 				      acc prefixes)
 			       triples)
 			f'

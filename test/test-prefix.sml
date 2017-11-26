@@ -6,7 +6,7 @@ functor TestPrefixFn (P: PREFIX_TABLE) :> TESTS = struct
     val name = "prefix"
                                   
     fun make_table pairs =
-        foldl (fn ((p, e), t) => P.add (t, p, e)) P.empty pairs
+        foldl (fn ((p, e), t) => P.add (t, (p, e))) P.empty pairs
              
     val unreal_table =
         make_table
@@ -43,12 +43,12 @@ functor TestPrefixFn (P: PREFIX_TABLE) :> TESTS = struct
         ("empty-abbreviate",
          fn () => P.abbreviate (P.empty, Iri.fromString "a:b") = NONE),
         ("add",
-         fn () => P.enumerate (P.add (P.empty, "a", Iri.fromString "b")) = [("a", Iri.fromString "b")]),
+         fn () => P.enumerate (P.add (P.empty, ("a", Iri.fromString "b"))) = [("a", Iri.fromString "b")]),
         ("add-another",
-         fn () => P.enumerate (P.add (P.add (P.empty, "a", Iri.fromString "b"), "aa", Iri.fromString "bb")) =
-                  [("a", Iri.fromString "b"),("aa", Iri.fromString "bb")]), (*!!! compare unordered! *)
+         fn () => P.enumerate (P.add (P.add (P.empty, ("a", Iri.fromString "b")), ("aa", Iri.fromString "bb"))) =
+                  [("a", Iri.fromString "b"), ("aa", Iri.fromString "bb")]), (*!!! compare unordered! *)
         ("replace",
-         fn () => P.enumerate (P.add (P.add (P.empty, "a", Iri.fromString "b"), "a", Iri.fromString "bb")) =
+         fn () => P.enumerate (P.add (P.add (P.empty, ("a", Iri.fromString "b")), ("a", Iri.fromString "bb"))) =
                   [("a", Iri.fromString "bb")]),
         ("expand",
          fn () =>
