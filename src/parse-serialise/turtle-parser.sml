@@ -7,15 +7,15 @@ structure TurtleIncrementalParser : RDF_INCREMENTAL_PARSER = struct
              
     open TurtleCodepoints
 
-    type baseIri = BaseIri.t
+    type base_iri = BaseIri.t
 
-    datatype streamValue =
+    datatype stream_value =
              END_OF_STREAM |
              PARSE_ERROR of string |
              PARSE_OUTPUT of {
                  prefixes : prefix list,
                  triples : triple list
-             } * (unit -> streamValue)
+             } * (unit -> stream_value)
 
     (* individual tokens are read as codepoint sequences, but they're
        encoded back to utf8 strings when constructing nodes or iris *)
@@ -32,7 +32,7 @@ structure TurtleIncrementalParser : RDF_INCREMENTAL_PARSER = struct
                                          val compare = List.collate Word.compare
                                          end)
 
-    type parseData = {
+    type parse_data = {
         source : Source.t,                  (* contains mutable state *)
         base : token * token,               (* without filename, filename only *)
         prefixes : token TokenMap.map,      (* prefix -> expansion *)
@@ -41,17 +41,17 @@ structure TurtleIncrementalParser : RDF_INCREMENTAL_PARSER = struct
         newPrefixes : prefix list
     }
 
-    type matchState = parseData * token
-    type parseState = parseData * node option
+    type match_state = parse_data * token
+    type parse_state = parse_data * node option
                       
     datatype 'a result = ERROR of string | OK of 'a
 
-    type matchResult = matchState result
-    type parseResult = parseState result
+    type match_result = match_state result
+    type parse_result = parse_state result
 
     fun fromAscii a = Word.fromInt (Char.ord a)
 
-    fun addTriple (d : parseData) (t : triple) =
+    fun addTriple (d : parse_data) (t : triple) =
         {
           source = #source d,
           base = #base d,
@@ -61,7 +61,7 @@ structure TurtleIncrementalParser : RDF_INCREMENTAL_PARSER = struct
           newPrefixes = #newPrefixes d
         }
                      
-    fun addPrefix (d : parseData) (p, e) =
+    fun addPrefix (d : parse_data) (p, e) =
         {
           source = #source d,
           base = #base d,
@@ -72,7 +72,7 @@ structure TurtleIncrementalParser : RDF_INCREMENTAL_PARSER = struct
                          (#newPrefixes d)
         }
                      
-    fun addBnode (d : parseData) (b, id) =
+    fun addBnode (d : parse_data) (b, id) =
         {
           source = #source d,
           base = #base d,
@@ -82,7 +82,7 @@ structure TurtleIncrementalParser : RDF_INCREMENTAL_PARSER = struct
           newPrefixes = #newPrefixes d
         }
 
-    fun emitWithSubject (d : parseData, subject, polist) =
+    fun emitWithSubject (d : parse_data, subject, polist) =
         foldl (fn ((predicate, object), data) =>
                   addTriple data (subject, predicate, object))
               d polist
@@ -109,7 +109,7 @@ structure TurtleIncrementalParser : RDF_INCREMENTAL_PARSER = struct
     val trueToken = tokenOfString "true"
     val falseToken = tokenOfString "false"
 			      
-    fun blankNodeFor (d: parseData, token) =
+    fun blankNodeFor (d: parse_data, token) =
 	case TokenMap.find (#blankNodes d, token) of
 	    SOME id => (d, BLANK id)
 	  | NONE =>
@@ -117,12 +117,12 @@ structure TurtleIncrementalParser : RDF_INCREMENTAL_PARSER = struct
 		BLANK id => (addBnode d (token, id), BLANK id)
               | _ => raise Fail "newBlankNode returned non-blank node"
 
-    fun peek (d : parseData, _) = Source.peek (#source d)
-    fun peekN n (d : parseData, _) = Source.peekN n (#source d)
-    fun read (d : parseData, _) = Source.read (#source d)
-    fun readN n (d : parseData, _) = Source.readN n (#source d)
-    fun location (d : parseData, _) = Source.location (#source d)
-    fun eof (d : parseData, _) = Source.eof (#source d)
+    fun peek (d : parse_data, _) = Source.peek (#source d)
+    fun peekN n (d : parse_data, _) = Source.peekN n (#source d)
+    fun read (d : parse_data, _) = Source.read (#source d)
+    fun readN n (d : parse_data, _) = Source.readN n (#source d)
+    fun location (d : parse_data, _) = Source.location (#source d)
+    fun eof (d : parse_data, _) = Source.eof (#source d)
 
     fun lookingAt cps st =
         not (eof st) andalso CodepointSet.contains cps (peek st)
@@ -130,7 +130,7 @@ structure TurtleIncrementalParser : RDF_INCREMENTAL_PARSER = struct
     fun lookingAtToken tok st =
 	peekN (List.length tok) st = tok
 
-    fun peekTtl s =
+    fun peekTurtle s =
         let val w = peek s in
             case CharMap.find (significantCharMap, w) of
                 SOME significant => significant
@@ -141,7 +141,7 @@ structure TurtleIncrementalParser : RDF_INCREMENTAL_PARSER = struct
         "expected " ^ (CodepointSet.name cps) ^ ", found \"" ^
         (stringOfToken [found]) ^ "\""
 						  
-    fun mismatchMessageTtl c found =
+    fun mismatchMessageTurtle c found =
         "expected " ^ (significantCharName c) ^ ", found \"" ^
         (stringOfToken [found]) ^ "\""
 
@@ -153,8 +153,8 @@ structure TurtleIncrementalParser : RDF_INCREMENTAL_PARSER = struct
             split' (lst, [])
         end
 
-    fun resolveIri (data : parseData, token) =
-        let val (baseIri, filePart) = #base data
+    fun resolveIri (data : parse_data, token) =
+        let val (base_iri, filePart) = #base data
             fun likeAbsoluteIri [] = false
               | likeAbsoluteIri (first::rest) = 
                 if CodepointSet.contains alpha first
@@ -163,13 +163,13 @@ structure TurtleIncrementalParser : RDF_INCREMENTAL_PARSER = struct
         in
             iriOfToken
                 (case token of
-                     [] => baseIri
+                     [] => base_iri
                    | first::rest =>
                      if first = fromAscii #"#"
-                     then baseIri @ filePart @ token
-                     else if first = fromAscii #"/" then baseIri @ rest
+                     then base_iri @ filePart @ token
+                     else if first = fromAscii #"/" then base_iri @ rest
                      else if likeAbsoluteIri token then token
-                     else baseIri @ token)
+                     else base_iri @ token)
         end
 
     fun prefixExpand (d, token) =
@@ -253,14 +253,14 @@ structure TurtleIncrementalParser : RDF_INCREMENTAL_PARSER = struct
 
      require -> reads 1 or more of something, throws it away, fails if not present
 
-     match -> reads something, appends it to token part of matchState
+     match -> reads something, appends it to token part of match_state
               tuple, fails if not matched
 
-     parse -> reads something, possibly stashes it in parseData
-              and/or returns in parseState, fails if not matched
+     parse -> reads something, possibly stashes it in parse_data
+              and/or returns in parse_state, fails if not matched
      *)
 
-    fun discard (d : parseData, t) = (Source.discard (#source d); (d, t))
+    fun discard (d : parse_data, t) = (Source.discard (#source d); (d, t))
 
     fun discardGreedy cps s =
         if eof s then OK s
@@ -269,11 +269,11 @@ structure TurtleIncrementalParser : RDF_INCREMENTAL_PARSER = struct
             then discardGreedy cps (discard s)
             else OK s
             
-    fun discardGreedyTtl c s =
+    fun discardGreedyTurtle c s =
         if eof s then OK s
         else
-            if peekTtl s = c
-            then discardGreedyTtl c (discard s)
+            if peekTurtle s = c
+            then discardGreedyTurtle c (discard s)
             else OK s
                                      
     fun discardToEol s =
@@ -305,11 +305,11 @@ structure TurtleIncrementalParser : RDF_INCREMENTAL_PARSER = struct
 
     fun requireNothing s = OK s
                  
-    fun requireTtl c s =
+    fun requireTurtle c s =
         if eof s then ERROR "unexpected end of input"
         else if CharMap.find (significantCharMap, peek s) = SOME c
         then OK (discard s)
-        else ERROR (mismatchMessageTtl c (peek s))
+        else ERROR (mismatchMessageTurtle c (peek s))
 
     fun requireWhitespace s =
 	if lookingAt whitespaceEol s orelse
@@ -318,24 +318,24 @@ structure TurtleIncrementalParser : RDF_INCREMENTAL_PARSER = struct
 	else ERROR "whitespace expected"
 		
     fun requirePunctuation c s =
-        sequence s [ discardWhitespace, requireTtl c ]
+        sequence s [ discardWhitespace, requireTurtle c ]
 
-    fun match cps (s as (d, tok)) : matchResult =
+    fun match cps (s as (d, tok)) : match_result =
         let val w = read s in
             if CodepointSet.contains cps w
             then OK (d, tok @ [w])
             else ERROR (mismatchMessage cps w)
         end
 
-    fun matchTtl c (s as (d, tok)) : matchResult =
+    fun matchTurtle c (s as (d, tok)) : match_result =
         let val w = read s in
             if CharMap.find (significantCharMap, w) = SOME c
             then OK (d, tok @ [w])
-            else ERROR (mismatchMessageTtl c w)
+            else ERROR (mismatchMessageTurtle c w)
         end
 
     (* May return an empty token *)
-    fun matchToken cps (s as (d, tok)) : matchResult =
+    fun matchToken cps (s as (d, tok)) : match_result =
         let fun match' () =
                 if eof s then []
                 else
@@ -347,7 +347,7 @@ structure TurtleIncrementalParser : RDF_INCREMENTAL_PARSER = struct
         end
 
     (* May return an empty token *)
-    fun matchTokenExcl cps (s as (d, tok)) : matchResult =
+    fun matchTokenExcl cps (s as (d, tok)) : match_result =
         let fun match' () =
                 if eof s orelse CodepointSet.contains cps (peek s)
                 then []
@@ -359,13 +359,13 @@ structure TurtleIncrementalParser : RDF_INCREMENTAL_PARSER = struct
     (* Read something structured like a prefixed name. The caller is
        expected to test whether the result is properly formed depending
        on context. *)
-    fun matchPrefixedNameCandidate s : matchResult =
+    fun matchPrefixedNameCandidate s : match_result =
 	let fun match' s =
 		case matchTokenExcl pnameExcluded s of
 		    ERROR e => ERROR e
 		  | OK (s as (d, [])) => ERROR "token expected"
 		  | OK (s as (d, token)) =>
-                    case peekTtl s of
+                    case peekTurtle s of
                         C_DOT => 
                         (case peekN 2 s of
                              dot::next::[] =>
@@ -391,18 +391,18 @@ structure TurtleIncrementalParser : RDF_INCREMENTAL_PARSER = struct
 	    match' s
 	end
 
-    fun matchPercentEscape s : matchResult =
+    fun matchPercentEscape s : match_result =
         (* "%-encoded sequences are in the character range for IRIs
             and are explicitly allowed in local names. These appear as
             a '%' followed by two hex characters and represent that
             same sequence of three characters. These sequences are not
             decoded during processing." [see also prefixExpand] *)
-        sequence s [ matchTtl C_PERCENT,
+        sequence s [ matchTurtle C_PERCENT,
                      match hex,
                      match hex ]
         
     fun unescapeUnicodeEscape s = (* !!! inconsistent name with matchPercentEscape *)
-        let val n = case peekTtl s of
+        let val n = case peekTurtle s of
                         C_LC_U => 4
                       | C_UC_U => 8
                       | other => 0
@@ -415,12 +415,12 @@ structure TurtleIncrementalParser : RDF_INCREMENTAL_PARSER = struct
               | NONE => (s, 0wx0)
         end
             
-    fun matchIriref s : matchResult =
+    fun matchIriref s : match_result =
         let fun match' s =
                 case matchTokenExcl iriExcluded s of
                     ERROR e => ERROR e
                   | OK (s as (d, token)) => 
-                    case peekTtl s of
+                    case peekTurtle s of
                         C_PERCENT =>
                         (case matchPercentEscape (d, []) of
                              ERROR e => ERROR e
@@ -440,12 +440,12 @@ structure TurtleIncrementalParser : RDF_INCREMENTAL_PARSER = struct
                          else ERROR "expected Unicode escape")
                       | other => OK (d, token)
         in
-            sequence s [ requireTtl C_OPEN_ANGLE,
+            sequence s [ requireTurtle C_OPEN_ANGLE,
                          match',
-                         requireTtl C_CLOSE_ANGLE ]
+                         requireTurtle C_CLOSE_ANGLE ]
         end
 
-    fun matchPrefixedNameNamespace s : matchResult =
+    fun matchPrefixedNameNamespace s : match_result =
 	case matchPrefixedNameCandidate s of
 	    ERROR e => ERROR e
 	  | OK (d, []) => ERROR "malformed prefix"
@@ -484,7 +484,7 @@ structure TurtleIncrementalParser : RDF_INCREMENTAL_PARSER = struct
 		then LONG_STRING q
 		else SHORT_STRING q
 	in		
-	    case peekTtl s of
+	    case peekTurtle s of
 		C_QUOTE_DOUBLE => shortOrLong s C_QUOTE_DOUBLE
 	      | C_QUOTE_SINGLE => shortOrLong s C_QUOTE_SINGLE
 	      | other => NO_QUOTE
@@ -497,7 +497,7 @@ structure TurtleIncrementalParser : RDF_INCREMENTAL_PARSER = struct
               | NONE => (s, e)
         end
 		     
-    fun matchStringBodyType q s : matchResult =
+    fun matchStringBodyType q s : match_result =
         let
 	    val quoteCodepoint =
                 case q of
@@ -512,7 +512,7 @@ structure TurtleIncrementalParser : RDF_INCREMENTAL_PARSER = struct
                     ERROR e => ERROR e
                   | OK (s as (d, body)) =>
                     if eof s then ERROR "end-of-file reached in string"
-                    else if peekTtl s = C_BACKSLASH
+                    else if peekTurtle s = C_BACKSLASH
                     then (discard s;
                           if lookingAt stringEscape s
                           then let val (s, w) = unescapeStringEscape s
@@ -534,29 +534,29 @@ structure TurtleIncrementalParser : RDF_INCREMENTAL_PARSER = struct
 
             val quoteSeq =
                 case q of
-                    LONG_STRING c => [requireTtl c, requireTtl c, requireTtl c]
-                  | SHORT_STRING c => [requireTtl c]
+                    LONG_STRING c => [requireTurtle c, requireTurtle c, requireTurtle c]
+                  | SHORT_STRING c => [requireTurtle c]
                   | _ => raise Fail "non-quote passed to matchStringBodyType"
         in
             sequence s (quoteSeq @ [match'] @ quoteSeq)
         end
             
-    fun matchStringBody s : matchResult =
+    fun matchStringBody s : match_result =
 	case matchQuote s of
 	    NO_QUOTE => ERROR "expected quotation mark"
 	  | quote => matchStringBodyType quote s
 
-    fun matchLanguageTag s : matchResult =
+    fun matchLanguageTag s : match_result =
         let fun match' s =
                 case matchToken alpha s of
                     ERROR e => ERROR e
                   | OK (s as (d, token)) =>
-                    case peekTtl s of
+                    case peekTurtle s of
                         C_DASH => match' (d, token @ [read s])
                       | other => OK s
         in
             sequence s [
-                requireTtl C_AT,
+                requireTurtle C_AT,
                 match',
                 fn (d, []) => ERROR "non-empty language tag expected"
                   | s => OK s
@@ -570,7 +570,7 @@ structure TurtleIncrementalParser : RDF_INCREMENTAL_PARSER = struct
             ERROR e => ERROR e
           | OK (d, token) => parseFn (d, token)
             
-    fun parseBase isSparql d : parseResult =
+    fun parseBase isSparql d : parse_result =
         matchParseSeq d [
 	    requireWhitespace,
             matchIriref,
@@ -587,7 +587,7 @@ structure TurtleIncrementalParser : RDF_INCREMENTAL_PARSER = struct
                       }, NONE)
               end)
             
-    fun parsePrefix isSparql d : parseResult =
+    fun parsePrefix isSparql d : parse_result =
         matchParseSeq d [
 	    requireWhitespace,
             matchPrefixedNameNamespace,
@@ -607,28 +607,28 @@ structure TurtleIncrementalParser : RDF_INCREMENTAL_PARSER = struct
                                      (String.explode
                                           (stringOfToken token)))
                         
-    fun parseSparqlBase d : parseResult =
+    fun parseSparqlBase d : parse_result =
         matchParseSeq d [
             matchPrefixedNameCandidate
         ] (fn (d, token) =>
               if isBaseTag token then parseBase true d
               else ERROR "expected \"BASE\"")
 	
-    fun parseSparqlPrefix d : parseResult =
+    fun parseSparqlPrefix d : parse_result =
         matchParseSeq d [
             matchPrefixedNameCandidate
         ] (fn (d, token) =>
               if isPrefixTag token then parsePrefix true d
               else ERROR "expected \"PREFIX\"")
         
-    fun parseDirective d : parseResult =
+    fun parseDirective d : parse_result =
         let val s = (d, []) in
-	    case peekTtl s of
+	    case peekTurtle s of
 	        C_LETTER_B => parseSparqlBase d
 	      | C_LETTER_P => parseSparqlPrefix d
 	      | C_AT =>
                 matchParseSeq d
-                    [ requireTtl C_AT, matchToken alpha ]
+                    [ requireTurtle C_AT, matchToken alpha ]
                     (fn (d, token) => 
                         case stringOfToken token of
                             "prefix" => parsePrefix false d
@@ -639,10 +639,10 @@ structure TurtleIncrementalParser : RDF_INCREMENTAL_PARSER = struct
         end
 	    
     (* [15] collection ::= '(' object* ')' *)
-    fun parseCollection d : parseResult =
+    fun parseCollection d : parse_result =
 	let fun readObjects acc d =
                 case (discardWhitespace (d, []);
-		      peekTtl (d, [])) of
+		      peekTurtle (d, [])) of
 		    C_CLOSE_PAREN =>
 		    (discard (d, []);
 		     if null acc
@@ -658,14 +658,14 @@ structure TurtleIncrementalParser : RDF_INCREMENTAL_PARSER = struct
 			   | OK (d, NONE) => ERROR "object expected"
 	in
 	    matchParseSeq d [
-		requireTtl C_OPEN_PAREN
+		requireTurtle C_OPEN_PAREN
 	    ] (fn (d, _) => readObjects [] d)
         end
 
-    and parseBlankNode d : parseResult =
+    and parseBlankNode d : parse_result =
 	matchParseSeq d [
-	    requireTtl C_UNDERSCORE,
-	    requireTtl C_COLON,
+	    requireTurtle C_UNDERSCORE,
+	    requireTurtle C_COLON,
 	    matchPrefixedNameCandidate
 	] (fn (d, candidate) => 
 	      (* !!! check that we match the blank node pattern. that is:
@@ -675,7 +675,7 @@ structure TurtleIncrementalParser : RDF_INCREMENTAL_PARSER = struct
 	      case blankNodeFor (d, candidate) of
 		  (d, node) => OK (d, SOME node))
 	    
-    and parsePrefixedName d : parseResult =
+    and parsePrefixedName d : parse_result =
         matchParseSeq d [
             matchPrefixedNameCandidate
         ] (fn (d, token) =>
@@ -688,18 +688,18 @@ structure TurtleIncrementalParser : RDF_INCREMENTAL_PARSER = struct
 	      then OK (d, SOME (newBooleanLiteral false))
               else prefixExpand (d, token))
 
-    and parseIriref d : parseResult =
+    and parseIriref d : parse_result =
         matchParseSeq d [
             matchIriref
         ] (fn (d, token) => 
 	      OK (d, SOME (IRI (resolveIri (d, token)))))
             
-    and parseIri d : parseResult = 
-        if peekTtl (d, []) = C_OPEN_ANGLE
+    and parseIri d : parse_result = 
+        if peekTurtle (d, []) = C_OPEN_ANGLE
         then parseIriref d
         else parsePrefixedName d
 
-    and parseAOrPrefixedName d : parseResult =
+    and parseAOrPrefixedName d : parse_result =
         matchParseSeq d [
             matchPrefixedNameCandidate
         ] (fn (d, token) =>
@@ -707,8 +707,8 @@ structure TurtleIncrementalParser : RDF_INCREMENTAL_PARSER = struct
 	      then OK (d, SOME (IRI RdfStandardIRIs.iriRdfType))
 	      else prefixExpand (d, token))
 
-    and parseBlankNodePropertyList d : parseResult =
-	case requireTtl C_OPEN_SQUARE (d, []) of
+    and parseBlankNodePropertyList d : parse_result =
+	case requireTurtle C_OPEN_SQUARE (d, []) of
 	    ERROR e => ERROR e
 	  | OK (d, _) => 
 	    case parsePredicateObjectList d of
@@ -717,30 +717,30 @@ structure TurtleIncrementalParser : RDF_INCREMENTAL_PARSER = struct
 		let val blankNode = newBlankNode ()
 		    val d = emitWithSubject (d, blankNode, p)
 		in
-		    case requireTtl C_CLOSE_SQUARE (d, []) of
+		    case requireTurtle C_CLOSE_SQUARE (d, []) of
 			ERROR e => ERROR e
 		      | OK (d, _) => OK (d, SOME blankNode)
 		end
 
     (* [133s] BooleanLiteral ::= 'true' | 'false' *)
-    and parseBooleanLiteral d : parseResult =
+    and parseBooleanLiteral d : parse_result =
 	if lookingAtToken trueToken (d, [])
 	then OK (d, SOME (newBooleanLiteral true))
 	else if lookingAtToken falseToken (d, [])
 	then OK (d, SOME (newBooleanLiteral false))
 	else ERROR "expected \"true\" or \"false\""
 
-    and parseDatatype d : parseResult =
+    and parse_datatype d : parse_result =
         matchParseSeq d [
-	    requireTtl C_CARET,
-	    requireTtl C_CARET
+	    requireTurtle C_CARET,
+	    requireTurtle C_CARET
 	] (fn (d, _) => parseIri d)
                    
-    and parseRdfLiteral d : parseResult =
+    and parseRdfLiteral d : parse_result =
         matchParseSeq d [
             matchStringBody
         ] (fn (d, body) =>
-              case peekTtl (d, []) of
+              case peekTurtle (d, []) of
                   C_AT =>
                   matchParseSeq d [
                       matchLanguageTag
@@ -751,7 +751,7 @@ structure TurtleIncrementalParser : RDF_INCREMENTAL_PARSER = struct
 					  dtype = Iri.empty
 		    })))
                 | C_CARET =>
-                  (case parseDatatype d of
+                  (case parse_datatype d of
                        ERROR e => ERROR e
                      | OK (d, SOME (IRI tag)) =>
                        OK (d, SOME (LITERAL {
@@ -818,7 +818,7 @@ structure TurtleIncrementalParser : RDF_INCREMENTAL_PARSER = struct
             
     (* [13] literal ::= RDFLiteral | NumericLiteral | BooleanLiteral *)
     and parseLiteral d =
-	case peekTtl (d, []) of
+	case peekTurtle (d, []) of
 	    C_QUOTE_SINGLE => parseRdfLiteral d
 	  | C_QUOTE_DOUBLE => parseRdfLiteral d
 	  | C_LETTER_T => parseBooleanLiteral d
@@ -829,7 +829,7 @@ structure TurtleIncrementalParser : RDF_INCREMENTAL_PARSER = struct
 		     else (* not literal after all! *) ERROR "object node expected"
 					
     and parseNonLiteralObject d =
-	case peekTtl (d, []) of
+	case peekTurtle (d, []) of
 	    C_UNDERSCORE => parseBlankNode d
 	  | C_OPEN_PAREN => parseCollection d
 	  | C_OPEN_SQUARE => parseBlankNodePropertyList d
@@ -841,7 +841,7 @@ structure TurtleIncrementalParser : RDF_INCREMENTAL_PARSER = struct
         else parseLiteral d
                                
     and parseVerb d =
-	if peekTtl (d, []) = C_OPEN_ANGLE then parseIri d
+	if peekTurtle (d, []) = C_OPEN_ANGLE then parseIri d
 	else parseAOrPrefixedName d
 					    
     (* [7] predicateObjectList ::= verb objectList (';' (verb objectList)?)*
@@ -858,7 +858,7 @@ structure TurtleIncrementalParser : RDF_INCREMENTAL_PARSER = struct
 		  | OK (d, NONE) => ERROR "object node not found"
 		  | OK (d, SOME node) =>
 		    if (discardWhitespace (d, []);
-                        peekTtl (d, [])) = C_COMMA
+                        peekTurtle (d, [])) = C_COMMA
 		    then (discard (d, []);
                           parseObjectList (d, node::nodes))
 		    else OK (d, rev (node::nodes))
@@ -875,7 +875,7 @@ structure TurtleIncrementalParser : RDF_INCREMENTAL_PARSER = struct
 
 	    and parsePredicateObjectList' (d, volist) =
                 case (discardWhitespace (d, []);
-		      peekTtl (d, [])) of
+		      peekTurtle (d, [])) of
                     C_DOT => OK (d, volist)
                   | C_CLOSE_SQUARE => OK (d, volist)
                   | other => 
@@ -883,8 +883,8 @@ structure TurtleIncrementalParser : RDF_INCREMENTAL_PARSER = struct
 			ERROR e => ERROR e
 		      | OK (d, vos) =>
 			if (discardWhitespace (d, []);
-			    peekTtl (d, [])) = C_SEMICOLON
-			then (discardGreedyTtl C_SEMICOLON (d, []);
+			    peekTurtle (d, [])) = C_SEMICOLON
+			then (discardGreedyTurtle C_SEMICOLON (d, []);
 			      parsePredicateObjectList' (d, volist @ vos))
 			else OK (d, volist @ vos)
 	in
@@ -893,7 +893,7 @@ structure TurtleIncrementalParser : RDF_INCREMENTAL_PARSER = struct
           
     (* [10] subject ::= iri | blank *)
     and parseSubjectNode d =
-	case peekTtl (d, []) of
+	case peekTurtle (d, []) of
 	    C_UNDERSCORE => parseBlankNode d
 	  | C_OPEN_PAREN => parseCollection d
 	  | other => parseIri d
@@ -928,22 +928,22 @@ structure TurtleIncrementalParser : RDF_INCREMENTAL_PARSER = struct
                 OK (emitWithSubject (d, subjectNode, polist))
                                         
     and parseTriples d =
-        if peekTtl (d, []) = C_OPEN_SQUARE
+        if peekTurtle (d, []) = C_OPEN_SQUARE
 	then parseBlankNodeTriples d
         else parseSubjectTriples d
                                         
     (* [2] statement ::= directive | triples '.' *)
-    and parseStatement d =
+    and parse_statement d =
         case discardWhitespace (d, []) of
             ERROR e => ERROR e
           | OK (s as (d, _)) => 
             if eof s then OK (d, NONE)
             else
-                if peekTtl s = C_AT
+                if peekTurtle s = C_AT
                    orelse
-                   (peekTtl s = C_LETTER_P andalso isPrefixTag (peekN 6 s))
+                   (peekTurtle s = C_LETTER_P andalso isPrefixTag (peekN 6 s))
                    orelse
-                   (peekTtl s = C_LETTER_B andalso isBaseTag (peekN 4 s))
+                   (peekTurtle s = C_LETTER_B andalso isBaseTag (peekN 4 s))
                 then parseDirective d
                 else case parseTriples d of
                          ERROR e => ERROR e
@@ -965,8 +965,8 @@ structure TurtleIncrementalParser : RDF_INCREMENTAL_PARSER = struct
 	    else message ^ " (before \"" ^ (stringOfToken nextBit) ^ "...\")"
 	end
 
-    fun parseDocument (d : parseData) : streamValue =
-        let fun parse' (d : parseData) = fn () =>
+    fun parseDocument (d : parse_data) : stream_value =
+        let fun parse' (d : parse_data) = fn () =>
                               parseDocument
                                   {
                                     source = #source d,
@@ -977,7 +977,7 @@ structure TurtleIncrementalParser : RDF_INCREMENTAL_PARSER = struct
                                     newPrefixes = []
                                   }
         in
-            case parseStatement d of
+            case parse_statement d of
                 OK (d, _) => if eof (d, []) andalso
                                 null (#newTriples d) andalso
                                 null (#newPrefixes d)
@@ -1003,15 +1003,15 @@ structure TurtleIncrementalParser : RDF_INCREMENTAL_PARSER = struct
                   | bits =>
                     ((String.concatWith "/" (rev (tl (rev bits)))) ^ "/",
                      hd (rev bits))
-            val (baseIri, filePart) = split' iristring
+            val (base_iri, filePart) = split' iristring
         in
-            (tokenOfString baseIri, tokenOfString filePart)
+            (tokenOfString base_iri, tokenOfString filePart)
         end
             
-    fun parse (baseIri, stream) =
+    fun parse (base_iri, stream) =
         parseDocument {
             source = Source.fromStream stream,
-            base = splitBase (getOpt (baseIri, Iri.empty)),
+            base = splitBase (getOpt (base_iri, Iri.empty)),
             prefixes = TokenMap.empty,
             blankNodes = TokenMap.empty,
             newTriples = [],

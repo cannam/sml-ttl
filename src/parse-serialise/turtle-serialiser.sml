@@ -4,13 +4,13 @@ functor TurtleSerialiserFn (ARG : sig
                                 structure M : MATCHER
                             end)
         :> RDF_ABBREVIATING_SERIALISER
-               where type prefixTable = ARG.P.t
+               where type prefix_table = ARG.P.t
                where type matcher = ARG.M.t
 = struct
 
     open RdfNode
 
-    type baseIri = BaseIri.t
+    type base_iri = BaseIri.t
              
     structure PrefixTable = ARG.P
     structure Matcher = ARG.M
@@ -30,7 +30,7 @@ functor TurtleSerialiserFn (ARG : sig
 			                val compare = RdfTriple.compare
 			                end)
 
-    type serData = {
+    type ser_data = {
         stream    : TextIO.outstream,
         base      : string option,
         subject   : RdfNode.node option,
@@ -41,22 +41,22 @@ functor TurtleSerialiserFn (ARG : sig
         matcher   : Matcher.t
     }
 
-    type serProps = {
+    type ser_props = {
         isAnon   : bool,
         isColl   : bool
     }        
 
-    fun wasWritten (triple, d : serData) = Triples.member (#written d, triple)
+    fun wasWritten (triple, d : ser_data) = Triples.member (#written d, triple)
 
     fun encodeLocal str =
         Encode.encodeStringExcept (TurtleCodepoints.pnameLocalToEscape,
                                      Encode.backslashEncode)
                                     str
 
-    fun encodeIri baseIri iri =
+    fun encodeIri base_iri iri =
         let val istr = Iri.toString iri
         in
-            case baseIri of
+            case base_iri of
                 NONE => istr
               | SOME bstr => if String.isPrefix bstr istr
                              then implode (List.drop (explode istr,
@@ -64,7 +64,7 @@ functor TurtleSerialiserFn (ARG : sig
                              else istr
         end
             
-    fun stringOfAbbrIri (iri, d : serData) =
+    fun stringOfAbbrIri (iri, d : ser_data) =
 	if iri = RdfStandardIRIs.iriRdfType then "a"
 	else case PrefixTable.abbreviate (#prefixes d, iri) of
                  SOME (ns, rest) => ns ^ ":" ^ encodeLocal rest
@@ -74,7 +74,7 @@ functor TurtleSerialiserFn (ARG : sig
         if indent < 0 then ""
         else String.concatWith "" (List.tabulate (indent * 4, fn _ => " "))
 
-    fun writeIndent (d : serData) =
+    fun writeIndent (d : ser_data) =
         (TextIO.output (#stream d, stringForIndent (#indent d));
          d)
             
@@ -152,11 +152,11 @@ functor TurtleSerialiserFn (ARG : sig
         then (TextIO.output (#stream d, #value lit); d)
         else serialiseStringLiteral (lit, d)
                                           
-    and serialiseAbbreviated (IRI iri, d : serData) =
+    and serialiseAbbreviated (IRI iri, d : ser_data) =
         (TextIO.output (#stream d, stringOfAbbrIri (iri, d)); d)
-      | serialiseAbbreviated (BLANK n, d : serData) =
+      | serialiseAbbreviated (BLANK n, d : ser_data) =
         (TextIO.output (#stream d, "_:blank" ^ (Int.toString n)); d)
-      | serialiseAbbreviated (LITERAL (lit as { dtype, ... }), d : serData) =
+      | serialiseAbbreviated (LITERAL (lit as { dtype, ... }), d : ser_data) =
         if dtype = RdfStandardIRIs.iriTypeBoolean
         then serialiseBooleanLiteral (lit, d)
         else if dtype = RdfStandardIRIs.iriTypeInteger
@@ -164,7 +164,7 @@ functor TurtleSerialiserFn (ARG : sig
         (*!!! + double, decimal *)
         else serialiseStringLiteral (lit, d)
 
-    and serialiseObject (obj, d, pr : serProps) : serData =
+    and serialiseObject (obj, d, pr : ser_props) : ser_data =
         if (#isAnon pr)
         then (TextIO.output (#stream d, " "); serialiseAnonObject (obj, d))
         else (TextIO.output (#stream d, " "); serialiseAbbreviated (obj, d))
@@ -208,12 +208,12 @@ functor TurtleSerialiserFn (ARG : sig
                 end
         end
                  
-    and serialiseObjectOrCollection (obj, d, pr : serProps) =
+    and serialiseObjectOrCollection (obj, d, pr : ser_props) =
         if (#isColl pr)
         then serialiseCollection (obj, d, pr)
         else serialiseObject (obj, d, pr)
 
-    and indented n (d : serData) =
+    and indented n (d : ser_data) =
         { stream = #stream d,
           base = #base d,
           subject = #subject d,
@@ -223,7 +223,7 @@ functor TurtleSerialiserFn (ARG : sig
           prefixes = #prefixes d,
           matcher = #matcher d }
                               
-    and serialiseSubjectPredicate (subj, pred, d : serData, pr) =
+    and serialiseSubjectPredicate (subj, pred, d : ser_data, pr) =
         case #subject d of
             NONE =>
             (* first triple in graph *)
@@ -246,7 +246,7 @@ functor TurtleSerialiserFn (ARG : sig
                 (TextIO.output (#stream d, " .\n\n");
                  indented 1 (serialiseNodes (indented (~1) d, pr) [subj, pred]))
 
-    and serialiseTripleParts ((subj, pred, obj), d : serData, pr) =
+    and serialiseTripleParts ((subj, pred, obj), d : ser_data, pr) =
         let val d = serialiseSubjectPredicate (subj, pred, d, pr)
             val d = serialiseObjectOrCollection (obj, d, pr)
         in
@@ -265,10 +265,10 @@ functor TurtleSerialiserFn (ARG : sig
             fun hasBlankObject (_, _, BLANK _) = true
               | hasBlankObject _ = false
 
-            fun isBlankObjectUnique (d : serData, t) =
+            fun isBlankObjectUnique (d : ser_data, t) =
                 Matcher.match (#matcher d, (NONE, NONE, SOME (#3 t))) = [t]
 
-            fun wasBlankObjectWritten (d : serData, (_,_,obj)) =
+            fun wasBlankObjectWritten (d : ser_data, (_,_,obj)) =
                 List.exists
                     (fn x => wasWritten (x, d))
                     (Matcher.match (#matcher d, (SOME obj, NONE, NONE)))
@@ -315,14 +315,14 @@ functor TurtleSerialiserFn (ARG : sig
         (TextIO.output (stream, "@base <" ^ (Iri.toString iri) ^ "> .\n");
          stream)
 
-    fun new (baseIri, prefixes, matcher) stream =
+    fun new (base_iri, prefixes, matcher) stream =
         let val stream = serialisePrefixes
-                             (serialiseBase stream baseIri)
+                             (serialiseBase stream base_iri)
                              (PrefixTable.enumerate prefixes)
             val _ = TextIO.output (stream, "\n")
         in
             { stream = stream,
-              base = case baseIri of
+              base = case base_iri of
                          NONE => NONE
                        | SOME iri => if Iri.isEmpty iri
                                      then NONE
@@ -338,14 +338,14 @@ functor TurtleSerialiserFn (ARG : sig
     fun serialise (d, triples) =
         serialiseTriples d triples
 
-    fun finish (d : serData) =
+    fun finish (d : ser_data) =
         if not (Triples.isEmpty (#written d))
         then TextIO.output (#stream d, " .\n")
         else ()
 
-    type t = serData
+    type t = ser_data
     type triple = RdfTriple.triple
-    type prefixTable = ARG.P.t
+    type prefix_table = ARG.P.t
     type matcher = ARG.M.t
 end
 

@@ -9,7 +9,7 @@ structure FileExtensionDrivenConverter :> RDF_FILE_CONVERTER = struct
 
     type prefix = Prefix.prefix
     type triple = RdfTriple.triple
-    type baseIri = BaseIri.t
+    type base_iri = BaseIri.t
 
     datatype result =
              INPUT_FORMAT_NOT_SUPPORTED |

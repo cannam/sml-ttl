@@ -11,7 +11,7 @@ functor RdfIncrementalConverterFn (A: RDF_INCREMENTAL_CONVERTER_ARG)
     structure S = A.Serialiser
 
     type triple = RdfTriple.triple
-    type baseIri = BaseIri.t
+    type base_iri = BaseIri.t
 
     datatype result =
              CONVERSION_ERROR of string |

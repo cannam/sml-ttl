@@ -1,7 +1,7 @@
 
 structure StoreExportBase : STORE_EXPORT_BASE = struct
 
-    type baseIri = BaseIri.t
+    type base_iri = BaseIri.t
     type store = Store.t
                  
     datatype result =
@@ -19,7 +19,7 @@ functor StoreIncrementalExporterFn (S: RDF_INCREMENTAL_SERIALISER)
 
     open StoreExportBase
 
-    fun saveToStream store (baseIri, stream) =
+    fun saveToStream store (base_iri, stream) =
         (* incremental serialiser doesn't use outBase iri *)
         let val serialiser = S.new stream
         in
@@ -27,22 +27,22 @@ functor StoreIncrementalExporterFn (S: RDF_INCREMENTAL_SERIALISER)
             OK
         end
             
-    fun saveToFile' store (baseIri, filename) =
+    fun saveToFile' store (base_iri, filename) =
         let val stream = TextIO.openOut filename
-            val _ = saveToStream store (baseIri, stream)
+            val _ = saveToStream store (base_iri, stream)
         in
             TextIO.closeOut stream;
             OK
         end
 
-    fun saveToFile store (baseIri, filename) =
-        saveToFile' store (baseIri, filename)
+    fun saveToFile store (base_iri, filename) =
+        saveToFile' store (base_iri, filename)
         handle ex => SYSTEM_ERROR (exnMessage ex)
 end
 
 functor StoreAbbreviatingExporterFn
             (S: RDF_ABBREVIATING_SERIALISER
-                    where type prefixTable = PrefixTable.t
+                    where type prefix_table = PrefixTable.t
                     where type matcher = Store.t)
         :> STORE_EXPORTER
                where type store = Store.t
@@ -51,17 +51,17 @@ functor StoreAbbreviatingExporterFn
 
     open StoreExportBase
                      
-    fun saveToStream store (baseIri, stream) =
+    fun saveToStream store (base_iri, stream) =
         let val serialiser =
-                S.new (baseIri, Store.getPrefixTable store, store) stream
+                S.new (base_iri, Store.getPrefixTable store, store) stream
         in
             S.finish (S.serialise (serialiser, Store.enumerate store));
             OK
         end
 
-    fun saveToFile' store (baseIri, filename) =
+    fun saveToFile' store (base_iri, filename) =
         let val stream = TextIO.openOut filename
-            val _ = saveToStream store (baseIri, stream)
+            val _ = saveToStream store (base_iri, stream)
         in
             TextIO.closeOut stream;
             OK
@@ -91,7 +91,7 @@ structure StoreStreamExporter
 
     exception Unsupported
 
-    fun saveToStream store (baseIri, format, stream) =
+    fun saveToStream store (base_iri, format, stream) =
         let open FileType
             val exporter = 
                 case format of
@@ -99,7 +99,7 @@ structure StoreStreamExporter
                   | NTRIPLES => NTriplesExporter.saveToStream
                   | _ => raise Unsupported
         in
-            (exporter store (baseIri, stream); OK)
+            (exporter store (base_iri, stream); OK)
             handle Unsupported => FORMAT_NOT_SUPPORTED
             handle ex => SYSTEM_ERROR (exnMessage ex)
         end
@@ -118,7 +118,7 @@ structure StoreFileExporter
 
     exception Unsupported
 
-    fun saveToFile store (baseIri, filename) =
+    fun saveToFile store (base_iri, filename) =
         let open FileType
             val exporter = 
                 case formatOf filename of
@@ -126,7 +126,7 @@ structure StoreFileExporter
                   | NTRIPLES => NTriplesExporter.saveToFile
                   | _ => raise Unsupported
         in
-            (exporter store (baseIri, filename); OK)
+            (exporter store (base_iri, filename); OK)
             handle Unsupported => FORMAT_NOT_SUPPORTED
             handle ex => SYSTEM_ERROR (exnMessage ex)
         end
