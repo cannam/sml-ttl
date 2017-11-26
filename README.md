@@ -45,12 +45,20 @@ directly with MLton using the supplied .mlb files:
 $ mlton example.mlb
 $ mlton convert.mlb
 
+To extract the API documentation (must have smldoc installed,
+e.g. from the fork at https://github.com/cannam/smldoc):
+
+$ make doc
+
 
 Origin
 ------
 
-Written by Chris Cannam, cannam@all-day-breakfast.com. This code has
-something in common with the Yertle library I wrote a couple of years
-previously, which provides a very similar set of features in the Yeti
-language. Both were initially language-learning exercises.
+Written by Chris Cannam, cannam@all-day-breakfast.com. MIT licence,
+see the file COPYING for details.
+
+This code has something in common with the Yertle library I wrote a
+couple of years previously, which provided a very similar set of
+features in the Yeti language. Both were initially language-learning
+exercises.
 
