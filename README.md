@@ -38,9 +38,11 @@ To build and run tests using MLton (slower compiling, faster runtime):
 
     $ make release
 
-Or you can build the bundled programs (e.g. `example.sml`,
-`convert.sml`) directly with MLton using the supplied `.mlb` files:
+You can build the bundled programs (e.g. `example.sml`, `convert.sml`)
+with MLton using the supplied `.mlb` files, so long as Vext has pulled
+in the necessary dependencies (which the Makefile would do for you):
 
+    $ ./vext install
     $ mlton example.mlb
     $ mlton convert.mlb
 
