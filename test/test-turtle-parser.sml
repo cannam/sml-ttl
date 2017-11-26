@@ -1,7 +1,7 @@
 
 functor TestTurtleParserFn (P: RDF_PARSER) : TESTS = struct
 
-    open TestSupport RdfTriple
+    open TestSupport RdfTriple Prefix
 
     val name = "turtle-parser"
                   

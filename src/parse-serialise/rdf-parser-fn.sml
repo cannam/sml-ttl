@@ -3,7 +3,7 @@
 
 functor RdfParserFn (I: RDF_INCREMENTAL_PARSER) : RDF_PARSER = struct
     
-    type prefix = RdfTriple.prefix
+    type prefix = Prefix.prefix
     type triple = RdfTriple.triple
     type base_iri = BaseIri.t
                       

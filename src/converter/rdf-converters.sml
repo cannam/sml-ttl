@@ -5,10 +5,9 @@ structure TurtleNTriplesConverter =
                                structure Serialiser = NTriplesSerialiser
                                end)
 
-(*!!! do we need to expose result using a where clause for the opaque signature ascription to work properly? *)
 structure FileExtensionDrivenConverter :> RDF_FILE_CONVERTER = struct
 
-    type prefix = RdfTriple.prefix
+    type prefix = Prefix.prefix
     type triple = RdfTriple.triple
     type base_iri = BaseIri.t
 

@@ -3,6 +3,7 @@ structure TurtleIncrementalParser : RDF_INCREMENTAL_PARSER = struct
 
     open RdfNode
     open RdfTriple
+    open Prefix
              
     open TurtleCodepoints
 

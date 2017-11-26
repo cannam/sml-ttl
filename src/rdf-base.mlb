@@ -8,6 +8,8 @@ rdf-base/rdf-node.sml
 rdf-base/rdf-triple.sig
 rdf-base/rdf-triple.sml
 rdf-base/rdf-standard-iris.sml
+rdf-base/prefix.sig
+rdf-base/prefix.sml
 rdf-base/matcher.sig
 rdf-base/collection.sig
 rdf-base/collection-gatherer-fn.sml

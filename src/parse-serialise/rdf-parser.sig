@@ -9,7 +9,7 @@
  *)
 signature RDF_PARSER = sig
 
-    type prefix = RdfTriple.prefix
+    type prefix = Prefix.prefix
     type triple = RdfTriple.triple
     type base_iri = BaseIri.t
                 
@@ -42,7 +42,7 @@ end
 *)
 signature RDF_INCREMENTAL_PARSER = sig
     
-    type prefix = RdfTriple.prefix
+    type prefix = Prefix.prefix
     type triple = RdfTriple.triple
     type base_iri = BaseIri.t
 
