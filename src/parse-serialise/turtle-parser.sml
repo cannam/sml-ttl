@@ -933,7 +933,7 @@ structure TurtleIncrementalParser : RDF_INCREMENTAL_PARSER = struct
         else parseSubjectTriples d
                                         
     (* [2] statement ::= directive | triples '.' *)
-    and parse_statement d =
+    and parseStatement d =
         case discardWhitespace (d, []) of
             ERROR e => ERROR e
           | OK (s as (d, _)) => 
@@ -977,7 +977,7 @@ structure TurtleIncrementalParser : RDF_INCREMENTAL_PARSER = struct
                                     newPrefixes = []
                                   }
         in
-            case parse_statement d of
+            case parseStatement d of
                 OK (d, _) => if eof (d, []) andalso
                                 null (#newTriples d) andalso
                                 null (#newPrefixes d)
