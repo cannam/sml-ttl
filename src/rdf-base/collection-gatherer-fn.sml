@@ -7,35 +7,35 @@ functor CollectionGathererFn (M : MATCHER) :> COLLECTION_GATHERER
     datatype node = datatype RdfNode.node
     type triple = node * node * node
 
-    val node_first = RdfNode.IRI RdfStandardIRIs.iri_rdf_first
-    val node_rest  = RdfNode.IRI RdfStandardIRIs.iri_rdf_rest
-    val node_nil   = RdfNode.IRI RdfStandardIRIs.iri_rdf_nil
+    val nodeFirst = RdfNode.IRI RdfStandardIRIs.iriRdfFirst
+    val nodeRest  = RdfNode.IRI RdfStandardIRIs.iriRdfRest
+    val nodeNil   = RdfNode.IRI RdfStandardIRIs.iriRdfNil
                                     
-    fun is_collection_node (matcher, node) =
-        let val pat = (SOME node, SOME node_rest, NONE)
+    fun isCollectionNode (matcher, node) =
+        let val pat = (SOME node, SOME nodeRest, NONE)
             val result = not (null (M.match (matcher, pat)))
         in
             Log.info (fn () => ["Collection: % % a collection node",
-                                Log.S (RdfNode.string_of_node node),
+                                Log.S (RdfNode.stringOfNode node),
                                 Log.S (if result then "is" else "is not")]);
             result
         end
 
-    fun start_of_collection (matcher, node) =
-        let val pat = (NONE, SOME node_rest, SOME node)
+    fun startOfCollection (matcher, node) =
+        let val pat = (NONE, SOME nodeRest, SOME node)
         in
             case M.match (matcher, pat) of
-                (subj, _, _)::_ => start_of_collection (matcher, subj)
+                (subj, _, _)::_ => startOfCollection (matcher, subj)
               | _ => node
         end
 
-    fun triples_of_collection (matcher, node) =
+    fun triplesOfCollection (matcher, node) =
         let fun triples' (matcher, first, acc) =
-                if first = node_nil
+                if first = nodeNil
                 then acc
                 else
-                    let val here = (SOME first, SOME node_first, NONE)
-                        val rest = (SOME first, SOME node_rest, NONE)
+                    let val here = (SOME first, SOME nodeFirst, NONE)
+                        val rest = (SOME first, SOME nodeRest, NONE)
                     in
                         case (M.match (matcher, here), M.match (matcher, rest)) of
                             ([], []) => acc
@@ -43,18 +43,18 @@ functor CollectionGathererFn (M : MATCHER) :> COLLECTION_GATHERER
                           | ([], r::_) => triples' (matcher, #3 r, acc @ [r])
                           | (h::_, r::_) => triples' (matcher, #3 r, acc @ [h, r])
                     end
-            val result = triples' (matcher, (start_of_collection (matcher, node)), [])
+            val result = triples' (matcher, (startOfCollection (matcher, node)), [])
         in
             Log.info (fn () => ["Collection: node % yields collection:\n%",
-                                Log.S (RdfNode.string_of_node node),
-                                Log.S (RdfTriple.string_of_triples result)]);
+                                Log.S (RdfNode.stringOfNode node),
+                                Log.S (RdfTriple.stringOfTriples result)]);
             result
         end
 
-    fun nodes_of_collection (matcher, node) =
+    fun nodesOfCollection (matcher, node) =
         List.concat
-            (map (fn t => if (#2 t = node_first) then [#3 t] else [])
-                 (triples_of_collection (matcher, node)))
+            (map (fn t => if (#2 t = nodeFirst) then [#3 t] else [])
+                 (triplesOfCollection (matcher, node)))
 
 end
      

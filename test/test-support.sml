@@ -2,7 +2,7 @@
 structure TestSupport = struct
 
     type test = string * (unit -> bool)
-    type test_suite = string * test list
+    type testSuite = string * test list
 
     fun report converter (obtained, expected) =
         print ("--- Expected " ^ (converter expected)
@@ -12,16 +12,16 @@ structure TestSupport = struct
         if a = b then true
         else (report converter (a, b); false)
 
-    fun check_pairs converter pairs =
+    fun checkPairs converter pairs =
         case List.filter (op<>) pairs of
             [] => true
           | unequal => (app (report converter) unequal; false)
 
-    fun check_lists converter (a, b) =
-        let fun check_lists' ([], []) = true
-              | check_lists' (a', b') =
+    fun checkLists converter (a, b) =
+        let fun checkLists' ([], []) = true
+              | checkLists' (a', b') =
                 check converter (hd a', hd b') andalso
-                check_lists' (tl a', tl b')
+                checkLists' (tl a', tl b')
         in
             if (List.length a <> List.length b)
             then 
@@ -33,11 +33,11 @@ structure TestSupport = struct
                         "])\n");
                  false)
             else
-                check_lists' (a, b)
+                checkLists' (a, b)
         end
 
-    fun check_sets converter greater (a, b) =
-        check_lists converter
+    fun checkSets converter greater (a, b) =
+        checkLists converter
                     (ListMergeSort.sort greater a,
                      ListMergeSort.sort greater b)
                            

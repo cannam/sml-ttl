@@ -6,7 +6,7 @@ structure Prefix :> PREFIX where type iri = Iri.t = struct
     type prefix = abbreviation * iri
     type curie = string
 
-    fun string_of_prefix (pre, exp) =
+    fun stringOfPrefix (pre, exp) =
         "\"" ^ pre ^ "\" -> <" ^ (Iri.toString exp) ^ ">"
                                 
 end

@@ -7,31 +7,31 @@ structure Index :> INDEX = struct
     type triple = node * node * node
     type pattern = patnode * patnode * patnode
 
-    datatype index_order = SPO | POS | OPS | SOP | PSO | OSP
+    datatype indexOrder = SPO | POS | OPS | SOP | PSO | OSP
 
     structure NodeTrie = ListEntryTrieFn(struct
                                           type t = node
                                           val compare = RdfNode.compare
                                           end)
 
-    type t = index_order * NodeTrie.t
+    type t = indexOrder * NodeTrie.t
 
-    fun name_of_order SPO = "spo" 
-      | name_of_order POS = "pos"
-      | name_of_order OPS = "ops"
-      | name_of_order SOP = "sop"
-      | name_of_order PSO = "pso"
-      | name_of_order OSP = "osp"
+    fun nameOfOrder SPO = "spo" 
+      | nameOfOrder POS = "pos"
+      | nameOfOrder OPS = "ops"
+      | nameOfOrder SOP = "sop"
+      | nameOfOrder PSO = "pso"
+      | nameOfOrder OSP = "osp"
             
-    fun order_of_name "spo" = SPO
-      | order_of_name "pos" = POS
-      | order_of_name "ops" = OPS
-      | order_of_name "sop" = SOP
-      | order_of_name "pso" = PSO
-      | order_of_name "osp" = OSP
-      | order_of_name name = raise Fail ("Unknown index order name " ^ name)
+    fun orderOfName "spo" = SPO
+      | orderOfName "pos" = POS
+      | orderOfName "ops" = OPS
+      | orderOfName "sop" = SOP
+      | orderOfName "pso" = PSO
+      | orderOfName "osp" = OSP
+      | orderOfName name = raise Fail ("Unknown index order name " ^ name)
 
-    fun name (order, _) = name_of_order order
+    fun name (order, _) = nameOfOrder order
 
     fun new ord = (ord, NodeTrie.empty)
 
@@ -59,7 +59,7 @@ structure Index :> INDEX = struct
     fun remove ((ord, ix), triple) =
         (ord, NodeTrie.remove (ix, decompose (ord, triple)))
 
-    fun foldl_match f acc ((ord, ix) : t, pattern) =
+    fun foldlMatch f acc ((ord, ix) : t, pattern) =
         NodeTrie.foldlPatternMatch
             (fn (e, acc) => f (recompose (ord, e), acc))
             acc
@@ -79,7 +79,7 @@ signature INDEX_PICKER = sig
     type index
     type pattern
     
-    val pick_index : index list * pattern -> index
+    val pickIndex : index list * pattern -> index
     
 end
                                
@@ -90,7 +90,7 @@ functor IndexPickerFn (IX: INDEX) : INDEX_PICKER = struct
 	   
     open IntRedBlackMap
 
-    fun pick_index (indexes : index list, pattern : pattern) : index =
+    fun pickIndex (indexes : index list, pattern : pattern) : index =
 	hd (listItems
 		(List.foldl (fn (ord, m) =>
 			        insert (m, IX.score (ord, pattern), ord))

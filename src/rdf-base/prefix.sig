@@ -15,7 +15,7 @@ signature PREFIX = sig
 
     (** Convert a prefix to a string for debug output purposes.
         Not guaranteed to match any standard format *)
-    val string_of_prefix : prefix -> string
+    val stringOfPrefix : prefix -> string
 
 end
 

@@ -8,7 +8,7 @@ signature PREFIX_TABLE = sig
     type curie = Prefix.curie
                    
     val empty : t
-    val from_prefixes : prefix list -> t
+    val fromPrefixes : prefix list -> t
     val add : t * prefix -> t
     val contains : t * abbreviation -> bool
     val remove : t * abbreviation -> t

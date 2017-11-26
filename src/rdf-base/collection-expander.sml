@@ -7,18 +7,18 @@ structure CollectionExpander :> COLLECTION_EXPANDER = struct
 
     (* Given a list of nodes, return a list of triples comprising the
        RDF collection of those nodes. *)
-    fun collection_of_nodes nodes =
+    fun collectionOfNodes nodes =
 	let fun collection' link [] = []
 	      | collection' link [node] =
-		( link, IRI iri_rdf_first, node ) ::
-		( link, IRI iri_rdf_rest, IRI iri_rdf_nil ) :: []
+		( link, IRI iriRdfFirst, node ) ::
+		( link, IRI iriRdfRest, IRI iriRdfNil ) :: []
 	      | collection' link (node::nodes) =
-		let val blank = new_blank_node () in
-		    ( link, IRI iri_rdf_first, node ) ::
-		    ( link, IRI iri_rdf_rest, blank ) :: (collection' blank nodes)
+		let val blank = newBlankNode () in
+		    ( link, IRI iriRdfFirst, node ) ::
+		    ( link, IRI iriRdfRest, blank ) :: (collection' blank nodes)
 		end
 	in
-	    collection' (new_blank_node ()) nodes
+	    collection' (newBlankNode ()) nodes
 	end
 	     
 end

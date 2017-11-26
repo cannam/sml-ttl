@@ -1,37 +1,37 @@
 
-fun report_exception name msg =
+fun reportException name msg =
     (print ("*** Caught exception in test \"" ^ name ^ "\": " ^ msg ^ "\n");
      false)
           
-fun run_test_suite (suite_name, tests) =
+fun runTestSuite (suiteName, tests) =
     case
         List.mapPartial
-            (fn (test_name, test) =>
+            (fn (testName, test) =>
                 if (test ()
-                    handle Fail msg => report_exception test_name msg
+                    handle Fail msg => reportException testName msg
                          | IO.Io { name, ... } =>
                            (*!!! can we get more info from Exception? *)
-                           report_exception test_name ("IO failure: " ^ name)
-                         | ex => report_exception test_name "Exception caught")
+                           reportException testName ("IO failure: " ^ name)
+                         | ex => reportException testName "Exception caught")
                 then NONE
-                else (print ("*** Test \"" ^ test_name ^ "\" failed\n");
-                      SOME test_name))
+                else (print ("*** Test \"" ^ testName ^ "\" failed\n");
+                      SOME testName))
             tests
      of failed =>
         let val n = length tests
             val m = length failed
         in
-            print (suite_name ^ ": " ^
+            print (suiteName ^ ": " ^
                    (Int.toString (n - m)) ^ "/" ^ (Int.toString n) ^
                    " tests passed\n");
             if m > 0
-            then print (suite_name ^
+            then print (suiteName ^
                         ": Failed tests [" ^ (Int.toString m) ^ "]: " ^
                         (String.concatWith " " failed) ^ "\n")
             else ()
         end
             
-val all_tests = [
+val allTests = [
     (TestPrefix.name, TestPrefix.tests ()),
     (TestProperty.name, TestProperty.tests ()),
     (TestIndex.name, TestIndex.tests ()),
@@ -49,14 +49,14 @@ fun usage () =
         raise Fail "Incorrect arguments specified"
     end
 
-fun handle_args args =
+fun handleArgs args =
     case args of
-        "-v"::rest => (Log.setLogLevel Log.INFO ; handle_args rest)
-      | [] => app run_test_suite all_tests
+        "-v"::rest => (Log.setLogLevel Log.INFO ; handleArgs rest)
+      | [] => app runTestSuite allTests
       | _ => usage ()
            
 fun main () =
-    handle_args (CommandLine.arguments ())
+    handleArgs (CommandLine.arguments ())
     handle Fail msg => TextIO.output (TextIO.stdErr, "Exception: " ^ msg ^ "\n")
 
         

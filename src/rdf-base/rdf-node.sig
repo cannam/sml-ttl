@@ -14,7 +14,7 @@ signature RDF_NODE = sig
              BLANK of int |
              LITERAL of literal
 
-    val new_blank_node : unit -> node
+    val newBlankNode : unit -> node
 
     (* Compare two nodes rapidly and consistently within a given
        runtime. The ordering is guaranteed to place IRI nodes first,
@@ -27,6 +27,6 @@ signature RDF_NODE = sig
     val compare : node * node -> order
 
     (* Debug streaming, not guaranteed to match a standard format *)
-    val string_of_node : node -> string
+    val stringOfNode : node -> string
 				     
 end

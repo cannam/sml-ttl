@@ -8,59 +8,59 @@ functor TestTurtleSpecFn (P: RDF_PARSER) : TESTS = struct
     structure L = TurtleLoader (* for manifest in ttl format *)
     structure S = Store
                      
-    val test_file_dir = "test/spec"
-    val out_file_dir = "test/out"
+    val testFileDir = "test/spec"
+    val outFileDir = "test/out"
 
-    fun test_file filename = test_file_dir ^ "/" ^ filename
-    fun temp_file filename = out_file_dir ^ "/" ^ filename
+    fun testFile filename = testFileDir ^ "/" ^ filename
+    fun tempFile filename = outFileDir ^ "/" ^ filename
                      
-    val base_iri = "http://example/base/"
+    val baseIri = "http://example/base/"
 
     (*!!! common with test-turtle-parser *)
             
-    fun check_parse_succeeded _ (P.PARSED whatever) = true
-      | check_parse_succeeded str (P.PARSE_ERROR err) =
+    fun checkParseSucceeded _ (P.PARSED whatever) = true
+      | checkParseSucceeded str (P.PARSE_ERROR err) =
         (print ("\n--- Error in parsing \"" ^ str ^ "\": " ^ err ^ "\n");
          false)
             
-    fun check_triples str (P.PARSE_ERROR err) =
+    fun checkTriples str (P.PARSE_ERROR err) =
         (print ("\n--- Error in parsing \"" ^ str ^ "\": " ^ err ^ "\n");
          false)
-      | check_triples str (P.PARSED { prefixes, triples }) =
+      | checkTriples str (P.PARSED { prefixes, triples }) =
         if null triples then
             (print ("\n--- No triples obtained when parsing \"" ^ str ^ "\"\n");
              false)
         else true
 
-    fun string_of_parse_result (P.PARSE_ERROR err) = ("(error: " ^ err ^ ")")
-      | string_of_parse_result (P.PARSED { prefixes, triples }) =
-        "prefixes [" ^ (String.concatWith ", " (map string_of_prefix prefixes)) ^
-        "], triples [" ^ (String.concatWith ", " (map string_of_triple triples)) ^
+    fun stringOfParseResult (P.PARSE_ERROR err) = ("(error: " ^ err ^ ")")
+      | stringOfParseResult (P.PARSED { prefixes, triples }) =
+        "prefixes [" ^ (String.concatWith ", " (map stringOfPrefix prefixes)) ^
+        "], triples [" ^ (String.concatWith ", " (map stringOfTriple triples)) ^
         "]"
             
-    fun check_parse_failed _ (P.PARSE_ERROR err) = true
-      | check_parse_failed str res = 
+    fun checkParseFailed _ (P.PARSE_ERROR err) = true
+      | checkParseFailed str res = 
         (print ("\n--- Parsing erroneously succeeded with input \"" ^ str
-                ^ "\"\n    producing " ^ (string_of_parse_result res) ^ "\n");
+                ^ "\"\n    producing " ^ (stringOfParseResult res) ^ "\n");
          false)
 
-    fun good_file f =
+    fun goodFile f =
         let val s = TextIO.openIn f
-            val result = check_parse_succeeded f (P.parse (NONE, s))
+            val result = checkParseSucceeded f (P.parse (NONE, s))
         in
             TextIO.closeIn s;
             result
         end
 
-    fun bad_file f =
+    fun badFile f =
         let val s = TextIO.openIn f
-            val result = check_parse_failed f (P.parse (NONE, s))
+            val result = checkParseFailed f (P.parse (NONE, s))
         in
             TextIO.closeIn s;
             result
         end
 
-    fun lines_of f =
+    fun linesOf f =
         let fun lines' s =
                 case TextIO.inputLine s of
                     SOME l => l :: lines' s
@@ -72,22 +72,22 @@ functor TestTurtleSpecFn (P: RDF_PARSER) : TESTS = struct
             lines
         end
 
-    fun scrub_blanks lines =
-        let val blank_text = String.explode "{blank}"
+    fun scrubBlanks lines =
+        let val blankText = String.explode "{blank}"
             fun scrub [] = []
-              | scrub (#"_"::rest) = scrub_in_blank rest
+              | scrub (#"_"::rest) = scrubInBlank rest
               | scrub (first::rest) = first :: scrub rest
-            and scrub_in_blank [] = blank_text
-              | scrub_in_blank (#" "::rest) = blank_text @ (#" " :: scrub rest)
-              | scrub_in_blank (_::rest) = scrub_in_blank rest
+            and scrubInBlank [] = blankText
+              | scrubInBlank (#" "::rest) = blankText @ (#" " :: scrub rest)
+              | scrubInBlank (_::rest) = scrubInBlank rest
         in
             map (String.implode o scrub o String.explode) lines
         end
             
-    fun compare_ntriples f1 f2 =
-        let val tidy_lines =
-                (ListMergeSort.sort String.>) o scrub_blanks o lines_of
-            val (l1, l2) = (tidy_lines f1, tidy_lines f2)
+    fun compareNtriples f1 f2 =
+        let val tidyLines =
+                (ListMergeSort.sort String.>) o scrubBlanks o linesOf
+            val (l1, l2) = (tidyLines f1, tidyLines f2)
         in
             if l1 = l2 then true
             else
@@ -100,7 +100,7 @@ functor TestTurtleSpecFn (P: RDF_PARSER) : TESTS = struct
                  false)
         end
             
-    fun good_conversion (base, fin, fout, reference) =
+    fun goodConversion (base, fin, fout, reference) =
         let val instream = TextIO.openIn fin
             val outstream = TextIO.openOut fout
             open TurtleNTriplesConverter
@@ -111,39 +111,39 @@ functor TestTurtleSpecFn (P: RDF_PARSER) : TESTS = struct
             case result of
                 CONVERSION_ERROR e => (print ("\n--- Conversion failed: "^e^"\n");
                                        false)
-              | CONVERTED => compare_ntriples fout reference
+              | CONVERTED => compareNtriples fout reference
         end
 
-    fun good_export (base, fin, action) =
+    fun goodExport (base, fin, action) =
         let open FileExtensionDrivenConverter
-            val fout = temp_file action
-            val out_ttl = fout ^ ".export.ttl"
-            val out_ref = fout ^ ".ref.nt"
-            fun bail_ttl err = (print ("\n--- Conversion to \"" ^ out_ttl ^
+            val fout = tempFile action
+            val outTtl = fout ^ ".export.ttl"
+            val outRef = fout ^ ".ref.nt"
+            fun bailTtl err = (print ("\n--- Conversion to \"" ^ outTtl ^
                                        "\" failed: " ^ err ^ "\n");
                                 false)
-            fun bail_ref err = (print ("\n--- Conversion to \"" ^ out_ref ^
+            fun bailRef err = (print ("\n--- Conversion to \"" ^ outRef ^
                                        "\" failed: " ^ err ^ "\n");
                                 false)
         in
-            case convert (base, fin) (base, out_ttl) of (* the Turtle export *)
-                INPUT_FORMAT_NOT_SUPPORTED => bail_ttl "Input format not supported"
-              | OUTPUT_FORMAT_NOT_SUPPORTED => bail_ttl "Output format not supported"
-              | SYSTEM_ERROR err => bail_ttl err
-              | CONVERSION_ERROR err => bail_ttl err
+            case convert (base, fin) (base, outTtl) of (* the Turtle export *)
+                INPUT_FORMAT_NOT_SUPPORTED => bailTtl "Input format not supported"
+              | OUTPUT_FORMAT_NOT_SUPPORTED => bailTtl "Output format not supported"
+              | SYSTEM_ERROR err => bailTtl err
+              | CONVERSION_ERROR err => bailTtl err
               | CONVERTED =>
-                case convert (base, fin) (base, out_ref) of (* and NTriples, as ref *)
-                    INPUT_FORMAT_NOT_SUPPORTED => bail_ref "Input format not supported"
-                  | OUTPUT_FORMAT_NOT_SUPPORTED => bail_ref "Output format not supported"
-                  | SYSTEM_ERROR err => bail_ref err
-                  | CONVERSION_ERROR err => bail_ref err
-                  | CONVERTED => good_conversion (base, out_ttl, fout, out_ref)
+                case convert (base, fin) (base, outRef) of (* and NTriples, as ref *)
+                    INPUT_FORMAT_NOT_SUPPORTED => bailRef "Input format not supported"
+                  | OUTPUT_FORMAT_NOT_SUPPORTED => bailRef "Output format not supported"
+                  | SYSTEM_ERROR err => bailRef err
+                  | CONVERSION_ERROR err => bailRef err
+                  | CONVERTED => goodConversion (base, outTtl, fout, outRef)
         end
             
-    val setup_count = ref 0
-    fun setup_failed_test text =
-        (setup_count := (!setup_count) + 1;
-         ("setup-failed-" ^ (Int.toString (!setup_count)),
+    val setupCount = ref 0
+    fun setupFailedTest text =
+        (setupCount := (!setupCount) + 1;
+         ("setup-failed-" ^ (Int.toString (!setupCount)),
           fn () => (print ("\n--- Test setup failed: " ^ text ^ "\n"); false)))
 
     type testmeta = {
@@ -153,21 +153,21 @@ functor TestTurtleSpecFn (P: RDF_PARSER) : TESTS = struct
         result : string
     }
 
-    fun metadata_for s (test_node, _, _) : testmeta =
-        let fun text_of [(_, _, S.LITERAL obj)] = #value obj
-              | text_of [(_, _, S.IRI iri)] = Iri.toString iri
-              | text_of anything_else = ""
+    fun metadataFor s (testNode, _, _) : testmeta =
+        let fun textOf [(_, _, S.LITERAL obj)] = #value obj
+              | textOf [(_, _, S.IRI iri)] = Iri.toString iri
+              | textOf anythingElse = ""
 
-            and property_text property =
-                text_of
-                    (S.match (s, (SOME test_node,
+            and propertyText property =
+                textOf
+                    (S.match (s, (SOME testNode,
                                   SOME (IRI (S.expand (s, property))),
                                   NONE)))
 
-            val name = property_text "mf:name"
-            val comment = property_text "rdfs:comment"
-            val action = property_text "mf:action"
-            val result = property_text "mf:result"
+            val name = propertyText "mf:name"
+            val comment = propertyText "rdfs:comment"
+            val action = propertyText "mf:action"
+            val result = propertyText "mf:result"
         in
             { name = name, comment = comment, action = action, result = result }
         end
@@ -180,87 +180,87 @@ functor TestTurtleSpecFn (P: RDF_PARSER) : TESTS = struct
        re-importing, and checking that the results are the same -- so
        it is a Turtle exporter test rather than a parser test. *)
             
-    datatype test_type = POSITIVE | NEGATIVE | EVAL | NEGATIVE_EVAL | TURTLE_EXPORT
+    datatype testType = POSITIVE | NEGATIVE | EVAL | NEGATIVE_EVAL | TURTLE_EXPORT
 
     fun test s tt triple =
-        let fun eval_test ({ action, ... } : testmeta) POSITIVE =
-                good_file (test_file action)
+        let fun evalTest ({ action, ... } : testmeta) POSITIVE =
+                goodFile (testFile action)
 
-              | eval_test ({ action, ... } : testmeta) NEGATIVE = 
-                bad_file (test_file action)
+              | evalTest ({ action, ... } : testmeta) NEGATIVE = 
+                badFile (testFile action)
                                             
-              | eval_test ({ action, ... } : testmeta) NEGATIVE_EVAL =
-                bad_file (test_file action)
+              | evalTest ({ action, ... } : testmeta) NEGATIVE_EVAL =
+                badFile (testFile action)
 
-              | eval_test ({ action, result, ... } : testmeta) EVAL =
-                (good_conversion (SOME (Iri.fromString (base_iri ^ action)),
-                                  test_file action,
-                                  temp_file result,
-                                  test_file result)
+              | evalTest ({ action, result, ... } : testmeta) EVAL =
+                (goodConversion (SOME (Iri.fromString (baseIri ^ action)),
+                                  testFile action,
+                                  tempFile result,
+                                  testFile result)
                  handle IO.Io { name, ... } =>
                         (print ("\n--- Failed to convert \"" ^ name ^ "\" to NTriples\n");
                          false))
 
-              | eval_test ({ action, result, ... } : testmeta) TURTLE_EXPORT =
-                (good_export (SOME (Iri.fromString (base_iri ^ action)),
-                              test_file action,
+              | evalTest ({ action, result, ... } : testmeta) TURTLE_EXPORT =
+                (goodExport (SOME (Iri.fromString (baseIri ^ action)),
+                              testFile action,
                               action)
                  handle IO.Io { name, ... } =>
                         (print ("\n--- Failed to convert \"" ^ name ^ "\" to Turtle\n");
                          false))
                                             
-            val metadata = metadata_for s triple
+            val metadata = metadataFor s triple
         in
             if #name metadata = "" orelse #action metadata = ""
-            then setup_failed_test
+            then setupFailedTest
                      ("unable to retrieve test metadata for test: " ^
-                      (string_of_node (#1 triple)))
+                      (stringOfNode (#1 triple)))
             else
-                let val test_name = 
+                let val testName = 
                         if #comment metadata = "" then #name metadata
                         else (#name metadata) ^ ": \"" ^ (#comment metadata) ^ "\""
                 in
-                    (if tt = TURTLE_EXPORT then "export-" ^ test_name else test_name,
-                     fn () => eval_test metadata tt)
+                    (if tt = TURTLE_EXPORT then "export-" ^ testName else testName,
+                     fn () => evalTest metadata tt)
                 end
         end
                                                           
-    fun tests_from_store s =
-        let fun tests_of_type t = 
+    fun testsFromStore s =
+        let fun testsOfType t = 
                 S.match (s, (NONE,
-                             SOME (IRI (RdfStandardIRIs.iri_rdf_type)),
+                             SOME (IRI (RdfStandardIRIs.iriRdfType)),
                              SOME (IRI (S.expand (s, "rdft:" ^ t)))))
         in
-            map (test s POSITIVE) (tests_of_type "TestTurtlePositiveSyntax") @
-            map (test s NEGATIVE) (tests_of_type "TestTurtleNegativeSyntax") @
-            map (test s EVAL) (tests_of_type "TestTurtleEval") @
-            map (test s NEGATIVE_EVAL) (tests_of_type "TestTurtleNegativeEval") @
-            map (test s TURTLE_EXPORT) ((tests_of_type "TestTurtlePositiveSyntax") @
-                                        (tests_of_type "TestTurtleEval"))
+            map (test s POSITIVE) (testsOfType "TestTurtlePositiveSyntax") @
+            map (test s NEGATIVE) (testsOfType "TestTurtleNegativeSyntax") @
+            map (test s EVAL) (testsOfType "TestTurtleEval") @
+            map (test s NEGATIVE_EVAL) (testsOfType "TestTurtleNegativeEval") @
+            map (test s TURTLE_EXPORT) ((testsOfType "TestTurtlePositiveSyntax") @
+                                        (testsOfType "TestTurtleEval"))
         end
             
-    fun tests_from_manifest name =
-        case L.load_file_as_new_store (NONE, test_file name) of
-            L.FORMAT_NOT_SUPPORTED => [setup_failed_test "Format not supported"]
-          | L.SYSTEM_ERROR err => [setup_failed_test err]
-          | L.PARSE_ERROR err => [setup_failed_test err]
+    fun testsFromManifest name =
+        case L.loadFileAsNewStore (NONE, testFile name) of
+            L.FORMAT_NOT_SUPPORTED => [setupFailedTest "Format not supported"]
+          | L.SYSTEM_ERROR err => [setupFailedTest err]
+          | L.PARSE_ERROR err => [setupFailedTest err]
           | L.OK store =>
             let val n1 = length (S.enumerate store)
-		val tt = tests_from_store store
+		val tt = testsFromStore store
 		val n2 = length tt
 	    in
                 if n1 < 100 
-                then [setup_failed_test
+                then [setupFailedTest
                           ("too few (" ^ (Int.toString n1) ^
                            ") triples in manifest (load problem?)")]
 		else if n2 < 20 
-                then [setup_failed_test
+                then [setupFailedTest
                           ("too few (" ^ (Int.toString n2) ^
                            ") tests found in spec store (load problem?)")]
                 else tt
             end
                 
-    fun tests () = tests_from_manifest "manifest.ttl"
+    fun tests () = testsFromManifest "manifest.ttl"
                      
 end
 

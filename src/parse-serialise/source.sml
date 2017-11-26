@@ -3,11 +3,11 @@ signature SOURCE = sig
 
     type t
 
-    val from_stream : TextIO.instream -> t
+    val fromStream : TextIO.instream -> t
     val peek : t -> word
-    val peek_n : int -> t -> word list
+    val peekN : int -> t -> word list
     val read : t -> word
-    val read_n : int -> t -> word list
+    val readN : int -> t -> word list
     val discard : t -> unit
     val location : t -> string
     val eof : t -> bool
@@ -25,7 +25,7 @@ structure Source :> SOURCE = struct
         colno : int ref
     }
 
-    fun load_line (r : t) =
+    fun loadLine (r : t) =
         (case TextIO.inputLine (#stream r) of
              NONE =>
              (#line r) := WdString.empty
@@ -35,23 +35,23 @@ structure Source :> SOURCE = struct
               (#colno r) := 0);
          r)
 
-    fun from_stream str =
-        load_line {
+    fun fromStream str =
+        loadLine {
             stream = str,
             line = ref WdString.empty,
             lineno = ref 0,
             colno = ref 0
         }
 
-    fun in_range (r : t) =
+    fun inRange (r : t) =
         !(#colno r) < WdString.size (!(#line r))
                   
     fun peek (r : t) =
-        if in_range r
+        if inRange r
         then WdString.sub (!(#line r), !(#colno r))
         else nl
 
-    fun peek_n n (r : t) =
+    fun peekN n (r : t) =
         let val line = !(#line r)
             val len = WdString.size line
             fun peek' 0 c = []
@@ -64,18 +64,18 @@ structure Source :> SOURCE = struct
         end
 
     fun read (r : t) =
-        if in_range r
+        if inRange r
         then let val w = WdString.sub (!(#line r), !(#colno r))
              in
                  ((#colno r) := !(#colno r) + 1;
-                  if not (in_range r) then (load_line r; w)
+                  if not (inRange r) then (loadLine r; w)
                   else w)
              end
         else nl
 
-    fun read_n 0 (r : t) = []
-      | read_n n (r : t) =
-         read r :: (read_n (n-1) r)
+    fun readN 0 (r : t) = []
+      | readN n (r : t) =
+         read r :: (readN (n-1) r)
 
     fun discard r = ignore (read r)
 
@@ -83,6 +83,6 @@ structure Source :> SOURCE = struct
         "line " ^ (Int.toString (!(#lineno r))) ^
         ", column " ^ (Int.toString (!(#colno r) + 1))
 
-    fun eof (r : t) = not (in_range r)
+    fun eof (r : t) = not (inRange r)
 	    
 end

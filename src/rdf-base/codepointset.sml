@@ -2,20 +2,20 @@
 signature CODEPOINT_SET = sig
     type t
 
-    val from_string : string -> t
-    val from_range : word -> word -> t
-    val from_ascii_range : char -> char -> t
-    val from_word : word -> t
+    val fromString : string -> t
+    val fromRange : word -> word -> t
+    val fromAsciiRange : char -> char -> t
+    val fromWord : word -> t
     val union : t list -> t
     val difference : t * t -> t
     val equal : t * t -> bool
 
     val contains : t -> word -> bool
 
-    val to_string : t -> string
-    val to_text : t -> string
+    val toString : t -> string
+    val toText : t -> string
 
-    val with_name : string -> t -> t
+    val withName : string -> t -> t
     val name : t -> string
 end
 			   
@@ -31,22 +31,22 @@ structure CodepointSet :> CODEPOINT_SET = struct
     fun ascii c =
         Word.fromInt (Char.ord c)
 	             
-    fun from_string str =
+    fun fromString str =
         (foldl CP.add' CP.empty (WdString.explodeUtf8 str), "")
 
-    fun from_word w =
+    fun fromWord w =
         (CP.add (CP.empty, w), "")
 	       
-    fun from_range a b =
-        let fun range_aux a b cp =
+    fun fromRange a b =
+        let fun rangeAux a b cp =
 	        if a > b then cp
-	        else range_aux (a + 0w1) b (CP.add (cp, a))
+	        else rangeAux (a + 0w1) b (CP.add (cp, a))
         in
-	    (range_aux a b CP.empty, "")
+	    (rangeAux a b CP.empty, "")
         end
 
-    fun from_ascii_range start finish =
-        from_range (ascii start) (ascii finish)
+    fun fromAsciiRange start finish =
+        fromRange (ascii start) (ascii finish)
 
     fun union (cps : t list) =
         (foldl CP.union CP.empty (map #1 cps), "")
@@ -60,13 +60,13 @@ structure CodepointSet :> CODEPOINT_SET = struct
     fun contains (cp, _) w =
         CP.member (cp, w)
 
-    fun to_string (cp, _) =
+    fun toString (cp, _) =
         WdString.implodeToUtf8 (CP.listItems cp)
 
-    fun to_text (cp, _) =
+    fun toText (cp, _) =
         String.concatWith "," (map Word.toString (CP.listItems cp))
 
-    fun with_name name (cp, _) =
+    fun withName name (cp, _) =
         (cp, name)
 
     fun name (_, name) =

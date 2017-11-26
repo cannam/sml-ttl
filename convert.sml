@@ -7,11 +7,11 @@ fun usage () =
             String.concatWith
                 ", "
                 (map (fn f =>
-                         FileType.name_for_format f ^ " (" ^
+                         FileType.nameForFormat f ^ " (" ^
                          String.concatWith
                              ", "
                              (map (fn e => "*." ^ e)
-                                  (FileType.extensions_for_format f))
+                                  (FileType.extensionsForFormat f))
                          ^ ")")
                      formats)
     in
@@ -22,13 +22,13 @@ fun usage () =
             "If outfile is absent, output will go to stdout " ^
             "and will be in NTriples format.\n" ^
             "\nSupported formats are:\n" ^
-            "  import: " ^ formatDesc (StoreFileLoader.formats_supported) ^
-            "\n  output: " ^ formatDesc (StoreFileExporter.formats_supported) ^
+            "  import: " ^ formatDesc (StoreFileLoader.formatsSupported) ^
+            "\n  output: " ^ formatDesc (StoreFileExporter.formatsSupported) ^
             "\n\n");
         raise Fail "Incorrect arguments specified"
     end
 
-fun convert_stdout iri infile =
+fun convertStdout iri infile =
     let val instream = TextIO.openIn infile
         val outstream = TextIO.stdOut
         open TurtleNTriplesConverter
@@ -40,7 +40,7 @@ fun convert_stdout iri infile =
           | CONVERTED => ()
     end
 
-fun convert_file iri (infile, outfile) =
+fun convertFile iri (infile, outfile) =
     let val instream = TextIO.openIn infile
         val outstream = TextIO.openOut outfile
         open FileExtensionDrivenConverter
@@ -58,16 +58,16 @@ fun convert_file iri (infile, outfile) =
           | CONVERTED => ()
     end
         
-fun handle_args args =
+fun handleArgs args =
     case args of
-        "-v"::rest => (Log.setLogLevel Log.INFO ; handle_args rest)
+        "-v"::rest => (Log.setLogLevel Log.INFO ; handleArgs rest)
       | [infile, outfile] =>
-        convert_file NONE (infile, outfile) (*!!! + base iri *)
+        convertFile NONE (infile, outfile) (*!!! + base iri *)
       | [infile] =>
-        convert_stdout NONE infile (*!!! + base iri *)
+        convertStdout NONE infile (*!!! + base iri *)
       | _ => usage ()
            
 fun main () =
-    handle_args (CommandLine.arguments ())
+    handleArgs (CommandLine.arguments ())
     handle Fail msg => TextIO.output (TextIO.stdErr, "Exception: " ^ msg ^ "\n")
 
