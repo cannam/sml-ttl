@@ -39,12 +39,18 @@ To build and run tests using MLton (slower compiling, faster runtime):
 
 $ make release
 
+Or you can build the bundled programs (e.g. example.sml, convert.sml)
+directly with MLton using the supplied .mlb files:
+
+$ mlton example.mlb
+$ mlton convert.mlb
+
 
 Origin
 ------
 
-Written by Chris Cannam, cannam@all-day-breakfast.com.  This code has
+Written by Chris Cannam, cannam@all-day-breakfast.com. This code has
 something in common with the Yertle library I wrote a couple of years
 previously, which provides a very similar set of features in the Yeti
-language. Both started as language-learning exercises.
+language. Both were initially language-learning exercises.
 
