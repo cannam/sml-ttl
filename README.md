@@ -53,8 +53,8 @@ e.g. from the fork at https://github.com/cannam/smldoc):
 Origin
 ------
 
-Written by Chris Cannam, `cannam@all-day-breakfast.com`. MIT licence,
-see the file `COPYING` for details.
+Written by Chris Cannam, cannam@all-day-breakfast.com. MIT licence,
+see the file COPYING for details.
 
 This code has something in common with the Yertle library I wrote a
 couple of years previously, which provided a very similar set of
