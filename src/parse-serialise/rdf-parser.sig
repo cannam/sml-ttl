@@ -31,12 +31,14 @@ end
 (** Parser that reads from a text stream and emits prefixes and
     triples as it sees them. Only some RDF serialisation formats can
     be parsed in this way. When the parse function returns some
-    output, it is accompanied by a thunk that can be invoked to 
+    output, it is accompanied by a thunk that can be called to
+    continue parsing, until the end of the stream is reached.
 
-    Note that an RDF_INCREMENTAL_PARSER parses a single format;
-    different formats would have different parser structures, and
-    distinguishing between them must be handled at a higher level. So
-    there is no means to tell the parser what format to parse.
+    Note that any given RDF_INCREMENTAL_PARSER implementation parses a
+    single format; different formats would have different parser
+    structures, and distinguishing between them must be handled at a
+    higher level. So there is no means to tell the parser what format
+    to parse.
 *)
 signature RDF_INCREMENTAL_PARSER = sig
     

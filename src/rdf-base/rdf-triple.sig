@@ -5,6 +5,7 @@ signature RDF_TRIPLE = sig
     datatype node = datatype RdfNode.node
     type triple = node * node * node
 
+    (*!!! why is this here? just so as to be able to print it? why isn't it associated with the prefix table? *)
     type prefix = string * iri  (* prefix, expansion *)
 
     (* Compare two triples rapidly and consistently within a given
