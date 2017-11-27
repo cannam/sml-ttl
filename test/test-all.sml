@@ -10,9 +10,8 @@ fun runTestSuite (suiteName, tests) =
                 if (test ()
                     handle Fail msg => reportException testName msg
                          | IO.Io { name, ... } =>
-                           (*!!! can we get more info from Exception? *)
                            reportException testName ("IO failure: " ^ name)
-                         | ex => reportException testName "Exception caught")
+                         | ex => reportException testName (exnMessage ex))
                 then NONE
                 else (print ("*** Test \"" ^ testName ^ "\" failed\n");
                       SOME testName))
@@ -25,10 +24,11 @@ fun runTestSuite (suiteName, tests) =
                    (Int.toString (n - m)) ^ "/" ^ (Int.toString n) ^
                    " tests passed\n");
             if m > 0
-            then print (suiteName ^
-                        ": Failed tests [" ^ (Int.toString m) ^ "]: " ^
-                        (String.concatWith " " failed) ^ "\n")
-            else ()
+            then (print (suiteName ^
+                         ": Failed tests [" ^ (Int.toString m) ^ "]: " ^
+                         (String.concatWith " " failed) ^ "\n");
+                  OS.Process.failure)
+            else OS.Process.success
         end
             
 val allTests = [
@@ -52,11 +52,19 @@ fun usage () =
 fun handleArgs args =
     case args of
         "-v"::rest => (Log.setLogLevel Log.INFO ; handleArgs rest)
-      | [] => app runTestSuite allTests
+      | [] => foldl (fn (test, acc) =>
+                        let val code = runTestSuite test
+                        in
+                            if OS.Process.isSuccess code
+                            then acc
+                            else code
+                        end)
+                    OS.Process.success
+                    allTests
       | _ => usage ()
            
 fun main () =
-    handleArgs (CommandLine.arguments ())
+    OS.Process.exit (handleArgs (CommandLine.arguments ()))
     handle Fail msg =>
            (TextIO.output (TextIO.stdErr, "Exception: " ^ msg ^ "\n");
             OS.Process.exit OS.Process.failure)
