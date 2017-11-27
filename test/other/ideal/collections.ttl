@@ -1,0 +1,6 @@
+@prefix : <http://example.org/foo> .
+
+:subject :predicate ( :a :b :c ) .
+
+:subject :predicate2 () .
+

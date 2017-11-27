@@ -1,0 +1,3 @@
+@prefix dbresource: <http://dbpedia.org/resource/> .
+
+dbresource:101st_Airborne_Division <http://dbpedia.org/ontology/battle> dbresource:War_in_Afghanistan_%282001%E2%80%93present%29 .

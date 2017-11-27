@@ -53,7 +53,7 @@ functor TestTurtleParserFn (P: RDF_PARSER) : TESTS = struct
                 (f, fn () => goodFile (testFileDir ^ "/" ^ f ^ ".ttl")))
             [ "bnode-nested-2", "bnode-nested", "bnode", "boolean",
               "collections", "example1", "example2", "example3", "goblin",
-              "iris", "numbers", "quoted" ]
+              "iris", "numbers", "quoted", "quoted2" ]
 
     fun iriTriple (a,b,c) = (IRI (Iri.fromString a),
                               IRI (Iri.fromString b),
