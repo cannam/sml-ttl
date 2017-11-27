@@ -49,6 +49,7 @@ in the necessary dependencies (which the Makefile would do for you):
 To extract the API documentation (must have `smldoc` installed,
 e.g. from the fork at https://github.com/cannam/smldoc):
 
+    $ ./vext install
     $ make doc
 
 The code has been tested with a number of compilers on various
