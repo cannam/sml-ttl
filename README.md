@@ -51,6 +51,12 @@ e.g. from the fork at https://github.com/cannam/smldoc):
 
     $ make doc
 
+The code has been tested with a number of compilers on various
+platforms:
+
+* Linux and macOS CI build using Poly/ML, MLton, and SML/NJ: [![Build Status](https://travis-ci.org/cannam/sml-ttl.svg?branch=master)](https://travis-ci.org/cannam/sml-ttl)
+* Windows CI build using SML/NJ: [![Build status](https://ci.appveyor.com/api/projects/status/bgelsc41d3k7i9ks?svg=true)](https://ci.appveyor.com/project/cannam/sml-ttl)
+
 
 Origin
 ------
