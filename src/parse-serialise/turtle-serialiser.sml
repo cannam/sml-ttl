@@ -128,9 +128,10 @@ functor TurtleSerialiserFn (ARG : sig
             serialise quote;
             serialise (Encode.encodeStringExcept
                            (if shouldUseLongString lit
-                            then TurtleCodepoints.longStringDoubleExcluded
-                            else TurtleCodepoints.shortStringDoubleExcluded,
-                            Encode.backslashEncode)
+                            then (TurtleCodepoints.longStringDoubleEscaped,
+                                  Encode.backslashEncode)
+                            else (TurtleCodepoints.shortStringDoubleExcluded,
+                                  Encode.asciiEncode))
                            (#value lit));
             serialise quote;
             if #lang lit = "" then ()

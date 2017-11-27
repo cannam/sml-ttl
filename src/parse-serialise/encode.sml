@@ -50,8 +50,10 @@ structure Encode :> ENCODE = struct
       | asciiEncode 0wx5C = WdString.explodeUtf8 "\\\\"
       | asciiEncode w = uEncode w
 
-    fun backslashEncode w =
-        [Word.fromInt (Char.ord #"\\"), w]
+    fun backslashEncode 0wx09 = WdString.explodeUtf8 "\\t"
+      | backslashEncode 0wx0A = WdString.explodeUtf8 "\\n"
+      | backslashEncode 0wx0D = WdString.explodeUtf8 "\\r"
+      | backslashEncode w = [Word.fromInt (Char.ord #"\\"), w]
                                   
     fun encodeW tester (cps, encodeFn) token =
         let fun encode (w, acc) =

@@ -200,6 +200,14 @@ structure TurtleCodepoints = struct
 	withName "syntactic character in long double-quoted string"
 		  (fromString "\"\\")
 
+    val longStringSingleEscaped =
+	withName "character best escaped in long single-quoted string"
+		  (fromString "'\r\t\\")
+
+    val longStringDoubleEscaped =
+	withName "character best escaped in long double-quoted string"
+		  (fromString "\"\r\t\\")
+
     val stringEscape =
 	withName "character that can be escaped in string"
 		  (fromString "tbnrf\\\"'")
