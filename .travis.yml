@@ -1,0 +1,29 @@
+dist:
+  - trusty
+
+language:
+  - cpp
+
+sudo:
+  - false
+
+os:
+  - linux
+  - osx
+
+addons:
+  apt:
+    packages:
+      - mlton
+      - smlnj
+      - libsmlnj-smlnj
+      - polyml
+
+before_install:
+  - if [[ "$TRAVIS_OS_NAME" = "osx" ]] ; then brew update ; brew install mlton smlnj polyml ; fi
+      
+script:
+  - make
+  - make release
+  - ./ext/sml-buildscripts/smlrun test/tests.mlb 
+

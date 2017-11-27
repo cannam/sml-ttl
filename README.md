@@ -28,7 +28,7 @@ To build
 --------
 
 A Makefile is provided. Some additional SML libraries are pulled in at
-build time using the Vext tool included.
+build time using [Vext](https://github.com/cannam/vext).
 
 To build and run tests using Poly/ML:
 
@@ -58,8 +58,8 @@ Origin
 Written by Chris Cannam, cannam@all-day-breakfast.com. MIT licence,
 see the file COPYING for details.
 
-This code has something in common with the Yertle library I wrote a
-couple of years previously, which provided a very similar set of
-features in the Yeti language. Both were initially language-learning
-exercises.
+This code has something in common with the
+[Yertle](https://bitbucket.org/cannam/yertle) library I wrote a couple
+of years previously, which provided a very similar set of features in
+the Yeti language. Both were initially language-learning exercises.
 
