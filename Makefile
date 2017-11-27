@@ -3,7 +3,7 @@ SCRIPTS	:= ext/sml-buildscripts
 
 BUILDER	:= ${SCRIPTS}/polybuild
 
-all:	convert example test/tests
+all:	ext convert example test/tests
 
 convert:	convert.mlb d/convert.deps 
 	${BUILDER} $<
@@ -37,18 +37,18 @@ d/tests.deps:	test/tests.mlb $(MLBS)
 clean:
 	rm -f convert example test/tests d/*
 
-coverage:
+coverage:	ext
 	${SCRIPTS}/mlb-coverage test/tests.mlb
 
 .PHONY:	doc
-doc:
+doc:	ext
 	mkdir -p doc
 	ext/sml-buildscripts/mlb-expand src/sml-ttl.mlb | grep -v '^ext' > .docfiles
 	smldoc --nowarn -d doc -a .docfiles
 
 MLTON_ARGS	:= -runtime 'copy-generational-ratio 10.0' -runtime 'ram-slop 0.8'
 
-release:
+release:	ext
 	mlton $(MLTON_ARGS) convert.mlb
 	mlton $(MLTON_ARGS) example.mlb
 	mlton $(MLTON_ARGS) test/tests.mlb
