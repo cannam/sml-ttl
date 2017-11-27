@@ -38,7 +38,8 @@ val allTests = [
     (TestStore.name, TestStore.tests ()),
     (TestCollection.name, TestCollection.tests ()),
     (TestTurtleParser.name, TestTurtleParser.tests ()),
-    (TestTurtleSpec.name, TestTurtleSpec.tests ())
+    (TestTurtleSpec.name, TestTurtleSpec.tests ()),
+    (TestIdealConversion.name, TestIdealConversion.tests ())
 ]
 	 
 fun usage () =

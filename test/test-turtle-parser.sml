@@ -1,5 +1,5 @@
 
-functor TestTurtleParserFn (P: RDF_PARSER) : TESTS = struct
+functor TestTurtleParserFn (P: RDF_PARSER) :> TESTS = struct
 
     open TestSupport RdfTriple Prefix
 
