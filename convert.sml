@@ -69,5 +69,8 @@ fun handleArgs args =
            
 fun main () =
     handleArgs (CommandLine.arguments ())
-    handle Fail msg => TextIO.output (TextIO.stdErr, "Exception: " ^ msg ^ "\n")
+    handle Fail msg =>
+           (TextIO.output (TextIO.stdErr, "Exception: " ^ msg ^ "\n");
+            OS.Process.exit OS.Process.failure)
+
 
