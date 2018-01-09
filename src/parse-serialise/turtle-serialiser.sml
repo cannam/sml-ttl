@@ -42,6 +42,7 @@ functor TurtleSerialiserFn (ARG : sig
     }
 
     type ser_props = {
+        hasAnonymousSubject : bool,
         hasAnonymousObject : bool,
         hasCollectionObject : bool
     }        
@@ -217,13 +218,18 @@ functor TurtleSerialiserFn (ARG : sig
           prefixes = #prefixes d,
           matcher = #matcher d }
                  
+    and serialiseSubject (subj, d : ser_data, p : ser_props) =
+        if #hasAnonymousSubject p
+        then write (d, "[]")
+        else serialiseNodes (d, p) [subj]
+                 
     and serialiseSubjectPredicate (subj, pred, d : ser_data, p : ser_props) =
         case #subject d of
             NONE =>
             (* first triple in graph *)
             indented 1 (serialiseNodes
-                            (write (d, " "), p)
-                            [subj, pred])
+                            (write (serialiseSubject (subj, d, p), " "), p)
+                            [pred])
           | SOME currentSubj =>
             if currentSubj = subj then
                 case #predicate d of
@@ -234,9 +240,13 @@ functor TurtleSerialiserFn (ARG : sig
                     if currentPred = pred then write (d, ",")
                     else serialiseNodes (write (d, " ;\n"), p) [pred]
             else
-                indented 1 (serialiseNodes
-                                (indented (~1) (write (d, " .\n\n")), p)
-                                [subj, pred])
+                let val d = indented (~1) (write (d, " .\n\n"))
+                in
+                    indented
+                        1 (serialiseNodes
+                               (write (serialiseSubject (subj, d, p), " "), p)
+                               [pred])
+                end
 
     and serialiseTripleParts ((subj, pred, obj), d : ser_data, p : ser_props) =
         let val d = serialiseSubjectPredicate (subj, pred, d, p)
@@ -254,9 +264,17 @@ functor TurtleSerialiserFn (ARG : sig
 
     and serialiseTripleMaybe (triple, d) =
         let
+            fun hasBlankSubject (BLANK _, _, _) = true
+              | hasBlankSubject _ = false
+
             fun hasBlankObject (_, _, BLANK _) = true
               | hasBlankObject _ = false
        
+            fun isBlankSubjectUnique (d : ser_data, t) =
+                Matcher.match (#matcher d, (SOME (#1 t), NONE, NONE)) = [t]
+                andalso
+                Matcher.match (#matcher d, (NONE, NONE, SOME (#1 t))) = []
+
             fun isBlankObjectUnique (d : ser_data, t) =
                 Matcher.match (#matcher d, (NONE, NONE, SOME (#3 t))) = [t]
 
@@ -267,6 +285,9 @@ functor TurtleSerialiserFn (ARG : sig
 
             fun isBlankNodeUnwritten args = not (wasBlankNodeWritten args)
 
+            val hasAnonymousSubject = hasBlankSubject triple andalso
+                                      isBlankSubjectUnique (d, triple)
+                                                            
             val hasAnonymousObject = hasBlankObject triple andalso
                                      isBlankObjectUnique (d, triple) andalso
                                      isBlankNodeUnwritten (d, #3 triple)
@@ -274,7 +295,6 @@ functor TurtleSerialiserFn (ARG : sig
             val hasCollectionObject = hasAnonymousObject andalso
                                       CollectionGatherer.isCollectionNode
                                           (#matcher d, #3 triple)
-                                                             
         in
             if wasWritten (triple, d) then d
             else
@@ -288,7 +308,8 @@ functor TurtleSerialiserFn (ARG : sig
                        written = Triples.add (#written d, triple),
                        prefixes = #prefixes d,
                        matcher = #matcher d },
-                     { hasAnonymousObject = hasAnonymousObject,
+                     { hasAnonymousSubject = hasAnonymousSubject,
+                       hasAnonymousObject = hasAnonymousObject,
                        hasCollectionObject = hasCollectionObject })
         end
                         
