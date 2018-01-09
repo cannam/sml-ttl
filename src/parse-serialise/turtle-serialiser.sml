@@ -42,8 +42,8 @@ functor TurtleSerialiserFn (ARG : sig
     }
 
     type ser_props = {
-        isAnon   : bool,
-        isColl   : bool
+        hasAnonymousObject : bool,
+        hasCollectionObject : bool
     }        
 
     fun wasWritten (triple, d : ser_data) = Triples.member (#written d, triple)
@@ -74,10 +74,12 @@ functor TurtleSerialiserFn (ARG : sig
         if indent < 0 then ""
         else String.concatWith "" (List.tabulate (indent * 4, fn _ => " "))
 
+    fun write (d : ser_data, str) =
+        (TextIO.output (#stream d, str); d)
+                               
     fun writeIndent (d : ser_data) =
-        (TextIO.output (#stream d, stringForIndent (#indent d));
-         d)
-            
+        write (d, stringForIndent (#indent d))
+              
     fun shouldUseLongString (lit : RdfNode.literal) =
         String.size (#value lit) > 80 (* arbitrary, avoid scanning v long strings *)
         orelse
@@ -87,90 +89,82 @@ functor TurtleSerialiserFn (ARG : sig
                          w)
             (WdString.explodeUtf8 (#value lit))
                           
-    fun serialiseNodes (d, pr) nodes =
+    fun serialiseNodes (d : ser_data, p : ser_props) nodes =
         case foldl (fn (n, (d, sep)) =>
-                       (TextIO.output (#stream d, sep);
-                        serialiseAbbreviated (n, d);
-                        (d, " ")))
-                   ((writeIndent d), "")
+                       (serialiseAbbreviated (n, write (d, sep)), " "))
+                   (writeIndent d, "")
                    nodes
          of (d, _) => d
 
-    and serialiseAnonObject (obj, d) =
+    and serialiseAnonymousObject (obj, d) =
         let val triples = Matcher.match (#matcher d, (SOME obj, NONE, NONE))
+            val d = write (d, "[\n")
+            val d =
+                indented (~1)
+                         (serialiseTriples {
+                               stream = #stream d,
+                               base = #base d,
+                               subject = SOME obj,
+                               predicate = NONE,
+                               indent = 1 + #indent d,
+                               written = #written d,
+                               prefixes = #prefixes d,
+                               matcher = #matcher d
+                           } triples)
         in
-            TextIO.output (#stream d, "[\n");
-            let val d' =
-                    indented (~1)
-                             (serialiseTriples {
-                                   stream = #stream d,
-                                   base = #base d,
-                                   subject = SOME obj,
-                                   predicate = NONE,
-                                   indent = 1 + #indent d,
-                                   written = #written d,
-                                   prefixes = #prefixes d,
-                                   matcher = #matcher d
-                               } triples)
-            in
-                TextIO.output (#stream d', "\n");
-                writeIndent d';
-                TextIO.output (#stream d', "]");
-                d'
-            end
+            write (writeIndent (write (d, "\n")), "]")
         end
 
     and serialiseStringLiteral (lit, d) =
         let val long = shouldUseLongString lit
             val quote = if long then "\"\"\"" else "\""
-            fun serialise s = TextIO.output (#stream d, s)
+            val d = write (write (d, quote),
+                           Encode.encodeStringExcept
+                               (if shouldUseLongString lit
+                                then (TurtleCodepoints.longStringDoubleEscaped,
+                                      Encode.backslashEncode)
+                                else (TurtleCodepoints.shortStringDoubleExcluded,
+                                      Encode.asciiEncode))
+                               (#value lit))
+            val d = write (d, quote)
+            val d = if #lang lit = "" then d
+                    else write (d, "@" ^ (#lang lit))
+            val d = if Iri.isEmpty (#dtype lit) then d
+                    else write (d, "^^" ^ stringOfAbbrIri (#dtype lit, d))
         in
-            serialise quote;
-            serialise (Encode.encodeStringExcept
-                           (if shouldUseLongString lit
-                            then (TurtleCodepoints.longStringDoubleEscaped,
-                                  Encode.backslashEncode)
-                            else (TurtleCodepoints.shortStringDoubleExcluded,
-                                  Encode.asciiEncode))
-                           (#value lit));
-            serialise quote;
-            if #lang lit = "" then ()
-            else serialise ("@" ^ (#lang lit));
-            if Iri.isEmpty (#dtype lit) then ()
-            else serialise ("^^" ^ stringOfAbbrIri (#dtype lit, d));
             d
         end
 
     and serialiseBooleanLiteral (lit, d) =
         case #value lit of
-            "true" => (TextIO.output (#stream d, "true"); d)
-          | "false" => (TextIO.output (#stream d, "false"); d)
+            "true" => write (d, "true")
+          | "false" => write (d, "false")
           | _ => serialiseStringLiteral (lit, d)
 
     and serialiseIntegerLiteral (lit, d) =
         if List.find (fn c => not (Char.isDigit c))
                      (String.explode (#value lit)) = NONE
-        then (TextIO.output (#stream d, #value lit); d)
+        then write (d, #value lit)
         else serialiseStringLiteral (lit, d)
                                           
-    and serialiseAbbreviated (IRI iri, d : ser_data) =
-        (TextIO.output (#stream d, stringOfAbbrIri (iri, d)); d)
-      | serialiseAbbreviated (BLANK n, d : ser_data) =
-        (TextIO.output (#stream d, "_:blank" ^ (Int.toString n)); d)
-      | serialiseAbbreviated (LITERAL (lit as { dtype, ... }), d : ser_data) =
-        if dtype = RdfStandardIRIs.iriTypeBoolean
-        then serialiseBooleanLiteral (lit, d)
-        else if dtype = RdfStandardIRIs.iriTypeInteger
-        then serialiseIntegerLiteral (lit, d)
-        (*!!! + double, decimal *)
-        else serialiseStringLiteral (lit, d)
+    and serialiseAbbreviated (node, d : ser_data) : ser_data =
+        case node of
+            IRI iri => write (d, stringOfAbbrIri (iri, d))
+          | BLANK n => write (d, "_:blank" ^ (Int.toString n))
+          | LITERAL (lit as { dtype, ... }) =>
+            if dtype = RdfStandardIRIs.iriTypeBoolean
+            then serialiseBooleanLiteral (lit, d)
+            else if dtype = RdfStandardIRIs.iriTypeInteger
+            then serialiseIntegerLiteral (lit, d)
+            (*!!! + double, decimal *)
+            else serialiseStringLiteral (lit, d)
 
-    and serialiseObject (obj, d, pr : ser_props) : ser_data =
-        if (#isAnon pr)
-        then (TextIO.output (#stream d, " "); serialiseAnonObject (obj, d))
-        else (TextIO.output (#stream d, " "); serialiseAbbreviated (obj, d))
+    and serialiseObject (obj, d, p : ser_props) : ser_data =
+        if (#hasAnonymousObject p)
+        then serialiseAnonymousObject (obj, write (d, " "))
+        else serialiseAbbreviated (obj, write (d, " "))
 
-    and serialiseCollection (obj, d, pr) =
+    and serialiseCollection (obj, d, p) =
         let val triples = CollectionGatherer.triplesOfCollection
                               (#matcher d, obj)
             val anyWritten = List.exists (fn t => wasWritten (t, d)) triples
@@ -181,9 +175,9 @@ functor TurtleSerialiserFn (ARG : sig
                    its metanodes have already been written. This could be
                    because the head of the collection is a subject node
                    rather than an object. *)
-                serialiseObject (obj, d, pr)
+                serialiseObject (obj, d, p)
             else
-                let val _ = TextIO.output (#stream d, " (");
+                let val d = write (d, " (")
                     val d = 
                         foldl (fn (t as (_, pred, obj) : RdfTriple.triple, d) =>
                                   let val d = 
@@ -204,15 +198,14 @@ functor TurtleSerialiserFn (ARG : sig
                                   end)
                               d triples
                 in
-                    TextIO.output (#stream d, " )");
-                    d
+                    write (d, " )")
                 end
         end
                  
-    and serialiseObjectOrCollection (obj, d, pr : ser_props) =
-        if (#isColl pr)
-        then serialiseCollection (obj, d, pr)
-        else serialiseObject (obj, d, pr)
+    and serialiseObjectOrCollection (obj, d, p : ser_props) =
+        if (#hasCollectionObject p)
+        then serialiseCollection (obj, d, p)
+        else serialiseObject (obj, d, p)
 
     and indented n (d : ser_data) =
         { stream = #stream d,
@@ -223,33 +216,31 @@ functor TurtleSerialiserFn (ARG : sig
           written = #written d,
           prefixes = #prefixes d,
           matcher = #matcher d }
-                              
-    and serialiseSubjectPredicate (subj, pred, d : ser_data, pr) =
+                 
+    and serialiseSubjectPredicate (subj, pred, d : ser_data, p : ser_props) =
         case #subject d of
             NONE =>
             (* first triple in graph *)
-            (serialiseNodes (d, pr) [subj, pred];
-             indented 1 d)
+            indented 1 (serialiseNodes
+                            (write (d, " "), p)
+                            [subj, pred])
           | SOME currentSubj =>
             if currentSubj = subj then
                 case #predicate d of
                     NONE =>
-                    (* first triple in bnode [] syntax *)
-                    serialiseNodes (d, pr) [pred]
+                    (* first triple in bnode [...] syntax *)
+                    serialiseNodes (d, p) [pred]
                   | SOME currentPred =>
-                    if currentPred = pred then
-                        (TextIO.output (#stream d, ",");
-                         d)
-                    else
-                        (TextIO.output (#stream d, " ;\n");
-                         serialiseNodes (d, pr) [pred])
+                    if currentPred = pred then write (d, ",")
+                    else serialiseNodes (write (d, " ;\n"), p) [pred]
             else
-                (TextIO.output (#stream d, " .\n\n");
-                 indented 1 (serialiseNodes (indented (~1) d, pr) [subj, pred]))
+                indented 1 (serialiseNodes
+                                (indented (~1) (write (d, " .\n\n")), p)
+                                [subj, pred])
 
-    and serialiseTripleParts ((subj, pred, obj), d : ser_data, pr) =
-        let val d = serialiseSubjectPredicate (subj, pred, d, pr)
-            val d = serialiseObjectOrCollection (obj, d, pr)
+    and serialiseTripleParts ((subj, pred, obj), d : ser_data, p : ser_props) =
+        let val d = serialiseSubjectPredicate (subj, pred, d, p)
+            val d = serialiseObjectOrCollection (obj, d, p)
         in
             { stream = #stream d,
               base = #base d,
@@ -265,24 +256,24 @@ functor TurtleSerialiserFn (ARG : sig
         let
             fun hasBlankObject (_, _, BLANK _) = true
               | hasBlankObject _ = false
-
+       
             fun isBlankObjectUnique (d : ser_data, t) =
                 Matcher.match (#matcher d, (NONE, NONE, SOME (#3 t))) = [t]
 
-            fun wasBlankObjectWritten (d : ser_data, (_,_,obj)) =
+            fun wasBlankNodeWritten (d : ser_data, node) =
                 List.exists
                     (fn x => wasWritten (x, d))
-                    (Matcher.match (#matcher d, (SOME obj, NONE, NONE)))
+                    (Matcher.match (#matcher d, (SOME node, NONE, NONE)))
 
-            fun isBlankObjectUnwritten args = not (wasBlankObjectWritten args)
+            fun isBlankNodeUnwritten args = not (wasBlankNodeWritten args)
 
-            val isAnon = hasBlankObject triple andalso
-                          isBlankObjectUnique (d, triple) andalso
-                          isBlankObjectUnwritten (d, triple)
+            val hasAnonymousObject = hasBlankObject triple andalso
+                                     isBlankObjectUnique (d, triple) andalso
+                                     isBlankNodeUnwritten (d, #3 triple)
 
-            val isColl = isAnon andalso
-                          CollectionGatherer.isCollectionNode
-                              (#matcher d, #3 triple)
+            val hasCollectionObject = hasAnonymousObject andalso
+                                      CollectionGatherer.isCollectionNode
+                                          (#matcher d, #3 triple)
                                                              
         in
             if wasWritten (triple, d) then d
@@ -297,8 +288,8 @@ functor TurtleSerialiserFn (ARG : sig
                        written = Triples.add (#written d, triple),
                        prefixes = #prefixes d,
                        matcher = #matcher d },
-                     { isAnon = isAnon,
-                       isColl = isColl })
+                     { hasAnonymousObject = hasAnonymousObject,
+                       hasCollectionObject = hasCollectionObject })
         end
                         
     and serialiseTriples data triples =
