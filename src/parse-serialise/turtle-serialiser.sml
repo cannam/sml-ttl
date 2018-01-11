@@ -261,12 +261,12 @@ functor TurtleSerialiserFn (ARG : sig
             fun hasBlankObject (_, _, BLANK _) = true
               | hasBlankObject _ = false
        
-            fun isBlankOnlyAsSubject (d : ser_data, t) =
+            fun isBlankOnlyAsSubject (d : ser_data, t : RdfTriple.triple) =
                 Matcher.match (#matcher d, (NONE, NONE, SOME (#1 t))) = []
                 andalso
                 Matcher.match (#matcher d, (NONE, SOME (#1 t), NONE)) = []
 
-            fun isBlankObjectUnique (d : ser_data, t) =
+            fun isBlankObjectUnique (d : ser_data, t : RdfTriple.triple) =
                 Matcher.match (#matcher d, (NONE, NONE, SOME (#3 t))) = [t]
 
             fun wasBlankNodeWritten (d : ser_data, node) =
