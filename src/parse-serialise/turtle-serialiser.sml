@@ -15,15 +15,6 @@ functor TurtleSerialiserFn (ARG : sig
     structure PrefixTable = ARG.P
     structure Matcher = ARG.M
     structure CollectionGatherer = CollectionGathererFn(Matcher)
-             
-    fun sortedBySubject triples = (* with iri-subject triples before blanks *)
-        let fun greater (n1, n2) =
-                RdfNode.compare (n1, n2) = GREATER
-        in
-            ListMergeSort.sort
-                (fn ((s1, _, _), (s2, _, _)) => greater (s1, s2))
-                triples
-        end
 
     structure Triples = RedBlackSetFn (struct
 			                type ord_key = RdfTriple.triple
@@ -319,7 +310,8 @@ functor TurtleSerialiserFn (ARG : sig
               (* This sorts by internal key, which has the nice
                  property that if we read in a series of triples and
                  then write them out again we will usually get the
-                 same ordering in the output as in the input *)
+                 same ordering in the output as the input. Iri-subject
+                 triples get sorted before blanks. *)
               (ListMergeSort.sort
                    (fn args => RdfTriple.compare args = GREATER)
                    triples)
