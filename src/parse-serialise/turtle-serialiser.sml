@@ -270,10 +270,10 @@ functor TurtleSerialiserFn (ARG : sig
             fun hasBlankObject (_, _, BLANK _) = true
               | hasBlankObject _ = false
        
-            fun isBlankSubjectUnique (d : ser_data, t) =
-                Matcher.match (#matcher d, (SOME (#1 t), NONE, NONE)) = [t]
-                andalso
+            fun isBlankOnlyAsSubject (d : ser_data, t) =
                 Matcher.match (#matcher d, (NONE, NONE, SOME (#1 t))) = []
+                andalso
+                Matcher.match (#matcher d, (NONE, SOME (#1 t), NONE)) = []
 
             fun isBlankObjectUnique (d : ser_data, t) =
                 Matcher.match (#matcher d, (NONE, NONE, SOME (#3 t))) = [t]
@@ -286,7 +286,7 @@ functor TurtleSerialiserFn (ARG : sig
             fun isBlankNodeUnwritten args = not (wasBlankNodeWritten args)
 
             val hasAnonymousSubject = hasBlankSubject triple andalso
-                                      isBlankSubjectUnique (d, triple)
+                                      isBlankOnlyAsSubject (d, triple)
                                                             
             val hasAnonymousObject = hasBlankObject triple andalso
                                      isBlankObjectUnique (d, triple) andalso
@@ -314,7 +314,15 @@ functor TurtleSerialiserFn (ARG : sig
         end
                         
     and serialiseTriples data triples =
-        foldl (fn (t, d) => serialiseTripleMaybe (t, d)) data triples
+        foldl (fn (t, d) => serialiseTripleMaybe (t, d))
+              data
+              (* This sorts by internal key, which has the nice
+                 property that if we read in a series of triples and
+                 then write them out again we will usually get the
+                 same ordering in the output as in the input *)
+              (ListMergeSort.sort
+                   (fn args => RdfTriple.compare args = GREATER)
+                   triples)
         
     and serialisePrefixes stream prefixes =
         foldl (fn ((pfx, iri), t) =>
