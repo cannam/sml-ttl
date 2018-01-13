@@ -12,6 +12,7 @@ functor CollectionGathererFn (M : MATCHER) :> COLLECTION_GATHERER
     val nodeNil   = RdfNode.IRI RdfStandardIRIs.iriRdfNil
                                     
     fun isCollectionNode (matcher, node) =
+        node = nodeNil orelse
         let val pat = (SOME node, SOME nodeRest, NONE)
             val result = not (null (M.match (matcher, pat)))
         in

@@ -58,6 +58,7 @@ functor TurtleSerialiserFn (ARG : sig
             
     fun stringOfAbbrIri (iri, d : ser_data) =
 	if iri = RdfStandardIRIs.iriRdfType then "a"
+        else if iri = RdfStandardIRIs.iriRdfNil then "()"
 	else case PrefixTable.abbreviate (#prefixes d, iri) of
                  SOME (ns, rest) => ns ^ ":" ^ encodeLocal rest
                | NONE => "<" ^ (encodeIri (#base d) iri) ^ ">"
@@ -172,15 +173,16 @@ functor TurtleSerialiserFn (ARG : sig
                 let val d = write (d, " (")
                     val d = 
                         foldl (fn (t as (_, pred, obj) : RdfTriple.triple, d) =>
-                                  let val d = 
-                                          { stream = #stream d,
-                                            base = #base d,
-                                            subject = #subject d,
-                                            predicate = #predicate d,
-                                            indent = #indent d,
-                                            written = Triples.add (#written d, t),
-                                            prefixes = #prefixes d,
-                                            matcher = #matcher d}
+                                  let val d = {
+                                          stream = #stream d,
+                                          base = #base d,
+                                          subject = #subject d,
+                                          predicate = #predicate d,
+                                          indent = #indent d,
+                                          written = Triples.add (#written d, t),
+                                          prefixes = #prefixes d,
+                                          matcher = #matcher d
+                                      }
                                   in
                                       if pred = IRI RdfStandardIRIs.iriRdfFirst
                                       then
@@ -282,7 +284,7 @@ functor TurtleSerialiserFn (ARG : sig
             val hasAnonymousObject = hasBlankObject triple andalso
                                      isBlankObjectUnique (d, triple) andalso
                                      isBlankNodeUnwritten (d, #3 triple)
-
+                                                          
             val hasCollectionObject = hasAnonymousObject andalso
                                       CollectionGatherer.isCollectionNode
                                           (#matcher d, #3 triple)
