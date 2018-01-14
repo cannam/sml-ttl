@@ -21,8 +21,12 @@ structure NTriplesSerialiser :> RDF_INCREMENTAL_SERIALISER = struct
       | stringOfNode (RdfNode.BLANK n) = "_:blank" ^ (Int.toString n)
       | stringOfNode (RdfNode.LITERAL lit) =
 	"\"" ^ (encodeLiteralValue (#value lit)) ^ "\"" ^
-        (if #lang lit = "" then "" else "@" ^ (#lang lit)) ^
-        (if Iri.isEmpty (#dtype lit) then ""
+        (if #lang lit = ""
+         then ""
+         else "@" ^ (#lang lit)) ^
+        (if Iri.isEmpty (#dtype lit)
+            orelse (#dtype lit) = RdfStandardIRIs.iriTypeString
+         then ""
 	 else "^^" ^ (stringOfNode (RdfNode.IRI (#dtype lit))))
 	    
     (** Add a series of triples to the output. *)

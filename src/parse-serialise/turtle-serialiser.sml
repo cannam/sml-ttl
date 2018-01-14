@@ -122,7 +122,9 @@ functor TurtleSerialiserFn (ARG : sig
             val d = write (d, quote)
             val d = if #lang lit = "" then d
                     else write (d, "@" ^ (#lang lit))
-            val d = if Iri.isEmpty (#dtype lit) then d
+            val d = if Iri.isEmpty (#dtype lit)
+                       orelse (#dtype lit) = RdfStandardIRIs.iriTypeString 
+                    then d
                     else write (d, "^^" ^ stringOfAbbrIri (#dtype lit, d))
         in
             d
