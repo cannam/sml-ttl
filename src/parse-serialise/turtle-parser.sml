@@ -730,41 +730,59 @@ structure TurtleIncrementalParser : RDF_INCREMENTAL_PARSER = struct
 	then OK (d, SOME (newBooleanLiteral false))
 	else ERROR "expected \"true\" or \"false\""
 
-    and parse_datatype d : parse_result =
+    and parseDatatype d : parse_result =
         matchParseSeq d [
 	    requireTurtle C_CARET,
 	    requireTurtle C_CARET
 	] (fn (d, _) => parseIri d)
-                   
+
+    and annotateRdfLiteral (d : parse_data, lit : RdfNode.literal) :
+        parse_result =
+        case peekTurtle (d, []) of
+            C_AT =>
+            matchParseSeq d [
+                matchLanguageTag
+            ] (fn (d, tag) =>
+                  let val lang = stringOfToken tag
+                  in
+                      if #lang lit = "" orelse #lang lit = lang
+                      then annotateRdfLiteral (d, {
+                                                  value = #value lit,
+					          lang = lang,
+                                                  dtype = #dtype lit
+                                              })
+                      else ERROR "contradictory languages specified"
+                  end)
+          | C_CARET =>
+            (case parseDatatype d of
+                 ERROR e => ERROR e
+               | OK (d, SOME (IRI dtype)) =>
+                 if #dtype lit = Iri.empty orelse #dtype lit = dtype
+                 then annotateRdfLiteral (d, {
+                                             value = #value lit,
+                                             lang = #lang lit,
+                                             dtype = dtype
+                                         })
+                 else ERROR "contradictory datatypes specified"
+               | other => ERROR "internal error")
+          | other =>
+            OK (d, SOME (LITERAL {
+                              value = #value lit,
+                              lang = #lang lit,
+                              dtype = if #dtype lit = Iri.empty
+                                      then RdfStandardIRIs.iriTypeString
+                                      else #dtype lit
+               }))
+                      
     and parseRdfLiteral d : parse_result =
         matchParseSeq d [
             matchStringBody
         ] (fn (d, body) =>
-              case peekTurtle (d, []) of
-                  C_AT =>
-                  matchParseSeq d [
-                      matchLanguageTag
-                  ] (fn (d, tag) =>
-                        OK (d, SOME (LITERAL {
-					  value = stringOfToken body,
-					  lang = stringOfToken tag,
-					  dtype = Iri.empty
-		    })))
-                | C_CARET =>
-                  (case parse_datatype d of
-                       ERROR e => ERROR e
-                     | OK (d, SOME (IRI tag)) =>
-                       OK (d, SOME (LITERAL {
-					 value = stringOfToken body,
-					 lang = "",
-					 dtype = tag
-			  }))
-                     | other => ERROR "internal error")
-                | other => OK (d, SOME (LITERAL {
-					     value = stringOfToken body,
-					     lang = "",
-					     dtype = Iri.empty
-			      })))
+              annotateRdfLiteral (d, {
+				     value = stringOfToken body,
+				     lang = "",
+                                     dtype = Iri.empty
+                                 }))
 	
     and parseNumericLiteral d =
         let val point = fromAscii #"."
