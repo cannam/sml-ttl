@@ -18,12 +18,7 @@ structure Store :> STORE = struct
     }
 
     val empty = {
-	prefixes = let open PrefixTable RdfStandardIRIs
-                   in
-	               add (add (empty,
-                                 ("rdf", prefixRdf)),
-                            ("xsd", prefixXsd))
-                   end,
+	prefixes = PrefixTable.empty,
 	indexes = [ Index.new Index.SPO,
 		    Index.new Index.POS,
 		    Index.new Index.OPS ]

@@ -21,6 +21,11 @@ functor TurtleSerialiserFn (ARG : sig
 			                val compare = RdfTriple.compare
 			                end)
 
+    structure BlankMap = RedBlackMapFn (struct
+                                         type ord_key = int
+                                         val compare = Int.compare
+                                         end)
+                                      
     type ser_data = {
         stream    : TextIO.outstream,
         base      : string option,
@@ -29,7 +34,8 @@ functor TurtleSerialiserFn (ARG : sig
         indent    : int,
         written   : Triples.set,
         prefixes  : PrefixTable.t,
-        matcher   : Matcher.t
+        matcher   : Matcher.t,
+        blankmap  : int * int BlankMap.map (* next number, map id -> number *)
     }
 
     type ser_props = {
@@ -102,7 +108,8 @@ functor TurtleSerialiserFn (ARG : sig
                                indent = 1 + #indent d,
                                written = #written d,
                                prefixes = #prefixes d,
-                               matcher = #matcher d
+                               matcher = #matcher d,
+                               blankmap = #blankmap d
                            } triples)
         in
             write (writeIndent (write (d, "\n")), "]")
@@ -141,11 +148,30 @@ functor TurtleSerialiserFn (ARG : sig
                      (String.explode (#value lit)) = NONE
         then write (d, #value lit)
         else serialiseStringLiteral (lit, d)
-                                          
+
+    and serialiseBlank (id, d as { blankmap = (next, bmap), ... } : ser_data) =
+        let val (d, number) =
+                case BlankMap.find (bmap, id) of
+                    NONE => ({ stream = #stream d,
+                               base = #base d,
+                               subject = #subject d,
+                               predicate = #predicate d,
+                               indent = #indent d,
+                               written = #written d,
+                               prefixes = #prefixes d,
+                               matcher = #matcher d,
+                               blankmap =
+                               (next + 1, BlankMap.insert (bmap, id, next))
+                             }, next)
+                  | SOME number => (d, number)
+        in
+            write (d, "_:blank" ^ (Int.toString number))
+        end
+                                    
     and serialiseAbbreviated (node, d : ser_data) : ser_data =
         case node of
             IRI iri => write (d, stringOfAbbrIri (iri, d))
-          | BLANK n => write (d, "_:blank" ^ (Int.toString n))
+          | BLANK n => serialiseBlank (n, d)
           | LITERAL (lit as { dtype, ... }) =>
             if dtype = RdfStandardIRIs.iriTypeBoolean
             then serialiseBooleanLiteral (lit, d)
@@ -183,7 +209,8 @@ functor TurtleSerialiserFn (ARG : sig
                                           indent = #indent d,
                                           written = Triples.add (#written d, t),
                                           prefixes = #prefixes d,
-                                          matcher = #matcher d
+                                          matcher = #matcher d,
+                                          blankmap = #blankmap d
                                       }
                                   in
                                       if pred = IRI RdfStandardIRIs.iriRdfFirst
@@ -211,7 +238,8 @@ functor TurtleSerialiserFn (ARG : sig
           indent = n + #indent d,
           written = #written d,
           prefixes = #prefixes d,
-          matcher = #matcher d }
+          matcher = #matcher d,
+          blankmap = #blankmap d }
                  
     and serialiseSubject (subj, d : ser_data, p : ser_props) =
         if #hasAnonymousSubject p
@@ -254,7 +282,8 @@ functor TurtleSerialiserFn (ARG : sig
               indent = #indent d,
               written = #written d,
               prefixes = #prefixes d,
-              matcher = #matcher d }
+              matcher = #matcher d,
+              blankmap = #blankmap d }
         end
 
     and serialiseTripleMaybe (triple, d) =
@@ -302,7 +331,8 @@ functor TurtleSerialiserFn (ARG : sig
                        indent = #indent d,
                        written = Triples.add (#written d, triple),
                        prefixes = #prefixes d,
-                       matcher = #matcher d },
+                       matcher = #matcher d,
+                       blankmap = #blankmap d },
                      { hasAnonymousSubject = hasAnonymousSubject,
                        hasAnonymousObject = hasAnonymousObject,
                        hasCollectionObject = hasCollectionObject })
@@ -349,7 +379,8 @@ functor TurtleSerialiserFn (ARG : sig
               indent = 0,
               written = Triples.empty,
               prefixes = prefixes,
-              matcher = matcher }
+              matcher = matcher,
+              blankmap = (1, BlankMap.empty) }
         end
 
     fun serialise (d, triples) =
