@@ -1,12 +1,12 @@
 
-structure TestIdealConversion : TESTS = struct
+structure TestCurated : TESTS = struct
 
     open TestSupport
 
-    val name = "ideal-conversion"
+    val name = "curated"
 
     val testFileDir = "test/other"
-    val referenceDir = "test/other/ideal"
+    val referenceDir = "test/other/curated"
     val outFileDir = "test/out"
 
     fun convertFile (infile, outfile) =
@@ -47,7 +47,7 @@ structure TestIdealConversion : TESTS = struct
             if obtained = expected
             then true
             else
-                (print ("\n--- Conversion did not produce ideal output: " ^
+                (print ("\n--- Conversion did not match curated version: " ^
                         "compare against reference with\n      " ^
                         "diff -u " ^ outfile ^ " " ^ reference ^ "\n");
                  false)
