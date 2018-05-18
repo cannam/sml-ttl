@@ -21,7 +21,7 @@ src/prerequisites.mlb:	ext
 ext:	ext/sml-buildscripts/mlb-dependencies
 
 ext/sml-buildscripts/mlb-dependencies:
-	./vext install
+	./repoint install
 
 MLBS	:= convert.mlb example.mlb test/tests.mlb $(wildcard src/*.mlb)
 

@@ -28,7 +28,7 @@ To build
 --------
 
 A Makefile is provided. Some additional SML libraries are pulled in at
-build time using [Vext](https://github.com/cannam/vext).
+build time using [Repoint](https://github.com/cannam/repoint).
 
 To build and run tests using Poly/ML:
 

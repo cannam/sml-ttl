@@ -10,3 +10,4 @@ MLB/RI_GC
 mlmon.out
 *.orig
 .docfiles
+glob:.repoint-*.bin
