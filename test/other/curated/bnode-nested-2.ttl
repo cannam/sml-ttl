@@ -2,9 +2,9 @@
 
 [] foaf:name "Alice" ;
     foaf:knows [
+        foaf:name "Bob" ;
         foaf:knows [
             foaf:name "Eve"
         ] ;
-        foaf:mbox <bob@example.com> ;
-        foaf:name "Bob"
+        foaf:mbox <bob@example.com>
     ] .
