@@ -8,7 +8,7 @@ structure StoreLoadBase : STORE_LOAD_BASE = struct
              FORMAT_NOT_SUPPORTED |
              SYSTEM_ERROR of string |
              PARSE_ERROR of string |
-             OK of store
+             OK of base_iri * store
                        
 end
                                             
@@ -25,16 +25,23 @@ functor StoreIncrementalLoaderFn (P: RDF_INCREMENTAL_PARSER)
 		case f () of
 		    P.END_OF_STREAM => OK acc
 		  | P.PARSE_ERROR err => PARSE_ERROR err
-		  | P.PARSE_OUTPUT ({ prefixes, triples }, f') =>
-		    parse'
-			(foldl (fn (triple, s) => Store.add (s, triple))
-			       (foldl (fn ((abbr, exp), s) =>
-					  Store.addPrefix (s, (abbr, exp)))
-				      acc prefixes)
-			       triples)
-			f'
+		  | P.PARSE_OUTPUT ({ base, prefixes, triples }, f') =>
+                    let val (prior_base, store) = acc
+                        val base = case base of NONE => prior_base 
+                                              | _ => base
+                    in
+		        parse'
+			    (base,
+                             foldl (fn (triple, s) => Store.add (s, triple))
+			           (foldl (fn ((abbr, exp), s) =>
+					      Store.addPrefix (s, (abbr, exp)))
+				          store prefixes)
+			           triples)
+			    f'
+                    end
 	in
-	    parse' Store.empty (fn () => P.parse (base_iri, stream))
+	    parse' (base_iri, Store.empty)
+                   (fn () => P.parse (base_iri, stream))
 	end
 								  
     fun loadString' store (base_iri, string) =

@@ -13,6 +13,7 @@ structure TurtleIncrementalParser : RDF_INCREMENTAL_PARSER = struct
              END_OF_STREAM |
              PARSE_ERROR of string |
              PARSE_OUTPUT of {
+                 base : base_iri,
                  prefixes : prefix list,
                  triples : triple list
              } * (unit -> stream_value)
@@ -37,6 +38,7 @@ structure TurtleIncrementalParser : RDF_INCREMENTAL_PARSER = struct
         base : token * token,               (* without filename, filename only *)
         prefixes : token TokenMap.map,      (* prefix -> expansion *)
         blankNodes : int TokenMap.map,     (* token -> blank node id *)
+        newBase : base_iri,
         newTriples : triple list,
         newPrefixes : prefix list
     }
@@ -51,12 +53,32 @@ structure TurtleIncrementalParser : RDF_INCREMENTAL_PARSER = struct
 
     fun fromAscii a = Word.fromInt (Char.ord a)
 
+    fun resolveIri (data : parse_data, token) =
+        let val (base_iri, filePart) = #base data
+            fun likeAbsoluteIri [] = false
+              | likeAbsoluteIri (first::rest) = 
+                if CodepointSet.contains alpha first
+                then likeAbsoluteIri rest
+                else first = fromAscii #":"
+        in
+            iriOfToken
+                (case token of
+                     [] => base_iri
+                   | first::rest =>
+                     if first = fromAscii #"#"
+                     then base_iri @ filePart @ token
+                     else if first = fromAscii #"/" then base_iri @ rest
+                     else if likeAbsoluteIri token then token
+                     else base_iri @ token)
+        end
+
     fun addTriple (d : parse_data) (t : triple) =
         {
           source = #source d,
           base = #base d,
           prefixes = #prefixes d,
           blankNodes = #blankNodes d,
+          newBase = #newBase d,
           newTriples = t :: #newTriples d,
           newPrefixes = #newPrefixes d
         }
@@ -67,8 +89,9 @@ structure TurtleIncrementalParser : RDF_INCREMENTAL_PARSER = struct
           base = #base d,
           prefixes = TokenMap.insert (#prefixes d, p, e),
           blankNodes = #blankNodes d,
+          newBase = #newBase d,
           newTriples = #newTriples d,
-          newPrefixes = (stringOfToken p, iriOfToken e) ::
+          newPrefixes = (stringOfToken p, resolveIri (d, e)) ::
                          (#newPrefixes d)
         }
                      
@@ -78,6 +101,7 @@ structure TurtleIncrementalParser : RDF_INCREMENTAL_PARSER = struct
           base = #base d,
           prefixes = #prefixes d,
           blankNodes = TokenMap.insert (#blankNodes d, b, id),
+          newBase = #newBase d,
           newTriples = #newTriples d,
           newPrefixes = #newPrefixes d
         }
@@ -151,25 +175,6 @@ structure TurtleIncrementalParser : RDF_INCREMENTAL_PARSER = struct
                                       else split' (xs, x::acc)
         in
             split' (lst, [])
-        end
-
-    fun resolveIri (data : parse_data, token) =
-        let val (base_iri, filePart) = #base data
-            fun likeAbsoluteIri [] = false
-              | likeAbsoluteIri (first::rest) = 
-                if CodepointSet.contains alpha first
-                then likeAbsoluteIri rest
-                else first = fromAscii #":"
-        in
-            iriOfToken
-                (case token of
-                     [] => base_iri
-                   | first::rest =>
-                     if first = fromAscii #"#"
-                     then base_iri @ filePart @ token
-                     else if first = fromAscii #"/" then base_iri @ rest
-                     else if likeAbsoluteIri token then token
-                     else base_iri @ token)
         end
 
     fun prefixExpand (d, token) =
@@ -576,12 +581,14 @@ structure TurtleIncrementalParser : RDF_INCREMENTAL_PARSER = struct
             matchIriref,
             if isSparql then requireNothing else requirePunctuation C_DOT
         ] (fn (d, token) =>
-              let val base = tokenOfIri (resolveIri (d, token))
+              let val base_iri = resolveIri (d, token)
+                  val base = tokenOfIri base_iri
               in
                   OK ({ source = #source d,
                         base = (base, []),
                         prefixes = #prefixes d,
                         blankNodes = #blankNodes d,
+                        newBase = SOME base_iri,
                         newTriples = #newTriples d,
                         newPrefixes = #newPrefixes d
                       }, NONE)
@@ -991,6 +998,7 @@ structure TurtleIncrementalParser : RDF_INCREMENTAL_PARSER = struct
                                     base = #base d,
                                     prefixes = #prefixes d,
                                     blankNodes = #blankNodes d,
+                                    newBase = NONE,
                                     newTriples = [],
                                     newPrefixes = []
                                   }
@@ -1000,7 +1008,8 @@ structure TurtleIncrementalParser : RDF_INCREMENTAL_PARSER = struct
                                 null (#newTriples d) andalso
                                 null (#newPrefixes d)
                              then END_OF_STREAM
-                             else PARSE_OUTPUT ({ prefixes = #newPrefixes d,
+                             else PARSE_OUTPUT ({ base = #newBase d,
+                                                  prefixes = #newPrefixes d,
                                                   triples = #newTriples d
                                                 }, parse' d)
               | ERROR e => PARSE_ERROR (extendedErrorMessage d e)
@@ -1032,6 +1041,7 @@ structure TurtleIncrementalParser : RDF_INCREMENTAL_PARSER = struct
             base = splitBase (getOpt (base_iri, Iri.empty)),
             prefixes = TokenMap.empty,
             blankNodes = TokenMap.empty,
+            newBase = NONE,
             newTriples = [],
             newPrefixes = []
         }

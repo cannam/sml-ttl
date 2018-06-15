@@ -27,7 +27,7 @@ functor TestPropertyFn (P: STORE_PROPERTY) :> TESTS = struct
               | PARSE_ERROR err =>
                 (print ("--- Failed to parse test file \"" ^ testfile ^
                         "\": " ^ err ^ "\n"); NONE)
-              | OK store => SOME store
+              | OK (base, store) => SOME store
         end
 
     fun withCodepoints s =

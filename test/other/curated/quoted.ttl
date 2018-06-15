@@ -1,8 +1,9 @@
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix show: <http://example.org/vocab/show/> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 
 show:218 rdfs:label "That Seventies Show" ;
+    show:localName "That Seventies Show"@en, "Cette Série des Années Soixante-dix"@fr, "Cette Série des Années Septante"@fr-be ;
     show:blurb """This is a multi-line                        # literal with embedded new lines and quotes
 literal with many quotes (\"\"\"\"\")
-and up to two sequential apostrophes ('').""" ;
-    show:localName "That Seventies Show"@en, "Cette Série des Années Soixante-dix"@fr, "Cette Série des Années Septante"@fr-be .
+and up to two sequential apostrophes ('').""" .

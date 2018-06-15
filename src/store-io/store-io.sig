@@ -11,8 +11,8 @@ signature STORE_LOAD_BASE = sig
              SYSTEM_ERROR of string |
              (** Error produced during parsing, e.g. malformed syntax *)
              PARSE_ERROR of string |
-             (** Successful load *)
-             OK of store
+             (** Successful load; base is whatever was in effect at the end *)
+             OK of base_iri * store
 
 end
 			  
@@ -97,8 +97,8 @@ signature STORE_STREAM_EXPORTER = sig
     include STORE_EXPORT_BASE
 
     val saveToStream : store ->
-                         base_iri * FileType.format * TextIO.outstream ->
-                         result
+                       base_iri * FileType.format * TextIO.outstream ->
+                       result
     val formatsSupported : FileType.format list
 
 end

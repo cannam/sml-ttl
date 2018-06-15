@@ -26,14 +26,16 @@ functor TestTurtleSpecFn (P: RDF_PARSER) :> TESTS = struct
     fun checkTriples str (P.PARSE_ERROR err) =
         (print ("\n--- Error in parsing \"" ^ str ^ "\": " ^ err ^ "\n");
          false)
-      | checkTriples str (P.PARSED { prefixes, triples }) =
+      | checkTriples str (P.PARSED { base, prefixes, triples }) =
         if null triples then
             (print ("\n--- No triples obtained when parsing \"" ^ str ^ "\"\n");
              false)
         else true
 
     fun stringOfParseResult (P.PARSE_ERROR err) = ("(error: " ^ err ^ ")")
-      | stringOfParseResult (P.PARSED { prefixes, triples }) =
+      | stringOfParseResult (P.PARSED { base, prefixes, triples }) =
+        "base " ^ (case base of NONE => "*none*" 
+                              | SOME b => "<" ^ Iri.toString b ^ ">") ^
         "prefixes [" ^ (String.concatWith ", " (map stringOfPrefix prefixes)) ^
         "], triples [" ^ (String.concatWith ", " (map stringOfTriple triples)) ^
         "]"
@@ -244,7 +246,7 @@ functor TestTurtleSpecFn (P: RDF_PARSER) :> TESTS = struct
             L.FORMAT_NOT_SUPPORTED => [setupFailedTest "Format not supported"]
           | L.SYSTEM_ERROR err => [setupFailedTest err]
           | L.PARSE_ERROR err => [setupFailedTest err]
-          | L.OK store =>
+          | L.OK (base, store) =>
             let val n1 = length (S.enumerate store)
 		val tt = testsFromStore store
 		val n2 = length tt

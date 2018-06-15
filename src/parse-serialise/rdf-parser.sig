@@ -12,12 +12,13 @@ signature RDF_PARSER = sig
     type prefix = Prefix.prefix
     type triple = RdfTriple.triple
     type base_iri = BaseIri.t
-                
+
     datatype parsed =
              (** Error produced during parsing, e.g. malformed syntax *)
              PARSE_ERROR of string |
              (** Successful parse *)
              PARSED of {
+                 base : base_iri,
                  prefixes : prefix list,
                  triples : triple list
              }
@@ -53,6 +54,7 @@ signature RDF_INCREMENTAL_PARSER = sig
              PARSE_ERROR of string |
              (** Some parsed output is available *)
              PARSE_OUTPUT of {
+                 base : base_iri,
                  prefixes : prefix list,
                  triples : triple list                 
              } * (unit -> stream_value)
