@@ -1,6 +1,5 @@
 @prefix : <http://example.org/stats> .
-@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 
-<http://somecountry.example/census2007> :gdpDollars "14074.2E9"^^xsd:double ;
-    :birthsPerPerson ".0135"^^xsd:decimal ;
-    :censusYear 2007 .
+<http://somecountry.example/census2007> :censusYear 2007 ;
+    :birthsPerPerson ".0135"^^<http://www.w3.org/2001/XMLSchema#decimal> ;
+    :gdpDollars "14074.2E9"^^<http://www.w3.org/2001/XMLSchema#double> .
