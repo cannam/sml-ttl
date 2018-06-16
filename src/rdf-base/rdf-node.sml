@@ -25,14 +25,15 @@ structure RdfNode :> RDF_NODE where type iri = Iri.t = struct
     fun compare (IRI i1, IRI i2) = Iri.compare (i1, i2) 
       | compare (BLANK b1, BLANK b2) = Int.compare (b1, b2)
       | compare (LITERAL l1, LITERAL l2) =
-        (case String.compare (#value l1, #value l2) of
+        (case Iri.compare (#dtype l1, #dtype l2) of
              GREATER => GREATER
            | LESS => LESS
            | EQUAL =>
-             case Iri.compare (#dtype l1, #dtype l2) of
+             case String.compare (#lang l1, #lang l2) of
                  GREATER => GREATER
                | LESS => LESS
-               | EQUAL => String.compare (#lang l1, #lang l2))
+               | EQUAL =>
+                 String.compare (#value l1, #value l2))
       | compare (IRI _, _) = LESS
       | compare (BLANK _, IRI _) = GREATER
       | compare (BLANK _, _) = LESS
