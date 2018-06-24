@@ -37,7 +37,7 @@ structure TurtleIncrementalParser : RDF_INCREMENTAL_PARSER = struct
         source : Source.t,                  (* contains mutable state *)
         base : token * token,               (* without filename, filename only *)
         prefixes : token TokenMap.map,      (* prefix -> expansion *)
-        blankNodes : int TokenMap.map,     (* token -> blank node id *)
+        blankNodes : int TokenMap.map,      (* token -> blank node id *)
         newBase : base_iri,
         newTriples : triple list,
         newPrefixes : prefix list

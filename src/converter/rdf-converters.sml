@@ -18,8 +18,6 @@ structure FileExtensionDrivenConverter :> RDF_FILE_CONVERTER = struct
              CONVERSION_ERROR of string |
              OK
 
-    (*!!! need end-to-end tests for file conversions *)
-                            
     structure TNC = TurtleNTriplesConverter
                       
     fun convertDirectToNtriples (inBase, infile)
