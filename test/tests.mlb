@@ -8,5 +8,6 @@ test-store.sml
 test-collection.sml
 test-turtle-parser.sml
 test-turtle-spec.sml
+test-curated.sml
 test-all.sml
 ../main.sml

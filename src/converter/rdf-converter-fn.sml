@@ -22,7 +22,7 @@ functor RdfIncrementalConverterFn (A: RDF_INCREMENTAL_CONVERTER_ARG)
                 case f () of
                     P.END_OF_STREAM => (S.finish s; OK)
                   | P.PARSE_ERROR err => (S.finish s; CONVERSION_ERROR err)
-                  | P.PARSE_OUTPUT ({ prefixes, triples }, f') =>
+                  | P.PARSE_OUTPUT ({ base, prefixes, triples }, f') =>
                     convert' (S.serialise (s, triples)) f'
         in
             (* incremental serialiser doesn't use outBase iri *)

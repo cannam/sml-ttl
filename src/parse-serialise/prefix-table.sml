@@ -73,17 +73,25 @@ structure PrefixTable :> PREFIX_TABLE = struct
 	    (removeWith (AbbrMap.remove, forward, abbr),
              removeWith (IriMap.remove, reverse, expansion),
 	     IriTrie.remove (trie, expansion))
-
-    fun add ((forward, reverse, trie) : t, (abbr, expansion)) =
-	(AbbrMap.insert (forward, abbr, expansion),
-	 IriMap.insert (reverse, expansion, abbr),
-	 IriTrie.add (trie, expansion))
-
-    fun fromPrefixes prefixes =
-        List.foldl (fn ((abbr, e), tab) => add (tab, (abbr, e))) empty prefixes
                     
     fun contains (table : t, abbr) =
 	isSome (AbbrMap.find (#1 table, abbr))
+
+    fun add (table as (forward, reverse, trie) : t, (abbr, expansion)) =
+        if contains (table, abbr)
+        then
+            (* replace the existing expansion - the default branch
+               doesn't do this properly because the map and trie have
+               different behaviour for duplicate inserts, so we handle
+               it explicitly *)
+            add (remove (table, abbr), (abbr, expansion))
+        else
+	    (AbbrMap.insert (forward, abbr, expansion),
+	     IriMap.insert (reverse, expansion, abbr),
+	     IriTrie.add (trie, expansion))
+
+    fun fromPrefixes prefixes =
+        List.foldl (fn ((abbr, e), tab) => add (tab, (abbr, e))) empty prefixes
 		    
     fun enumerate (table : t) = AbbrMap.listItemsi (#1 table)
                                                      

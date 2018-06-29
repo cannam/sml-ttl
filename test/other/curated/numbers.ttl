@@ -1,0 +1,5 @@
+@prefix : <http://example.org/stats> .
+
+<http://somecountry.example/census2007> :censusYear 2007 ;
+    :birthsPerPerson ".0135"^^<http://www.w3.org/2001/XMLSchema#decimal> ;
+    :gdpDollars "14074.2E9"^^<http://www.w3.org/2001/XMLSchema#double> .

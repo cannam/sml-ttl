@@ -1,5 +1,5 @@
 $(SML_LIB)/basis/basis.mlb
 ../ext/sml-smlnj-containers/sml-smlnj-containers.mlb
-../ext/sml-utf8/simple-wide-string.mlb
+../ext/sml-utf8/stream.mlb
 ../ext/sml-trie/trie.mlb
 ../ext/sml-log/log.mlb

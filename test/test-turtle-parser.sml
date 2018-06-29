@@ -1,5 +1,5 @@
 
-functor TestTurtleParserFn (P: RDF_PARSER) : TESTS = struct
+functor TestTurtleParserFn (P: RDF_PARSER) :> TESTS = struct
 
     open TestSupport RdfTriple Prefix
 
@@ -8,14 +8,16 @@ functor TestTurtleParserFn (P: RDF_PARSER) : TESTS = struct
     fun checkTriples str (P.PARSE_ERROR err) =
         (print ("\n--- Error in parsing \"" ^ str ^ "\": " ^ err ^ "\n");
          false)
-      | checkTriples str (P.PARSED { prefixes, triples }) =
+      | checkTriples str (P.PARSED { base, prefixes, triples }) =
         if null triples then
             (print ("\n--- No triples obtained when parsing \"" ^ str ^ "\"\n");
              false)
         else true
 
     fun stringOfParseResult (P.PARSE_ERROR err) = ("(error: " ^ err ^ ")")
-      | stringOfParseResult (P.PARSED { prefixes, triples }) =
+      | stringOfParseResult (P.PARSED { base, prefixes, triples }) =
+        "base " ^ (case base of NONE => "*none*" 
+                              | SOME b => "<" ^ Iri.toString b ^ ">") ^
         "prefixes [" ^ (String.concatWith ", " (map stringOfPrefix prefixes)) ^
         "], triples [" ^ (String.concatWith ", " (map stringOfTriple triples)) ^
         "]"
@@ -53,7 +55,7 @@ functor TestTurtleParserFn (P: RDF_PARSER) : TESTS = struct
                 (f, fn () => goodFile (testFileDir ^ "/" ^ f ^ ".ttl")))
             [ "bnode-nested-2", "bnode-nested", "bnode", "boolean",
               "collections", "example1", "example2", "example3", "goblin",
-              "iris", "numbers", "quoted" ]
+              "iris", "numbers", "quoted", "quoted2" ]
 
     fun iriTriple (a,b,c) = (IRI (Iri.fromString a),
                               IRI (Iri.fromString b),
@@ -93,19 +95,22 @@ functor TestTurtleParserFn (P: RDF_PARSER) : TESTS = struct
         ("local-colon",
          fn () => checkIriTripleParse
                       "@prefix : <>. :a: :b :c."
-                      { prefixes = [ ("", Iri.empty) ],
+                      { base = NONE,
+                        prefixes = [ ("", Iri.empty) ],
                         triples  = [ iriTriple ("a:", "b", "c") ] }
         ),
         ("local-dot",
          fn () => checkIriTripleParse
                       "@prefix : <>. :a.b :b..c :c.d."
-                      { prefixes = [ ("", Iri.empty) ],
+                      { base = NONE,
+                        prefixes = [ ("", Iri.empty) ],
                         triples  = [ iriTriple ("a.b", "b..c", "c.d") ] }
         ),
         ("prefix-dot",
          fn () => checkIriTripleParse
                       "@prefix a.b: <a>. a.b:a a.b:b.c a.b:c:d ."
-                      { prefixes = [ ("a.b", Iri.fromString "a") ],
+                      { base = NONE,
+                        prefixes = [ ("a.b", Iri.fromString "a") ],
                         triples  = [ iriTriple ("aa", "ab.c", "ac:d") ] }
         ),
         ("local-pc-escape",
@@ -117,19 +122,22 @@ functor TestTurtleParserFn (P: RDF_PARSER) : TESTS = struct
                 processing." *)
          fn () => checkIriTripleParse
                       "@prefix : <>.:%61bc :a%62c :ab%63."
-                      { prefixes = [ ( "", Iri.empty ) ],
+                      { base = NONE,
+                        prefixes = [ ( "", Iri.empty ) ],
                         triples  = [ iriTriple ("%61bc", "a%62c", "ab%63") ] }
         ),
         ("local-slash-escape-easy", (* escaped chars are not confusing ones *)
          fn () => checkIriTripleParse
                       "@prefix : <>.:\\~bc :a\\?c :ab\\$."
-                      { prefixes = [ ( "", Iri.empty ) ],
+                      { base = NONE,
+                        prefixes = [ ( "", Iri.empty ) ],
                         triples  = [ iriTriple ("~bc", "a?c", "ab$") ] }
         ),
         ("local-slash-escape-tricky", (* escaped chars have other meanings *)
          fn () => checkIriTripleParse
                       "@prefix : <>.:\\% :a\\#c :ab\\(."
-                      { prefixes = [ ( "", Iri.empty ) ],
+                      { base = NONE,
+                        prefixes = [ ( "", Iri.empty ) ],
                         triples  = [ iriTriple ("%", "a#c", "ab(") ] }
         )
     ] @ goodFileTests 

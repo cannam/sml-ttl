@@ -7,6 +7,7 @@ structure RdfStandardIRIs = struct
     val prefixXsd = Iri.fromString (prefixXsdStr)
     val prefixRdf = Iri.fromString (prefixRdfStr)
 
+    val iriTypeString = Iri.fromString (prefixXsdStr ^ "string")
     val iriTypeBoolean = Iri.fromString (prefixXsdStr ^ "boolean")
     val iriTypeDouble  = Iri.fromString (prefixXsdStr ^ "double")
     val iriTypeDecimal = Iri.fromString (prefixXsdStr ^ "decimal")

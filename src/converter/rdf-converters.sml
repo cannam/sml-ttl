@@ -18,12 +18,10 @@ structure FileExtensionDrivenConverter :> RDF_FILE_CONVERTER = struct
              CONVERSION_ERROR of string |
              OK
 
-    (*!!! need end-to-end tests for file conversions *)
-                            
     structure TNC = TurtleNTriplesConverter
                       
     fun convertDirectToNtriples (inBase, infile)
-                                   (outBase, outfile) =
+                                (outBase, outfile) =
         let fun convert' () =
             let
                 val instream = TextIO.openIn infile
@@ -45,25 +43,28 @@ structure FileExtensionDrivenConverter :> RDF_FILE_CONVERTER = struct
     structure Loader = StoreFileLoader
     structure Exporter = StoreFileExporter
             
-    fun convertViaStore (inBase, infile)
-                          (outBase, outfile) =
-        case Loader.loadFileAsNewStore (inBase, infile) of
+    fun convertViaStore (inBase, inFile) (outBase, outFile) =
+        case Loader.loadFileAsNewStore (inBase, inFile) of
             Loader.FORMAT_NOT_SUPPORTED => INPUT_FORMAT_NOT_SUPPORTED
           | Loader.SYSTEM_ERROR err => SYSTEM_ERROR err
           | Loader.PARSE_ERROR err => CONVERSION_ERROR err
-          | Loader.OK store =>
-            case Exporter.saveToFile store (outBase, outfile) of
+          | Loader.OK (base, store) =>
+            case Exporter.saveToFile store
+                                     (case outBase of
+                                          NONE => base 
+                                        | _ => outBase,
+                                      outFile) of
                 Exporter.FORMAT_NOT_SUPPORTED => OUTPUT_FORMAT_NOT_SUPPORTED
               | Exporter.SYSTEM_ERROR err => SYSTEM_ERROR err
               | _ => OK
                          
-    fun convert (inBase, infile) (outBase, outfile) = 
-        (if (FileType.formatOf infile = FileType.TURTLE orelse
-             FileType.formatOf infile = FileType.NTRIPLES) andalso
-            FileType.formatOf outfile = FileType.NTRIPLES
+    fun convert (inBase, inFile) (outBase, outFile) = 
+        (if (FileType.formatOf inFile = FileType.TURTLE orelse
+             FileType.formatOf inFile = FileType.NTRIPLES) andalso
+            FileType.formatOf outFile = FileType.NTRIPLES
          then convertDirectToNtriples
-         else convertViaStore) (inBase, infile)
-                                 (outBase, outfile)
+         else convertViaStore) (inBase, inFile)
+                               (outBase, outFile)
 
     (*!!! todo: convert to stream with a given format specified in a
     string separately. Could possibly adapt the file converter / file

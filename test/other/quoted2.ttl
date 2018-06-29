@@ -1,0 +1,10 @@
+@base <http://example.org/> .
+
+<foo#a> <foo#b> "\nthis \ris a \U00012451long\t\nliteral\uABCD\n" .
+<foo#d> <foo#e> "\tThis \uABCDis\r \U00012451another\n\none\n" .
+<foo#f> <foo#g> """\tThis one has embedded, unescaped
+
+carriage returns in it\n""" .
+<foo#h> <foo#i> """\tThis one has embedded, unescaped
+
+DOS line endings in it\n""" .

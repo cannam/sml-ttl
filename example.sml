@@ -35,7 +35,7 @@ fun loadToStoreExample () =
             print ("System error: " ^ err ^ "\n")
           | PARSE_ERROR err =>
             print ("Load failed: " ^ err ^ "\n")
-          | OK store =>
+          | OK (_, store) =>
             let val triples = Store.enumerate store
             in
                 print ("Load succeeded, have " ^

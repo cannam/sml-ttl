@@ -1,0 +1,21 @@
+@base <http://example.org/> .
+
+<foo#a> <foo#b> """
+this \ris a 𒑑long\t
+literalꯍ
+""" .
+
+<foo#d> <foo#e> """\tThis ꯍis\r 𒑑another
+
+one
+""" .
+
+<foo#f> <foo#g> """\tThis one has embedded, unescaped
+
+carriage returns in it
+""" .
+
+<foo#h> <foo#i> """\tThis one has embedded, unescaped\r
+\r
+DOS line endings in it
+""" .

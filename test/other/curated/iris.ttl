@@ -1,0 +1,15 @@
+@base <http://one.example/> .
+@prefix : <http://another.example/> .
+@prefix p: <http://one.example/path/> .
+
+<subject1> <predicate1> <object1> .
+
+<subject2> <predicate2> <object2> .
+
+<http://two.example/subject3> <http://two.example/predicate3> <http://two.example/object3> .
+
+p:subject4 p:predicate4 p:object4 .
+
+:subject5 :predicate5 :object5 .
+
+:subject6 a :subject7 .
