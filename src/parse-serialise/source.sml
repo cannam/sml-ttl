@@ -3,7 +3,7 @@ signature SOURCE = sig
 
     type t
 
-    val fromStream : TextIO.instream -> t
+    val fromStream : CodepointIO.instream -> t
     val peek : t -> word
     val peekN : int -> t -> word list
     val read : t -> word
@@ -19,32 +19,32 @@ structure Source :> SOURCE = struct
     val nl = Word.fromInt (Char.ord #"\n")
 
     type t = {
-        stream : CodepointInStream.instream,
+        stream : CodepointIO.instream,
         lineno : int ref,
         colno : int ref
     }
 
     fun fromStream str = {
-        stream = CodepointInStream.fromTextStream str,
+        stream = str,
         lineno = ref 0,
         colno = ref 0
     }
                   
     fun peek (r : t) : word =
-        case CodepointInStream.peek1 (#stream r) of
+        case CodepointIO.peek1 (#stream r) of
             NONE => nl
           | SOME w => w
 
     fun peekN n (r : t) : word list =
-        WdString.explode (CodepointInStream.peekN (#stream r, n))
+        WdString.explode (CodepointIO.peekN (#stream r, n))
 
     fun read (r : t) : word =
-        case CodepointInStream.input1 (#stream r) of
+        case CodepointIO.input1 (#stream r) of
             NONE => nl
           | SOME w => w
 
     fun readN n (r : t) : word list =
-        WdString.explode (CodepointInStream.inputN (#stream r, n))
+        WdString.explode (CodepointIO.inputN (#stream r, n))
 
     fun discard r = ignore (read r)
 
@@ -53,6 +53,6 @@ structure Source :> SOURCE = struct
         ", column " ^ (Int.toString (!(#colno r) + 1))
 *)
     fun eof (r : t) =
-        CodepointInStream.endOfStream (#stream r)
+        CodepointIO.endOfStream (#stream r)
 	    
 end

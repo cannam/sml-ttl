@@ -8,7 +8,7 @@ fun readTurtleStreamExample () =
     let
         val filename = "test/other/goblin.ttl"
         val baseIri = SOME (Iri.fromString ("file:///" ^ filename))
-        val stream = TextIO.openIn filename
+        val stream = CodepointIO.openIn filename
         open TurtleParser
     in
         case parse (baseIri, stream) of

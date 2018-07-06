@@ -45,10 +45,10 @@ functor StoreIncrementalLoaderFn (P: RDF_INCREMENTAL_PARSER)
 	end
 								  
     fun loadString' store (base_iri, string) =
-        let val stream = TextIO.openString string
+        let val stream = CodepointIO.openString string
             val result = loadStream store (base_iri, stream)
         in
-            TextIO.closeIn stream;
+            CodepointIO.closeIn stream;
             result
         end
 
@@ -57,10 +57,10 @@ functor StoreIncrementalLoaderFn (P: RDF_INCREMENTAL_PARSER)
         handle ex => SYSTEM_ERROR (exnMessage ex)
 
     fun loadFile' store (base_iri, filename) =
-        let val stream = TextIO.openIn filename
+        let val stream = CodepointIO.openIn filename
             val result = loadStream store (base_iri, stream)
         in
-            TextIO.closeIn stream;
+            CodepointIO.closeIn stream;
             result
         end
 

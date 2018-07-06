@@ -47,30 +47,30 @@ functor TestTurtleSpecFn (P: RDF_PARSER) :> TESTS = struct
          false)
 
     fun goodFile f =
-        let val s = TextIO.openIn f
+        let val s = CodepointIO.openIn f
             val result = checkParseSucceeded f (P.parse (NONE, s))
         in
-            TextIO.closeIn s;
+            CodepointIO.closeIn s;
             result
         end
 
     fun badFile f =
-        let val s = TextIO.openIn f
+        let val s = CodepointIO.openIn f
             val result = checkParseFailed f (P.parse (NONE, s))
         in
-            TextIO.closeIn s;
+            CodepointIO.closeIn s;
             result
         end
 
     fun linesOf f =
         let fun lines' s =
-                case TextIO.inputLine s of
-                    SOME l => l :: lines' s
+                case CodepointIO.inputLine s of
+                    SOME l => (WdString.toUtf8 l) :: lines' s
                   | NONE => []
-            val s = TextIO.openIn f
+            val s = CodepointIO.openIn f
             val lines = lines' s
         in
-            TextIO.closeIn s;
+            CodepointIO.closeIn s;
             lines
         end
 
@@ -103,13 +103,13 @@ functor TestTurtleSpecFn (P: RDF_PARSER) :> TESTS = struct
         end
             
     fun goodConversion (base, fin, fout, reference) =
-        let val instream = TextIO.openIn fin
-            val outstream = TextIO.openOut fout
+        let val instream = CodepointIO.openIn fin
+            val outstream = CodepointIO.openOut fout
             open TurtleNTriplesConverter
             val result = convert (base, instream) (base, outstream)
         in
-            TextIO.closeIn instream;
-            TextIO.closeOut outstream;
+            CodepointIO.closeIn instream;
+            CodepointIO.closeOut outstream;
             case result of
                 CONVERSION_ERROR e => (print ("\n--- Conversion failed: "^e^"\n");
                                        false)

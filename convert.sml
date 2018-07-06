@@ -29,25 +29,25 @@ fun usage () =
     end
 
 fun convertStdout iri infile =
-    let val instream = TextIO.openIn infile
-        val outstream = TextIO.stdOut
+    let val instream = CodepointIO.openIn infile
+        val outstream = CodepointIO.fromTextOutStream TextIO.stdOut
         open TurtleNTriplesConverter
         val result = convert (iri, instream) (iri, outstream)
     in
-        TextIO.closeIn instream;
+        CodepointIO.closeIn instream;
         case result of
             CONVERSION_ERROR err => raise Fail err
           | CONVERTED => ()
     end
 
 fun convertFile iri (infile, outfile) =
-    let val instream = TextIO.openIn infile
-        val outstream = TextIO.openOut outfile
+    let val instream = CodepointIO.openIn infile
+        val outstream = CodepointIO.openOut outfile
         open FileExtensionDrivenConverter
         val result = convert (iri, infile) (iri, outfile)
     in
-        TextIO.closeIn instream;
-        TextIO.closeOut outstream;
+        CodepointIO.closeIn instream;
+        CodepointIO.closeOut outstream;
         case result of
             INPUT_FORMAT_NOT_SUPPORTED =>
             raise Fail "Input format not supported"

@@ -28,7 +28,7 @@ signature RDF_INCREMENTAL_SERIALISER = sig
         be open for writing, and it will remain open after
         serialisation has finished: it is the caller's responsibility
         to close it. *)
-    val new : TextIO.outstream -> t
+    val new : CodepointIO.outstream -> t
 
 end
 
@@ -50,7 +50,7 @@ signature RDF_ABBREVIATING_SERIALISER = sig
         stream. Stream must be open for writing, and it will remain
         open after serialisation has finished: it is the caller's
         responsibility to close it. *)
-    val new : base_iri * prefix_table * matcher -> TextIO.outstream -> t
+    val new : base_iri * prefix_table * matcher -> CodepointIO.outstream -> t
 
 end
 			       
