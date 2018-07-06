@@ -24,8 +24,8 @@ signature RDF_CONVERTER = sig
              (** Successful conversion *)
              OK
     
-    val convert : base_iri * TextIO.instream ->
-                  base_iri * TextIO.outstream ->
+    val convert : base_iri * CodepointIO.instream ->
+                  base_iri * CodepointIO.outstream ->
                   result
 
 end

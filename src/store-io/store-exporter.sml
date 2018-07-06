@@ -28,10 +28,10 @@ functor StoreIncrementalExporterFn (S: RDF_INCREMENTAL_SERIALISER)
         end
             
     fun saveToFile' store (base_iri, filename) =
-        let val stream = TextIO.openOut filename
+        let val stream = CodepointIO.openOut filename
             val _ = saveToStream store (base_iri, stream)
         in
-            TextIO.closeOut stream;
+            CodepointIO.closeOut stream;
             OK
         end
 
@@ -60,10 +60,10 @@ functor StoreAbbreviatingExporterFn
         end
 
     fun saveToFile' store (base_iri, filename) =
-        let val stream = TextIO.openOut filename
+        let val stream = CodepointIO.openOut filename
             val _ = saveToStream store (base_iri, stream)
         in
-            TextIO.closeOut stream;
+            CodepointIO.closeOut stream;
             OK
         end
 

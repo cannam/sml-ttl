@@ -28,11 +28,11 @@ signature STORE_LOADER = sig
     include STORE_LOAD_BASE
                 
     val loadFile : store -> base_iri * string -> result
-    val loadStream : store -> base_iri * TextIO.instream -> result
+    val loadStream : store -> base_iri * CodepointIO.instream -> result
     val loadString : store -> base_iri * string -> result
                      
     val loadFileAsNewStore : base_iri * string -> result
-    val loadStreamAsNewStore : base_iri * TextIO.instream -> result
+    val loadStreamAsNewStore : base_iri * CodepointIO.instream -> result
     val loadStringAsNewStore : base_iri * string -> result
 
 end
@@ -83,7 +83,7 @@ signature STORE_EXPORTER = sig
     include STORE_EXPORT_BASE
 
     val saveToFile : store -> base_iri * string -> result
-    val saveToStream : store -> base_iri * TextIO.outstream -> result
+    val saveToStream : store -> base_iri * CodepointIO.outstream -> result
 
 end
 
@@ -97,7 +97,7 @@ signature STORE_STREAM_EXPORTER = sig
     include STORE_EXPORT_BASE
 
     val saveToStream : store ->
-                       base_iri * FileType.format * TextIO.outstream ->
+                       base_iri * FileType.format * CodepointIO.outstream ->
                        result
     val formatsSupported : FileType.format list
 

@@ -25,7 +25,7 @@ signature RDF_PARSER = sig
 
     (** Parse an entire document from a stream in one go. Does not close
         the input stream after parsing. *)
-    val parse : base_iri * TextIO.instream -> parsed
+    val parse : base_iri * CodepointIO.instream -> parsed
 
 end
 
@@ -63,6 +63,6 @@ signature RDF_INCREMENTAL_PARSER = sig
         not close the input stream after parsing; this function should
         normally be called repeatedly on the same input stream until
         it returns END_OF_STREAM. *)
-    val parse : base_iri * TextIO.instream -> stream_value
+    val parse : base_iri * CodepointIO.instream -> stream_value
                      
 end

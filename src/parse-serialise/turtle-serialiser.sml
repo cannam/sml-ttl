@@ -27,7 +27,7 @@ functor TurtleSerialiserFn (ARG : sig
                                          end)
                                       
     type ser_data = {
-        stream    : TextIO.outstream,
+        stream    : CodepointIO.outstream,
         base      : string option,
         subject   : RdfNode.node option,
         predicate : RdfNode.node option,
@@ -74,7 +74,7 @@ functor TurtleSerialiserFn (ARG : sig
         else String.concatWith "" (List.tabulate (indent * 4, fn _ => " "))
 
     fun write (d : ser_data, str) =
-        (TextIO.output (#stream d, str); d)
+        (CodepointIO.outputUtf8 (#stream d, str); d)
                                
     fun writeIndent (d : ser_data) =
         write (d, stringForIndent (#indent d))
@@ -215,7 +215,8 @@ functor TurtleSerialiserFn (ARG : sig
                                   in
                                       if pred = IRI RdfStandardIRIs.iriRdfFirst
                                       then
-                                          (TextIO.output (#stream d, " ");
+                                          (CodepointIO.outputUtf8
+                                               (#stream d, " ");
                                            serialiseAbbreviated (obj, d))
                                       else d
                                   end)
@@ -352,21 +353,22 @@ functor TurtleSerialiserFn (ARG : sig
         
     and serialisePrefixes stream prefixes =
         foldl (fn ((pfx, iri), t) =>
-                  (TextIO.output (t, "@prefix " ^ pfx ^ ": <" ^
-                                     (Iri.toString iri) ^ "> .\n");
+                  (CodepointIO.outputUtf8 (t, "@prefix " ^ pfx ^ ": <" ^
+                                              (Iri.toString iri) ^ "> .\n");
                    t))
               stream prefixes
 
     and serialiseBase stream NONE = stream
       | serialiseBase stream (SOME iri) = 
-        (TextIO.output (stream, "@base <" ^ (Iri.toString iri) ^ "> .\n");
+        (CodepointIO.outputUtf8 (stream,
+                                 "@base <" ^ (Iri.toString iri) ^ "> .\n");
          stream)
 
     fun new (base_iri, prefixes, matcher) stream =
         let val stream = serialisePrefixes
                              (serialiseBase stream base_iri)
                              (PrefixTable.enumerate prefixes)
-            val _ = TextIO.output (stream, "\n")
+            val _ = CodepointIO.outputUtf8 (stream, "\n")
         in
             { stream = stream,
               base = case base_iri of
@@ -388,7 +390,7 @@ functor TurtleSerialiserFn (ARG : sig
 
     fun finish (d : ser_data) =
         if not (Triples.isEmpty (#written d))
-        then TextIO.output (#stream d, " .\n")
+        then CodepointIO.outputUtf8 (#stream d, " .\n")
         else ()
 
     type t = ser_data

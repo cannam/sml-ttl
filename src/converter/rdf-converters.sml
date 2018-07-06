@@ -24,13 +24,13 @@ structure FileExtensionDrivenConverter :> RDF_FILE_CONVERTER = struct
                                 (outBase, outfile) =
         let fun convert' () =
             let
-                val instream = TextIO.openIn infile
-                val outstream = TextIO.openOut outfile
+                val instream = CodepointIO.openIn infile
+                val outstream = CodepointIO.openOut outfile
                 val result = TNC.convert (inBase, instream)
                                          (outBase, outstream)
             in
-                TextIO.closeOut outstream;
-                TextIO.closeIn instream;
+                CodepointIO.closeOut outstream;
+                CodepointIO.closeIn instream;
                 case result of
                     TNC.CONVERSION_ERROR err => CONVERSION_ERROR err
                   | TNC.OK => OK

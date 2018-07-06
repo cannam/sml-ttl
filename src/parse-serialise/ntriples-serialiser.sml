@@ -3,7 +3,7 @@ structure NTriplesSerialiser :> RDF_INCREMENTAL_SERIALISER = struct
 
     open RdfTriple
 
-    type t = TextIO.outstream
+    type t = CodepointIO.outstream
 
     fun new t = t
 
@@ -36,7 +36,7 @@ structure NTriplesSerialiser :> RDF_INCREMENTAL_SERIALISER = struct
 		      stringOfNode b ^ " " ^
 		      stringOfNode c
 	in
-	    TextIO.output (t, str ^ " .\n");
+	    CodepointIO.outputUtf8 (t, str ^ " .\n");
 	    serialise (t, rest)
 	end
 

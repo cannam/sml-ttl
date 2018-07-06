@@ -3,7 +3,7 @@ signature SOURCE = sig
 
     type t
 
-    val fromStream : TextIO.instream -> t
+    val fromStream : CodepointIO.instream -> t
     val peek : t -> word
     val peekN : int -> t -> word list
     val read : t -> word
@@ -25,7 +25,7 @@ structure Source :> SOURCE = struct
     }
 
     fun fromStream str = {
-        stream = CodepointIO.fromTextInStream str,
+        stream = str,
         lineno = ref 0,
         colno = ref 0
     }
