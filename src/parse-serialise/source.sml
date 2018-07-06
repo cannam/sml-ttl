@@ -26,10 +26,21 @@ structure Source :> SOURCE = struct
 
     fun fromStream str = {
         stream = str,
-        lineno = ref 0,
+        lineno = ref 1,
         colno = ref 0
     }
-                  
+
+    fun advance (r : t) w =
+        if w = nl
+        then (#lineno r := !(#lineno r) + 1; #colno r := 0)
+        else #colno r := !(#colno r) + 1
+
+    fun advanceWith (r : t, w) =
+        (advance r w; w)
+
+    fun advanceWithList (r : t, wl) =
+        (app (advance r) wl; wl)
+                             
     fun peek (r : t) : word =
         case CodepointIO.peek1 (#stream r) of
             NONE => nl
@@ -41,17 +52,21 @@ structure Source :> SOURCE = struct
     fun read (r : t) : word =
         case CodepointIO.input1 (#stream r) of
             NONE => nl
-          | SOME w => w
+          | SOME w => advanceWith (r, w)
 
     fun readN n (r : t) : word list =
-        WdString.explode (CodepointIO.inputN (#stream r, n))
+        let val wl = WdString.explode (CodepointIO.inputN (#stream r, n))
+        in
+            advanceWithList (r, wl)
+        end
 
-    fun discard r = ignore (read r)
+    fun discard r =
+        ignore (read r)
 
-    fun location (r : t) = "(unknown)" (*!!!*)
-(*        "line " ^ (Int.toString (!(#lineno r))) ^
-        ", column " ^ (Int.toString (!(#colno r) + 1))
-*)
+    fun location (r : t) =
+        "line " ^ (Int.toString (!(#lineno r))) ^
+        ", column " ^ (Int.toString (!(#colno r)))
+
     fun eof (r : t) =
         CodepointIO.endOfStream (#stream r)
 	    
