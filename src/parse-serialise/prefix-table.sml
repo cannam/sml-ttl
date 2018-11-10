@@ -1,10 +1,10 @@
 
 structure IriTrie :> TRIE where type entry = Iri.t = struct
 
-    structure WordListTrie = ListEntryTrieFn(struct
-				              type t = word
-				              val compare = Word.compare
-				              end)
+    structure WordListTrie = ListMapTrieFn(struct
+				            type t = word
+				            val compare = Word.compare
+				            end)
 
     type t = WordListTrie.t
     type trie = t
