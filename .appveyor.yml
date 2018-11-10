@@ -9,7 +9,7 @@ before_build:
   - set PATH=%PATH%;C:\Program Files (x86)\SMLNJ\bin
 
 build_script:
-  - vext install
+  - repoint install
   - ps: ext\sml-buildscripts\smlrun.ps1 test\tests.mlb
   
 

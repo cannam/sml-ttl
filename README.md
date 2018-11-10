@@ -39,17 +39,18 @@ To build and run tests using MLton (slower compiling, faster runtime):
     $ make release
 
 You can build the bundled programs (e.g. `example.sml`, `convert.sml`)
-with MLton using the supplied `.mlb` files, so long as Vext has pulled
-in the necessary dependencies (which the Makefile would do for you):
+with MLton using the supplied `.mlb` files, so long as Repoint has
+pulled in the necessary dependencies (which the Makefile would do for
+you):
 
-    $ ./vext install
+    $ ./repoint install
     $ mlton example.mlb
     $ mlton convert.mlb
 
 To extract the API documentation (must have `smldoc` installed,
 e.g. from the fork at https://github.com/cannam/smldoc):
 
-    $ ./vext install
+    $ ./repoint install
     $ make doc
 
 The code has been tested with a number of compilers on various
