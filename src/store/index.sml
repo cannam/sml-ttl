@@ -9,10 +9,10 @@ structure Index :> INDEX = struct
 
     datatype indexOrder = SPO | POS | OPS | SOP | PSO | OSP
 
-    structure NodeTrie = ListMapTrieFn(struct
-                                        type t = node
-                                        val compare = RdfNode.compare
-                                        end)
+    structure NodeTrie = ListMTrieFn(struct
+                                      type t = node
+                                      val compare = RdfNode.compare
+                                      end)
 
     type t = indexOrder * NodeTrie.t
 

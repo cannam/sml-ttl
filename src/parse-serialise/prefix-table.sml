@@ -1,16 +1,17 @@
 
 structure IriTrie :> TRIE where type entry = Iri.t = struct
 
-    structure WordListTrie = ListMapTrieFn(struct
-				            type t = word
-				            val compare = Word.compare
-				            end)
+    structure WordListTrie = ListMTrieFn(struct
+				          type t = word
+				          val compare = Word.compare
+				          end)
 
     type t = WordListTrie.t
     type trie = t
     type entry = Iri.t
 
     val empty = WordListTrie.empty
+    val isEmpty = WordListTrie.isEmpty
 
     fun explode iri = WdString.explode (Iri.toWideString iri)
     fun implode ws = Iri.fromWideString (WdString.implode ws)
