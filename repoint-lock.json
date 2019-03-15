@@ -7,13 +7,13 @@
       "pin": "715b45585896"
     },
     "sml-trie": {
-      "pin": "c911f50b0ba0"
+      "pin": "ccac4c1e0b66"
     },
     "sml-log": {
       "pin": "eb568f7d3c13"
     },
     "sml-buildscripts": {
-      "pin": "7f6d3489f8af"
+      "pin": "dea0507a738f"
     }
   }
 }

@@ -17,7 +17,8 @@
         "sml-trie": {
             "vcs": "hg",
             "service": "bitbucket",
-	    "owner": "cannam"
+	    "owner": "cannam",
+            "branch": "twig"
         },
         "sml-log": {
             "vcs": "hg",
