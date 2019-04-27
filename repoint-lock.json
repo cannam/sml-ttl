@@ -1,19 +1,19 @@
 {
   "libraries": {
     "sml-smlnj-containers": {
-      "pin": "a3020aba4db0"
+      "pin": "2c094258f541"
     },
     "sml-utf8": {
-      "pin": "715b45585896"
+      "pin": "cc9c7ce6eeec"
     },
     "sml-trie": {
-      "pin": "c911f50b0ba0"
+      "pin": "f9cacb07c1a8"
     },
     "sml-log": {
       "pin": "eb568f7d3c13"
     },
     "sml-buildscripts": {
-      "pin": "7f6d3489f8af"
+      "pin": "c0ab93f4abde"
     }
   }
 }

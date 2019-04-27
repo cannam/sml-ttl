@@ -1,45 +1,49 @@
-
+                               
 structure IriTrie :> TRIE where type entry = Iri.t = struct
 
-    structure WordListTrie = ListMTrieFn(struct
-				          type t = word
-				          val compare = Word.compare
-				          end)
+    structure WordVectorTrie
+        = TrieFn (VectorMTrieMapFn(struct
+                                    type t = word
+                                    val compare = Word.compare
+                                    end))
 
-    type t = WordListTrie.t
+    type t = WordVectorTrie.trie
+
+    (*!!! should be wrapper fn in trie for this *)
+
     type trie = t
     type entry = Iri.t
 
-    val empty = WordListTrie.empty
-    val isEmpty = WordListTrie.isEmpty
+    val empty = WordVectorTrie.empty
+    val isEmpty = WordVectorTrie.isEmpty
 
-    fun explode iri = WdString.explode (Iri.toWideString iri)
-    fun implode ws = Iri.fromWideString (WdString.implode ws)
-                    
+    fun explode iri = WdString.toVector (Iri.toWideString iri)
+    fun implode ws = Iri.fromWideString (WdString.fromVector ws)
+                      
     fun add (trie, s) =
-        WordListTrie.add (trie, explode s)
+        WordVectorTrie.add (trie, explode s)
 
     fun contains (trie, s) =
-        WordListTrie.contains (trie, explode s)
+        WordVectorTrie.contains (trie, explode s)
                          
     fun remove (trie, s) =
-        WordListTrie.remove (trie, explode s)
+        WordVectorTrie.remove (trie, explode s)
 
     fun foldl f acc trie =
-        WordListTrie.foldl (fn (e, acc) => f (implode e, acc)) acc trie
+        WordVectorTrie.foldl (fn (e, acc) => f (implode e, acc)) acc trie
 
     fun enumerate trie =
-        List.map implode (WordListTrie.enumerate trie)
+        List.map implode (WordVectorTrie.enumerate trie)
 
     fun foldlPrefixMatch f acc (trie, s) =
-        WordListTrie.foldlPrefixMatch (fn (e, acc) => f (implode e, acc))
+        WordVectorTrie.foldlPrefixMatch (fn (e, acc) => f (implode e, acc))
                                         acc (trie, explode s)
                  
     fun prefixMatch (trie, s) =
-        List.map implode (WordListTrie.prefixMatch (trie, explode s))
+        List.map implode (WordVectorTrie.prefixMatch (trie, explode s))
 
     fun prefixOf (trie, s) =
-        implode (WordListTrie.prefixOf (trie, explode s))
+        implode (WordVectorTrie.prefixOf (trie, explode s))
 
 end
 
@@ -60,7 +64,7 @@ structure PrefixTable :> PREFIX_TABLE = struct
                                        val compare = Iri.compare
                                        end)
 
-    type t = iri AbbrMap.map * abbreviation IriMap.map * IriTrie.t
+    type t = iri AbbrMap.map * abbreviation IriMap.map * IriTrie.trie
                         
     val empty : t = (AbbrMap.empty, IriMap.empty, IriTrie.empty)
 
@@ -116,7 +120,9 @@ structure PrefixTable :> PREFIX_TABLE = struct
 	  then NONE
 	  else
 	      case IriMap.find (reverse, prefix) of
-		  NONE => raise Fail ("internal error: prefix found in trie " ^
+		  NONE => raise Fail ("internal error: prefix <" ^
+                                      Iri.toString prefix ^
+                                      "> found in trie " ^
                                       "but not in reverse map")
 		| SOME abbr =>
 	          SOME (abbr, toUtf8 (dropPrefix (iri, Iri.size prefix)))

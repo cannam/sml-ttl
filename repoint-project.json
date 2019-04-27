@@ -11,8 +11,7 @@
         "sml-utf8": {
             "vcs": "hg",
             "service": "bitbucket",
-	    "owner": "cannam",
-            "branch": "stream"
+	    "owner": "cannam"
         },
         "sml-trie": {
             "vcs": "hg",
