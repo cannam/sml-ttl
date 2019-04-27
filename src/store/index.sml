@@ -14,7 +14,7 @@ structure Index :> INDEX = struct
                                       val compare = RdfNode.compare
                                       end)
 
-    type t = indexOrder * NodeTrie.t
+    type t = indexOrder * NodeTrie.trie
 
     fun nameOfOrder SPO = "spo" 
       | nameOfOrder POS = "pos"

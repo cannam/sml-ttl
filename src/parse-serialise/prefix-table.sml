@@ -64,7 +64,7 @@ structure PrefixTable :> PREFIX_TABLE = struct
                                        val compare = Iri.compare
                                        end)
 
-    type t = iri AbbrMap.map * abbreviation IriMap.map * IriTrie.t
+    type t = iri AbbrMap.map * abbreviation IriMap.map * IriTrie.trie
                         
     val empty : t = (AbbrMap.empty, IriMap.empty, IriTrie.empty)
 
@@ -120,7 +120,9 @@ structure PrefixTable :> PREFIX_TABLE = struct
 	  then NONE
 	  else
 	      case IriMap.find (reverse, prefix) of
-		  NONE => raise Fail ("internal error: prefix found in trie " ^
+		  NONE => raise Fail ("internal error: prefix <" ^
+                                      Iri.toString prefix ^
+                                      "> found in trie " ^
                                       "but not in reverse map")
 		| SOME abbr =>
 	          SOME (abbr, toUtf8 (dropPrefix (iri, Iri.size prefix)))
