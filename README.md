@@ -5,6 +5,8 @@ sml-ttl
 Simple RDF store and RDF/Turtle parser/serialiser written in Standard ML
 ------------------------------------------------------------------------
 
+https://hg.sr.ht/~cannam/sml-ttl
+
 This is an in-memory RDF triple store and RDF/Turtle parser/serialiser
 written in Standard ML.
 
@@ -67,7 +69,7 @@ Written by Chris Cannam, cannam@all-day-breakfast.com. MIT licence,
 see the file COPYING for details.
 
 This code has something in common with the
-[Yertle](https://bitbucket.org/cannam/yertle) library I wrote a couple
+[Yertle](https://hg.sr.ht/~cannam/yertle) library I wrote a couple
 of years previously, which provided a very similar set of features in
 the Yeti language. Both were initially language-learning exercises.
 
