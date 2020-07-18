@@ -4,6 +4,7 @@ configuration:
 
 install:
   - cinst --allow-empty-checksums smlnj
+  - cinst hg
 
 before_build:
   - set PATH=%PATH%;C:\Program Files (x86)\SMLNJ\bin
