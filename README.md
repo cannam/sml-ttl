@@ -50,7 +50,7 @@ you):
     $ mlton convert.mlb
 
 To extract the API documentation (must have `smldoc` installed,
-e.g. from the fork at https://github.com/cannam/smldoc):
+e.g. from the fork at https://github.com/cannam/smldoc ):
 
     $ ./repoint install
     $ make doc
