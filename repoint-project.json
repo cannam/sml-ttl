@@ -5,27 +5,27 @@
     "libraries": {
         "sml-smlnj-containers": {
             "vcs": "hg",
-            "service": "bitbucket",
+            "service": "sourcehut",
 	    "owner": "cannam"
         },
         "sml-utf8": {
             "vcs": "hg",
-            "service": "bitbucket",
+            "service": "sourcehut",
 	    "owner": "cannam"
         },
         "sml-trie": {
             "vcs": "hg",
-            "service": "bitbucket",
+            "service": "sourcehut",
 	    "owner": "cannam"
         },
         "sml-log": {
             "vcs": "hg",
-            "service": "bitbucket",
+            "service": "sourcehut",
 	    "owner": "cannam"
         },
         "sml-buildscripts": {
             "vcs": "hg",
-            "service": "bitbucket",
+            "service": "sourcehut",
 	    "owner": "cannam"
         }
     }

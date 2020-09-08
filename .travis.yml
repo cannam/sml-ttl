@@ -19,10 +19,10 @@ addons:
       - libsmlnj-smlnj
 
 before_install:
-  - if [[ "$TRAVIS_OS_NAME" = "osx" ]] ; then brew update ; brew install mlton smlnj polyml ; fi
+  - if [[ "$TRAVIS_OS_NAME" = "osx" ]] ; then brew update ; brew install mlton polyml ; fi
       
 script:
   - if [[ "$TRAVIS_OS_NAME" = "osx" ]] ; then make ; fi
   - make release
-  - ./ext/sml-buildscripts/smlrun test/tests.mlb 
+  - if [[ "$TRAVIS_OS_NAME" = "linux" ]] ; then ./ext/sml-buildscripts/smlrun test/tests.mlb ; fi
 
