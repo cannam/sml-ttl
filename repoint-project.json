@@ -18,6 +18,11 @@
             "service": "sourcehut",
 	    "owner": "cannam"
         },
+        "sml-stringinterpolate": {
+            "vcs": "hg",
+            "service": "sourcehut",
+	    "owner": "cannam"
+        },
         "sml-log": {
             "vcs": "hg",
             "service": "sourcehut",

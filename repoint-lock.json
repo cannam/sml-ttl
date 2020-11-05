@@ -4,16 +4,19 @@
       "pin": "2c094258f541"
     },
     "sml-utf8": {
-      "pin": "cc9c7ce6eeec"
+      "pin": "45d450aedb1f"
     },
     "sml-trie": {
-      "pin": "d99f0e603bc0"
+      "pin": "f78215386849"
+    },
+    "sml-stringinterpolate": {
+      "pin": "b2ef1dd1d62b"
     },
     "sml-log": {
-      "pin": "eb568f7d3c13"
+      "pin": "0084064e40bf"
     },
     "sml-buildscripts": {
-      "pin": "c0ab93f4abde"
+      "pin": "0753a33f4456"
     }
   }
 }
