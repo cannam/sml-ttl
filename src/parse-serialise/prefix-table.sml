@@ -1,51 +1,19 @@
-                               
-structure IriTrie :> TRIE where type entry = Iri.t = struct
 
-    structure WordVectorTrie
-        = TrieFn (VectorMTrieMapFn(struct
+structure IriTrieArg : TRIE_MAP_KEYADAPTER_FN_ARG = struct
+
+    structure T = VectorMTrieMapFn(struct
                                     type t = word
                                     val compare = Word.compare
-                                    end))
+                                    end)
 
-    type t = WordVectorTrie.trie
-
-    (*!!! should be wrapper fn in trie for this *)
-
-    type trie = t
-    type entry = Iri.t
-
-    val empty = WordVectorTrie.empty
-    val isEmpty = WordVectorTrie.isEmpty
-
-    fun explode iri = WdString.toVector (Iri.toWideString iri)
-    fun implode ws = Iri.fromWideString (WdString.fromVector ws)
-                      
-    fun add (trie, s) =
-        WordVectorTrie.add (trie, explode s)
-
-    fun contains (trie, s) =
-        WordVectorTrie.contains (trie, explode s)
-                         
-    fun remove (trie, s) =
-        WordVectorTrie.remove (trie, explode s)
-
-    fun foldl f acc trie =
-        WordVectorTrie.foldl (fn (e, acc) => f (implode e, acc)) acc trie
-
-    fun enumerate trie =
-        List.map implode (WordVectorTrie.enumerate trie)
-
-    fun foldlPrefixMatch f acc (trie, s) =
-        WordVectorTrie.foldlPrefixMatch (fn (e, acc) => f (implode e, acc))
-                                        acc (trie, explode s)
-                 
-    fun prefixMatch (trie, s) =
-        List.map implode (WordVectorTrie.prefixMatch (trie, explode s))
-
-    fun prefixOf (trie, s) =
-        implode (WordVectorTrie.prefixOf (trie, explode s))
-
+    type key = T.key
+    type external_key = Iri.t
+    fun enkey iri = WdString.toVector (Iri.toWideString iri)
+    fun dekey ws = Iri.fromWideString (WdString.fromVector ws)
+         
 end
+
+structure IriTrie = TrieFn (TrieMapKeyAdapterFn (IriTrieArg))
 
 structure PrefixTable :> PREFIX_TABLE = struct
 
@@ -111,21 +79,24 @@ structure PrefixTable :> PREFIX_TABLE = struct
                                WdString.fromUtf8 (String.concatWith ":" rest))
 
     fun abbreviate ((_, reverse, trie) : t, iri) =
-      let val prefix = IriTrie.prefixOf (trie, iri)
+      let val prefixOpt = IriTrie.prefixOf (trie, iri)
 	  open WdString
 	  fun dropPrefix (iri, n) =
   	      implode (List.drop (explode (Iri.toWideString iri), n))
       in
-	  if Iri.isEmpty prefix
-	  then NONE
-	  else
-	      case IriMap.find (reverse, prefix) of
-		  NONE => raise Fail ("internal error: prefix <" ^
-                                      Iri.toString prefix ^
-                                      "> found in trie " ^
-                                      "but not in reverse map")
-		| SOME abbr =>
-	          SOME (abbr, toUtf8 (dropPrefix (iri, Iri.size prefix)))
+          case prefixOpt of
+              NONE => NONE
+            | SOME prefix => 
+	      if Iri.isEmpty prefix
+	      then NONE
+	      else
+	          case IriMap.find (reverse, prefix) of
+		      NONE => raise Fail ("internal error: prefix <" ^
+                                          Iri.toString prefix ^
+                                          "> found in trie " ^
+                                          "but not in reverse map")
+		    | SOME abbr =>
+	              SOME (abbr, toUtf8 (dropPrefix (iri, Iri.size prefix)))
       end
 		   
 end
