@@ -16,7 +16,7 @@ functor CollectionGathererFn (M : MATCHER) :> COLLECTION_GATHERER
         let val pat = (SOME node, SOME nodeRest, NONE)
             val result = not (null (M.match (matcher, pat)))
         in
-            Log.info (fn () => ["Collection: % % a collection node",
+            Log.info (fn () => ["Collection: %1 %2 a collection node",
                                 Log.S (RdfNode.stringOfNode node),
                                 Log.S (if result then "is" else "is not")]);
             result
@@ -46,7 +46,7 @@ functor CollectionGathererFn (M : MATCHER) :> COLLECTION_GATHERER
                     end
             val result = triples' (matcher, (startOfCollection (matcher, node)), [])
         in
-            Log.info (fn () => ["Collection: node % yields collection:\n%",
+            Log.info (fn () => ["Collection: node %1 yields collection:\n%",
                                 Log.S (RdfNode.stringOfNode node),
                                 Log.S (RdfTriple.stringOfTriples result)]);
             result
