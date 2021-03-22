@@ -16,6 +16,13 @@ functor TestStoreFn (Arg : TEST_STORE_ARG) :> TESTS = struct
 
     structure S = Arg.S
 
+    fun checkSets converter greater (a, b) =
+        checkLists converter
+                    (ListMergeSort.sort greater a,
+                     ListMergeSort.sort greater b)
+
+    type test = string * (unit -> bool)
+                             
     val name = "store"
 
     fun iri i = RdfNode.IRI (Iri.fromString i)

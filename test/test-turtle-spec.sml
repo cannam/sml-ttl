@@ -1,18 +1,17 @@
 
 functor TestTurtleSpecFn (P: RDF_PARSER) :> TESTS = struct
 
-    open TestSupport RdfNode RdfTriple Prefix
+    open TestSupport RdfNode RdfTriple Prefix TestDir
 
+    type test = string * (unit -> bool)
+                             
     val name = "turtle-spec"
 
     structure L = TurtleLoader (* for manifest in ttl format *)
     structure S = Store
                      
-    val testFileDir = "test/spec"
-    val outFileDir = "test/out"
-
-    fun testFile filename = testFileDir ^ "/" ^ filename
-    fun tempFile filename = outFileDir ^ "/" ^ filename
+    fun testFile filename = testFileDir "spec" ^ "/" ^ filename
+    fun tempFile filename = testFileDir "out" ^ "/" ^ filename
                      
     val baseIri = "http://example/base/"
 

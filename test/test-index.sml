@@ -12,6 +12,13 @@ functor TestIndexFn (Arg : TEST_INDEX_ARG) :> TESTS = struct
     structure IX = Arg.IX
     structure P = IndexPickerFn(IX)
 
+    fun checkSets converter greater (a, b) =
+        checkLists converter
+                    (ListMergeSort.sort greater a,
+                     ListMergeSort.sort greater b)
+
+    type test = string * (unit -> bool)
+                             
     val name = "index"
 
     fun iri i = RdfNode.IRI (Iri.fromString i)

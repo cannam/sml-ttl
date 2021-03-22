@@ -31,7 +31,7 @@ fun runTestSuite (suiteName, tests) =
             else OS.Process.success
         end
             
-val allTests = [
+fun ttl_tests () = [
     (TestPrefix.name, TestPrefix.tests ()),
     (TestProperty.name, TestProperty.tests ()),
     (TestIndex.name, TestIndex.tests ()),
@@ -61,7 +61,7 @@ fun handleArgs args =
                             else code
                         end)
                     OS.Process.success
-                    allTests
+                    (ttl_tests ())
       | _ => usage ()
            
 fun main () =

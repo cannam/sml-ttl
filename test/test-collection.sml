@@ -9,6 +9,8 @@ structure TestCollection :> TESTS = struct
     open RdfNode
     open RdfStandardIRIs
                       
+    type test = string * (unit -> bool)
+                             
     val name = "collection"
 
     (* Renumber blank nodes, starting from 1 each time this is called *)

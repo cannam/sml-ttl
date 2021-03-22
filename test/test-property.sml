@@ -1,12 +1,14 @@
 
 functor TestPropertyFn (P: STORE_PROPERTY) :> TESTS = struct
 
-    open TestSupport
-    open RdfNode
+    open TestSupport RdfNode TestDir
              
+    type test = string * (unit -> bool)
+                             
     val name = "property";
 
-    val testfile = "test/other/goblin.ttl"
+    fun testFile () = testFileDir "other" ^ "/goblin.ttl"
+
     val goblinIri = Iri.fromString "http://example.org/#green-goblin"
     val spiderIri = Iri.fromString "http://example.org/#spiderman"
     val goblinNode = IRI goblinIri
@@ -17,6 +19,7 @@ functor TestPropertyFn (P: STORE_PROPERTY) :> TESTS = struct
                            
     fun loadTestfile () =
         let open StoreFileLoader
+            val testfile = testFile ()
         in
             case loadFileAsNewStore (NONE, testfile) of
                 FORMAT_NOT_SUPPORTED =>

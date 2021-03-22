@@ -3,6 +3,8 @@ functor TestPrefixFn (P: PREFIX_TABLE) :> TESTS = struct
 
     open TestSupport
 
+    type test = string * (unit -> bool)
+                             
     val name = "prefix"
                                   
     fun makeTable pairs =

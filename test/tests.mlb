@@ -1,6 +1,7 @@
 ../src/sml-ttl.mlb
 tests.sig
 test-support.sml
+test-dir.sml
 test-prefix.sml
 test-property.sml
 test-index.sml

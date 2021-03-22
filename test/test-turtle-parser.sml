@@ -1,8 +1,10 @@
 
 functor TestTurtleParserFn (P: RDF_PARSER) :> TESTS = struct
 
-    open TestSupport RdfTriple Prefix
+    open TestSupport RdfTriple Prefix TestDir
 
+    type test = string * (unit -> bool)
+                             
     val name = "turtle-parser"
                   
     fun checkTriples str (P.PARSE_ERROR err) =
@@ -48,11 +50,9 @@ functor TestTurtleParserFn (P: RDF_PARSER) :> TESTS = struct
             result
         end
                  
-    val testFileDir = "test/other"
-                 
-    val goodFileTests =
+    fun goodFileTests () =
         map (fn f =>
-                (f, fn () => goodFile (testFileDir ^ "/" ^ f ^ ".ttl")))
+                (f, fn () => goodFile (testFileDir "other" ^ "/" ^ f ^ ".ttl")))
             [ "bnode-nested-2", "bnode-nested", "bnode", "boolean",
               "collections", "example1", "example2", "example3", "goblin",
               "iris", "numbers", "quoted", "quoted2" ]
@@ -140,7 +140,7 @@ functor TestTurtleParserFn (P: RDF_PARSER) :> TESTS = struct
                         prefixes = [ ( "", Iri.empty ) ],
                         triples  = [ iriTriple ("%", "a#c", "ab(") ] }
         )
-    ] @ goodFileTests 
+    ] @ (goodFileTests ())
             
 end
 

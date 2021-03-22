@@ -1,13 +1,11 @@
 
 structure TestCurated : TESTS = struct
 
-    open TestSupport
+    open TestSupport TestDir
 
+    type test = string * (unit -> bool)
+                             
     val name = "curated"
-
-    val testFileDir = "test/other"
-    val referenceDir = "test/other/curated"
-    val outFileDir = "test/out"
 
     fun convertFile (infile, outfile) =
         let val instream = TextIO.openIn infile
@@ -56,9 +54,9 @@ structure TestCurated : TESTS = struct
     fun tests () =
         map (fn f =>
                 (f, fn () => checkConversion
-                                 (testFileDir ^ "/" ^ f ^ ".ttl")
-                                 (outFileDir ^ "/" ^ f ^ ".ttl")
-                                 (referenceDir ^ "/" ^ f ^ ".ttl")))
+                                 (testFileDir "other" ^ "/" ^ f ^ ".ttl")
+                                 (testFileDir "out" ^ "/" ^ f ^ ".ttl")
+                                 (testFileDir "other/curated" ^ "/" ^ f ^ ".ttl")))
             [ "bnode-nested-2", "bnode-nested", "bnode", "boolean",
               "collections", "example1", "example2", "example3", "goblin",
               "iris", "numbers", "quoted", "quoted2" ]

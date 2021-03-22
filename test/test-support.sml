@@ -1,9 +1,6 @@
 
 structure TestSupport = struct
 
-    type test = string * (unit -> bool)
-    type testSuite = string * test list
-
     fun report converter (obtained, expected) =
         print ("--- Expected " ^ (converter expected)
                ^ "\n--- Obtained " ^ (converter obtained) ^ "\n")
@@ -35,10 +32,5 @@ structure TestSupport = struct
             else
                 checkLists' (a, b)
         end
-
-    fun checkSets converter greater (a, b) =
-        checkLists converter
-                    (ListMergeSort.sort greater a,
-                     ListMergeSort.sort greater b)
                            
 end
