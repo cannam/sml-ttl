@@ -3,6 +3,8 @@ structure Store :> STORE = struct
 
     datatype node = datatype RdfNode.node
 
+    open RdfLog
+                                 
     type patnode = node option
     type triple = node * node * node
     type pattern = patnode * patnode * patnode
@@ -50,9 +52,9 @@ structure Store :> STORE = struct
     fun foldlMatch f acc ({ prefixes, indexes } : t, pattern) =
         let val index = IndexPicker.pickIndex (indexes, pattern)
         in
-            Log.info (fn () => ["Store: pattern %1, index \"%2\"",
-                                Log.S (stringOfPattern pattern),
-                                Log.S (Index.name index)]);
+            debug (fn () => ["Store: pattern %1, index \"%2\"",
+                             S (stringOfPattern pattern),
+                             S (Index.name index)]);
             Index.foldlMatch f acc (index, pattern)
         end
 
@@ -62,8 +64,8 @@ structure Store :> STORE = struct
     fun match pattern =
         let val result = foldlMatch (op::) [] pattern
         in
-            Log.info (fn () => ["Store: matched %1 results",
-                                Log.I (length result)]);
+            debug (fn () => ["Store: matched %1 results",
+                             I (length result)]);
             result
         end
 

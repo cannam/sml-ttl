@@ -7,6 +7,8 @@ functor CollectionGathererFn (M : MATCHER) :> COLLECTION_GATHERER
     datatype node = datatype RdfNode.node
     type triple = node * node * node
 
+    open RdfLog
+             
     val nodeFirst = RdfNode.IRI RdfStandardIRIs.iriRdfFirst
     val nodeRest  = RdfNode.IRI RdfStandardIRIs.iriRdfRest
     val nodeNil   = RdfNode.IRI RdfStandardIRIs.iriRdfNil
@@ -16,9 +18,9 @@ functor CollectionGathererFn (M : MATCHER) :> COLLECTION_GATHERER
         let val pat = (SOME node, SOME nodeRest, NONE)
             val result = not (null (M.match (matcher, pat)))
         in
-            Log.info (fn () => ["Collection: %1 %2 a collection node",
-                                Log.S (RdfNode.stringOfNode node),
-                                Log.S (if result then "is" else "is not")]);
+            debug (fn () => ["Collection: %1 %2 a collection node",
+                             S (RdfNode.stringOfNode node),
+                             S (if result then "is" else "is not")]);
             result
         end
 
@@ -46,9 +48,9 @@ functor CollectionGathererFn (M : MATCHER) :> COLLECTION_GATHERER
                     end
             val result = triples' (matcher, (startOfCollection (matcher, node)), [])
         in
-            Log.info (fn () => ["Collection: node %1 yields collection:\n%",
-                                Log.S (RdfNode.stringOfNode node),
-                                Log.S (RdfTriple.stringOfTriples result)]);
+            debug (fn () => ["Collection: node %1 yields collection:\n%",
+                             S (RdfNode.stringOfNode node),
+                             S (RdfTriple.stringOfTriples result)]);
             result
         end
 

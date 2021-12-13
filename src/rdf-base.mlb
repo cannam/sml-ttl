@@ -1,4 +1,5 @@
 prerequisites.mlb
+rdf-base/log.sml
 rdf-base/codepointset.sml
 rdf-base/string-compare.sml
 rdf-base/iri.sig

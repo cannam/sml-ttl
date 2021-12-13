@@ -1,22 +1,22 @@
 {
   "libraries": {
     "sml-smlnj-containers": {
-      "pin": "2c094258f541"
+      "pin": "3da179a6ce0c"
     },
     "sml-utf8": {
-      "pin": "45d450aedb1f"
+      "pin": "fe154fc33446"
     },
     "sml-trie": {
-      "pin": "2d2572df578d"
+      "pin": "89310846066c"
     },
     "sml-stringinterpolate": {
-      "pin": "7aeea879e5af"
+      "pin": "82b6a5a4fc8d"
     },
     "sml-log": {
-      "pin": "0084064e40bf"
+      "pin": "ece686d599d4"
     },
     "sml-buildscripts": {
-      "pin": "0753a33f4456"
+      "pin": "c34ab9a28379"
     }
   }
 }
